@@ -1,9 +1,9 @@
 # VenueFlow Handoff
 
-- 更新时间：2026-07-20 20:10:00 +08:00
+- 更新时间：2026-07-20 20:14:00 +08:00
 - 分支：`main`
-- 当前 Change：`bootstrap-engineering-baseline`
-- 当前目标：完成 v0.1.0 C01 最小工程基线，不引入业务或运行时基础设施。
+- 当前 Change：无活动 Change
+- 当前目标：v0.1.0 C01 最小工程基线已完成并归档。
 
 ## 已完成
 
@@ -27,12 +27,12 @@
 
 ## 待完成
 
-- 本 Change 的 12 项实现任务已全部完成。
-- 由用户决定是否同步主规格、归档并提交/推送。
+- 无遗留实现任务。
+- 下一项工作开始前应创建独立 OpenSpec Change。
 
 ## 下一步
 
-完成并归档本 Change 后，创建 `add-base-infrastructure`，再引入 Docker Compose、基础设施版本锁定、健康检查和相应验收门禁。
+创建 `add-base-infrastructure`，再引入 Docker Compose、基础设施版本锁定、健康检查和相应验收门禁。
 
 ## 禁止操作
 
