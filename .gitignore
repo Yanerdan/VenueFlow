@@ -1,0 +1,40 @@
+# Maven and Java
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+hs_err_pid*
+replay_pid*
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+secrets/
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# Operating systems
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Maven local state
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Test and analysis output
+.scannerwork/
+dependency-reduced-pom.xml
