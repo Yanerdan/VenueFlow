@@ -1,0 +1,126 @@
+name: venueflow-base
+
+services:
+  mysql:
+    image: ${MYSQL_IMAGE:?MYSQL_IMAGE must be set by deploy/versions.env}
+    profiles: [base]
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set}
+      TZ: UTC
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=+00:00
+      - --max-connections=100
+      - --innodb-buffer-pool-size=512M
+    ports:
+      - ${INFRA_BIND_ADDRESS:?INFRA_BIND_ADDRESS must be set}:${MYSQL_PORT:-3306}:3306
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks: [base-network]
+    mem_limit: 1280m
+    cpus: 1.0
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysqladmin ping --host=127.0.0.1 --user=root --password="$${MYSQL_ROOT_PASSWORD}" --silent
+      start_period: 40s
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: ${REDIS_IMAGE:?REDIS_IMAGE must be set by deploy/versions.env}
+    profiles: [base]
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+      TZ: UTC
+    command:
+      - sh
+      - -c
+      - >-
+        exec redis-server --appendonly yes --maxmemory 192mb
+        --maxmemory-policy noeviction --requirepass "$${REDIS_PASSWORD}"
+    ports:
+      - ${INFRA_BIND_ADDRESS:?INFRA_BIND_ADDRESS must be set}:${REDIS_PORT:-6379}:6379
+    volumes:
+      - redis-data:/data
+    networks: [base-network]
+    mem_limit: 384m
+    cpus: 0.5
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - REDISCLI_AUTH="$${REDIS_PASSWORD}" redis-cli ping | grep -q PONG
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 8
+
+  rabbitmq:
+    image: ${RABBITMQ_IMAGE:?RABBITMQ_IMAGE must be set by deploy/versions.env}
+    profiles: [base]
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:?RABBITMQ_USERNAME must be set}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD must be set}
+      TZ: UTC
+    ports:
+      - ${INFRA_BIND_ADDRESS:?INFRA_BIND_ADDRESS must be set}:${RABBITMQ_PORT:-5672}:5672
+      - ${INFRA_BIND_ADDRESS:?INFRA_BIND_ADDRESS must be set}:${RABBITMQ_MANAGEMENT_PORT:-15672}:15672
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks: [base-network]
+    mem_limit: 768m
+    cpus: 1.0
+    healthcheck:
+      test: [CMD, rabbitmq-diagnostics, -q, ping]
+      start_period: 30s
+      interval: 10s
+      timeout: 8s
+      retries: 12
+
+  nacos:
+    image: ${NACOS_IMAGE:?NACOS_IMAGE must be set by deploy/versions.env}
+    profiles: [base]
+    restart: unless-stopped
+    environment:
+      MODE: standalone
+      PREFER_HOST_MODE: hostname
+      NACOS_AUTH_ENABLE: ${NACOS_AUTH_ENABLE:?NACOS_AUTH_ENABLE must be set}
+      NACOS_AUTH_TOKEN: ${NACOS_AUTH_TOKEN:?NACOS_AUTH_TOKEN must be set}
+      NACOS_AUTH_IDENTITY_KEY: ${NACOS_AUTH_IDENTITY_KEY:?NACOS_AUTH_IDENTITY_KEY must be set}
+      NACOS_AUTH_IDENTITY_VALUE: ${NACOS_AUTH_IDENTITY_VALUE:?NACOS_AUTH_IDENTITY_VALUE must be set}
+      JVM_XMS: 512m
+      JVM_XMX: 512m
+      JVM_XMN: 256m
+      TZ: UTC
+    ports:
+      - ${INFRA_BIND_ADDRESS:?INFRA_BIND_ADDRESS must be set}:${NACOS_HTTP_PORT:-8848}:8848
+      - ${INFRA_BIND_ADDRESS:?INFRA_BIND_ADDRESS must be set}:${NACOS_GRPC_PORT:-9848}:9848
+      - ${INFRA_BIND_ADDRESS:?INFRA_BIND_ADDRESS must be set}:${NACOS_GRPC_TLS_PORT:-9849}:9849
+    volumes:
+      - nacos-data:/home/nacos/data
+    networks: [base-network]
+    mem_limit: 1280m
+    cpus: 1.0
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl --fail --silent --show-error http://127.0.0.1:8080/v3/console/health/liveness >/dev/null
+      start_period: 60s
+      interval: 10s
+      timeout: 5s
+      retries: 18
+
+networks:
+  base-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  redis-data:
+  rabbitmq-data:
+  nacos-data:

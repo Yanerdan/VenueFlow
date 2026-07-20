@@ -42,3 +42,74 @@ jobs:
             **/target/failsafe-reports/**
             **/target/site/jacoco/**
             target/bom.json
+
+  infrastructure:
+    name: Base infrastructure smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Generate ephemeral infrastructure environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          suffix="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          nacos_token="$(printf 'venueflow-ci-nacos-auth-token-%s-0123456789abcdef' "$suffix" | base64 -w0)"
+          umask 077
+          {
+            printf '%s\n' 'INFRA_BIND_ADDRESS=127.0.0.1'
+            printf '%s\n' 'MYSQL_PORT=3306' 'REDIS_PORT=6379'
+            printf '%s\n' 'RABBITMQ_PORT=5672' 'RABBITMQ_MANAGEMENT_PORT=15672'
+            printf '%s\n' 'NACOS_HTTP_PORT=8848' 'NACOS_GRPC_PORT=9848' 'NACOS_GRPC_TLS_PORT=9849'
+            printf 'MYSQL_ROOT_PASSWORD=venueflow-ci-mysql-%s\n' "$suffix"
+            printf 'REDIS_PASSWORD=venueflow-ci-redis-%s\n' "$suffix"
+            printf '%s\n' 'RABBITMQ_USERNAME=venueflow_ci'
+            printf 'RABBITMQ_PASSWORD=venueflow-ci-rabbitmq-%s\n' "$suffix"
+            printf '%s\n' 'NACOS_AUTH_ENABLE=true'
+            printf 'NACOS_AUTH_TOKEN=%s\n' "$nacos_token"
+            printf 'NACOS_AUTH_IDENTITY_KEY=venueflow-ci-key-%s\n' "$suffix"
+            printf 'NACOS_AUTH_IDENTITY_VALUE=venueflow-ci-value-%s\n' "$suffix"
+          } > .env.ci
+
+      - name: Validate base infrastructure policy
+        shell: bash
+        run: |
+          ALLOW_PLACEHOLDERS=true sh scripts/bootstrap/validate-base-infrastructure.sh .env.example deploy/versions.env
+          sh scripts/bootstrap/validate-base-infrastructure.sh .env.ci deploy/versions.env
+
+      - name: Run bounded base infrastructure smoke
+        shell: bash
+        env:
+          TIMEOUT_SECONDS: "300"
+        run: sh scripts/smoke-test/base-infrastructure-smoke.sh .env.ci
+
+      - name: Collect sanitized infrastructure diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p infrastructure-diagnostics
+          compose=(docker compose --env-file deploy/versions.env --env-file .env.ci -f deploy/compose/compose.yml --profile base)
+          "${compose[@]}" ps > infrastructure-diagnostics/compose-ps.txt || true
+          for service in mysql redis rabbitmq nacos; do
+            container_id="$("${compose[@]}" ps -q "$service")"
+            if [ -n "$container_id" ]; then
+              docker inspect --format '{{.Name}} status={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container_id" >> infrastructure-diagnostics/health.txt || true
+            fi
+          done
+
+      - name: Upload infrastructure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: base-infrastructure-diagnostics
+          if-no-files-found: ignore
+          retention-days: 7
+          path: infrastructure-diagnostics/
+
+      - name: Stop infrastructure without deleting volumes
+        if: always()
+        shell: bash
+        run: docker compose --env-file deploy/versions.env --env-file .env.ci -f deploy/compose/compose.yml --profile base down --timeout 30
