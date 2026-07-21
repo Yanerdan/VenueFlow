@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.yanerdan.venueflow</groupId>
+    <artifactId>venueflow-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>venueflow-resource-service</artifactId>
+  <packaging>jar</packaging>
+
+  <name>VenueFlow Resource Service</name>
+  <description>Minimal executable Resource Service skeleton</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>enforce-resource-service-skeleton-boundary</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <phase>validate</phase>
+            <configuration>
+              <rules>
+                <bannedDependencies>
+                  <searchTransitive>true</searchTransitive>
+                  <message>C03 Resource Service must not include infrastructure, security or observability clients.</message>
+                  <excludes>
+                    <exclude>com.alibaba.cloud:spring-cloud-starter-alibaba-nacos-config</exclude>
+                    <exclude>com.alibaba.cloud:spring-cloud-starter-alibaba-nacos-discovery</exclude>
+                    <exclude>com.alibaba.cloud:spring-cloud-starter-alibaba-sentinel</exclude>
+                    <exclude>com.baomidou:*</exclude>
+                    <exclude>com.mysql:mysql-connector-j</exclude>
+                    <exclude>io.micrometer:micrometer-registry-prometheus</exclude>
+                    <exclude>io.micrometer:micrometer-tracing-*</exclude>
+                    <exclude>io.opentelemetry:opentelemetry-exporter-otlp</exclude>
+                    <exclude>org.flywaydb:*</exclude>
+                    <exclude>org.mybatis:*</exclude>
+                    <exclude>org.springframework.amqp:*</exclude>
+                    <exclude>org.springframework.boot:spring-boot-starter-amqp</exclude>
+                    <exclude>org.springframework.boot:spring-boot-starter-data-jdbc</exclude>
+                    <exclude>org.springframework.boot:spring-boot-starter-data-redis</exclude>
+                    <exclude>org.springframework.boot:spring-boot-starter-jdbc</exclude>
+                    <exclude>org.springframework.boot:spring-boot-starter-oauth2-resource-server</exclude>
+                    <exclude>org.springframework.boot:spring-boot-starter-security</exclude>
+                    <exclude>org.springframework.cloud:spring-cloud-starter-openfeign</exclude>
+                    <exclude>org.springframework.security:*</exclude>
+                  </excludes>
+                </bannedDependencies>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <configuration>
+          <systemPropertyVariables>
+            <resourceServiceJar>${project.build.directory}/${project.build.finalName}.jar</resourceServiceJar>
+          </systemPropertyVariables>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

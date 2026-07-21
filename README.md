@@ -1,6 +1,6 @@
 # VenueFlow 园区共享资源预约平台
 
-VenueFlow 当前处于 v0.1.0 基础设施阶段。本仓库已经具备可复现的 Maven 多模块构建、真实单元测试、基础质量门禁，以及按需启动的 MySQL、Redis、RabbitMQ 和 Nacos `base` profile；尚未实现业务服务。
+VenueFlow 当前处于 v0.1.0 Resource Service 骨架阶段。本仓库已经具备可复现的 Maven 多模块构建、真实测试、基础质量门禁、按需启动的 MySQL/Redis/RabbitMQ/Nacos `base` profile，以及可独立启动的最小 Resource Service；资源业务 API 尚未实现。
 
 ## 环境要求
 
@@ -32,7 +32,7 @@ Linux、macOS 或 Git Bash：
 ./mvnw clean verify
 ```
 
-该命令会执行编译、JUnit、Failsafe 测试发现、JaCoCo 覆盖率报告、Enforcer、Spotless、SpotBugs 和 CycloneDX SBOM 生成。默认构建不连接 VMware、Docker、数据库、Redis、RabbitMQ、Nacos 或 Elasticsearch。
+该命令会执行编译、JUnit、Failsafe 集成测试、实际 Resource Service jar 启动与 HTTP 探针验证、JaCoCo 覆盖率报告、Enforcer、Spotless、SpotBugs 和 CycloneDX SBOM 生成。默认构建不连接 VMware、Docker、数据库、Redis、RabbitMQ、Nacos 或 Elasticsearch。
 
 ## 基础设施
 
@@ -62,11 +62,42 @@ docker compose --env-file deploy/versions.env --env-file .env -f deploy/compose/
 
 **禁止在普通停止、smoke 或 CI 清理中添加 `--volumes`。** 删除卷会清除基础组件数据，只能在明确确认 project 和卷名后人工执行。完整操作与故障排查见 [基础设施 Runbook](docs/runbook/base-infrastructure.md)。
 
+## Resource Service 骨架
+
+Resource Service 当前仅提供独立 Spring Boot 4 启动入口和 Actuator 健康探针，不依赖 C02 基础设施。模块级验证：
+
+```powershell
+.\mvnw.cmd -pl venueflow-resource-service -am clean verify
+```
+
+全仓 `clean verify` 完成后，可直接运行生成的可执行 jar：
+
+```powershell
+$env:SERVER_PORT = "18083" # 可选；未设置时默认 8083
+java -jar venueflow-resource-service/target/venueflow-resource-service-0.1.0-SNAPSHOT.jar
+```
+
+Linux、macOS 或 Git Bash：
+
+```bash
+SERVER_PORT=18083 java -jar venueflow-resource-service/target/venueflow-resource-service-0.1.0-SNAPSHOT.jar
+```
+
+启动后可检查：
+
+```text
+GET http://127.0.0.1:18083/actuator/health/liveness
+GET http://127.0.0.1:18083/actuator/health/readiness
+```
+
+两项探针应返回 `UP`。Actuator Web 只暴露 health，`env`、`configprops`、`loggers`、`mappings` 和 `metrics` 均不可访问；当前模块没有资源 CRUD、数据库、Nacos、Redis、RabbitMQ、认证或服务发现能力。使用 `Ctrl+C` 停止本地进程。
+
 ## 当前模块
 
 - `venueflow-dependencies`：内部依赖 BOM，集中管理框架版本。
 - `venueflow-common`：公共模块聚合器。
 - `venueflow-common/venueflow-common-core`：最小、无业务含义的公共 Java 模块和基线测试。
+- `venueflow-resource-service`：可执行的最小 Spring Boot MVC 服务，仅包含安全收敛的 Actuator 健康探针。
 
 根 `pom.xml` 只承担模块聚合、版本管理和质量门禁，不包含业务依赖。
 
@@ -82,6 +113,6 @@ docker compose --env-file deploy/versions.env --env-file .env -f deploy/compose/
 
 ## 当前非目标
 
-本阶段不包含 Gateway、Resource、Booking、User 等业务服务，也不包含数据库 Migration、基础设施客户端、Elasticsearch、观测栈或虚假的业务测试覆盖率。
+本阶段不包含 Gateway、Resource/Booking/User 业务 API、Entity、Mapper、数据库 Migration、容量逻辑、基础设施客户端、Elasticsearch、观测栈或虚假的业务测试覆盖率。
 
-当前下一项工作是创建 C03 `add-resource-service-skeleton`。
+完成并归档 C03 后，下一项工作应通过独立 OpenSpec Change 规划 v0.2.0 最小业务闭环，不在骨架 Change 中提前扩展。

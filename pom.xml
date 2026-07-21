@@ -21,6 +21,7 @@
   <modules>
     <module>venueflow-dependencies</module>
     <module>venueflow-common</module>
+    <module>venueflow-resource-service</module>
   </modules>
 
   <properties>
