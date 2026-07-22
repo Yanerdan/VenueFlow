@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="              http://maven.apache.org/POM/4.0.0              https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.yanerdan.venueflow</groupId>
+    <artifactId>venueflow-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>venueflow-user-service</artifactId>
+  <packaging>jar</packaging>
+
+  <name>VenueFlow User Service</name>
+  <description>Infrastructure-independent VenueFlow User Service skeleton</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-webmvc</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-webmvc-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+
+        <executions>
+          <execution>
+            <id>enforce-user-service-direct-dependencies</id>
+
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+
+            <configuration>
+              <rules>
+                <bannedDependencies>
+                  <message>User Service skeleton may directly depend only
+                    on Spring Web MVC, Actuator, and approved test
+                    support.</message>
+
+                  <searchTransitive>false</searchTransitive>
+
+                  <excludes>
+                    <exclude>*:*</exclude>
+                  </excludes>
+
+                  <includes>
+                    <include>org.springframework.boot:spring-boot-starter-webmvc</include>
+                    <include>org.springframework.boot:spring-boot-starter-actuator</include>
+                    <include>org.springframework.boot:spring-boot-starter-test</include>
+                    <include>org.springframework.boot:spring-boot-starter-webmvc-test</include>
+                  </includes>
+                </bannedDependencies>
+              </rules>
+            </configuration>
+          </execution>
+          <execution>
+            <id>enforce-user-service-forbidden-transitives</id>
+
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+
+            <configuration>
+              <rules>
+                <bannedDependencies>
+                  <message>User Service skeleton must remain free of persistence,
+                    security, distributed infrastructure, tracing, search,
+                    containers, and business-service clients.</message>
+
+                  <searchTransitive>true</searchTransitive>
+
+                  <excludes>
+                    <!-- VenueFlow business modules -->
+                    <exclude>com.yanerdan.venueflow:*</exclude>
+
+                    <!-- Persistence and migrations -->
+                    <exclude>org.springframework.boot:spring-boot-starter-data-*</exclude>
+                    <exclude>org.springframework.boot:spring-boot-starter-jdbc</exclude>
+                    <exclude>org.springframework.data:*</exclude>
+                    <exclude>org.mybatis:*</exclude>
+                    <exclude>com.baomidou:*</exclude>
+                    <exclude>org.hibernate.orm:*</exclude>
+                    <exclude>jakarta.persistence:*</exclude>
+                    <exclude>org.flywaydb:*</exclude>
+                    <exclude>org.liquibase:*</exclude>
+
+                    <!-- Database drivers -->
+                    <exclude>com.mysql:*</exclude>
+                    <exclude>org.postgresql:*</exclude>
+                    <exclude>org.mariadb.jdbc:*</exclude>
+                    <exclude>com.h2database:*</exclude>
+
+                    <!-- Security and tokens -->
+                    <exclude>org.springframework.boot:spring-boot-starter-security</exclude>
+                    <exclude>org.springframework.boot:spring-boot-starter-oauth2-*</exclude>
+                    <exclude>org.springframework.security:*</exclude>
+                    <exclude>io.jsonwebtoken:*</exclude>
+                    <exclude>com.auth0:java-jwt</exclude>
+
+                    <!-- Spring Cloud, Nacos, Sentinel and Feign -->
+                    <exclude>org.springframework.cloud:*</exclude>
+                    <exclude>com.alibaba.cloud:*</exclude>
+                    <exclude>com.alibaba.nacos:*</exclude>
+                    <exclude>com.alibaba.csp:*</exclude>
+                    <exclude>io.github.openfeign:*</exclude>
+
+                    <!-- Redis and caching infrastructure -->
+                    <exclude>redis.clients:*</exclude>
+                    <exclude>io.lettuce:*</exclude>
+                    <exclude>org.redisson:*</exclude>
+
+                    <!-- Messaging -->
+                    <exclude>org.springframework.amqp:*</exclude>
+                    <exclude>com.rabbitmq:*</exclude>
+                    <exclude>org.springframework.kafka:*</exclude>
+                    <exclude>org.apache.kafka:*</exclude>
+
+                    <!-- Tracing and metrics exporters -->
+                    <exclude>io.micrometer:micrometer-tracing*</exclude>
+                    <exclude>io.micrometer:micrometer-registry-prometheus*</exclude>
+                    <exclude>io.opentelemetry:*</exclude>
+                    <exclude>io.zipkin.brave:*</exclude>
+                    <exclude>io.prometheus:*</exclude>
+
+                    <!-- Search -->
+                    <exclude>org.elasticsearch:*</exclude>
+                    <exclude>co.elastic.clients:*</exclude>
+                    <exclude>org.opensearch.client:*</exclude>
+
+                    <!-- Testcontainers / Docker-dependent tests -->
+                    <exclude>org.testcontainers:*</exclude>
+                  </excludes>
+                </bannedDependencies>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+
+        <configuration>
+          <mainClass>com.yanerdan.venueflow.user.UserServiceApplication</mainClass>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

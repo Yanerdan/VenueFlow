@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: venueflow-user-service
+  profiles:
+    default: skeleton
+
+server:
+  port: ${SERVER_PORT:8082}
+
+management:
+  endpoints:
+    access:
+      default: none
+    web:
+      exposure:
+        include: health
+      discovery:
+        enabled: false
+    jmx:
+      exposure:
+        exclude: "*"
+
+  endpoint:
+    health:
+      access: read-only
+      show-details: never
+      show-components: never
+      probes:
+        enabled: true
