@@ -1,63 +1,114 @@
 ## Purpose
 
-Define the runnable, infrastructure-independent Resource Service skeleton introduced in C03.
+Define the runnable, infrastructure-independent Resource Service skeleton introduced in
+C03 and the narrow persistence extension accepted by C04.
 
 ## Requirements
 
 ### Requirement: Reactor-integrated executable Resource Service
-仓库 MUST 提供由根 Maven reactor 聚合的 `venueflow-resource-service` Spring Boot MVC 模块；该模块 MUST 继承既有 JDK 21、BOM 和质量门禁，并 MUST 生成具有独立应用入口的可执行 jar。
+
+The repository MUST provide a `venueflow-resource-service` Spring Boot MVC module
+integrated into the root Maven reactor. The module MUST inherit the established JDK 21,
+BOM, and quality gates and MUST package an executable jar with an independent application
+entry point.
 
 #### Scenario: Build the complete reactor
-- **WHEN** 开发者在受支持的 JDK 21 环境执行 Maven Wrapper `clean verify`
-- **THEN** Resource Service 随全部既有模块完成编译、测试、质量检查和可执行 jar 打包
+
+- **WHEN** a developer runs Maven Wrapper `clean verify` with supported JDK 21
+- **THEN** Resource Service is compiled, tested, quality-checked, and packaged with the
+  other reactor modules
 
 #### Scenario: Start the packaged service
-- **WHEN** 操作者使用 `java -jar` 启动构建得到的 Resource Service 可执行 jar
-- **THEN** 服务以应用名 `venueflow-resource-service` 启动并接受 HTTP 健康探针请求
+
+- **WHEN** the packaged Resource Service jar is started with `java -jar`
+- **THEN** it starts as `venueflow-resource-service` and serves HTTP health probes
 
 ### Requirement: Minimal service dependency boundary
-Resource Service 骨架 MUST 只引入启动 HTTP 应用、Actuator 和测试所必需的依赖，MUST NOT 引入 JDBC、MyBatis-Plus、Flyway、MySQL、Nacos、Redis、RabbitMQ、Feign、Sentinel、JWT、Tracing 或 Prometheus 客户端。
 
-#### Scenario: Inspect the skeleton dependency tree
-- **WHEN** 审查 Resource Service 的声明依赖和解析后的 Maven 依赖树
-- **THEN** 运行时依赖仅服务于 Spring MVC 与 Actuator，且不存在尚无可验证用途的基础设施或治理客户端
+Resource Service MUST keep its dependency set limited to dependencies accepted by
+completed capabilities. It MAY use Spring Web, Spring Boot Actuator, tests, and—in the
+explicit resource-catalog persistence profile—Bean Validation, MyBatis-Plus, Flyway, and
+MySQL Connector/J. It MUST NOT introduce Nacos, Redis, RabbitMQ, Feign, Sentinel,
+JWT/security, tracing, Prometheus clients, or unrelated infrastructure or business clients.
+
+#### Scenario: The service dependency tree is intentionally small
+
+- **WHEN** declared and resolved Resource Service dependencies are inspected
+- **THEN** only skeleton dependencies and dependencies accepted for resource-catalog
+  persistence are present
+- **AND** no Nacos, Redis, RabbitMQ, Feign, Sentinel, JWT/security, tracing, Prometheus,
+  or unrelated client dependency is present
 
 ### Requirement: Deterministic standalone configuration
-Resource Service MUST 提交 secret-free 的最小本地配置，MUST 将应用名固定为 `venueflow-resource-service`，MUST 默认监听 8083，并 MUST 允许通过标准 `SERVER_PORT` 环境变量覆盖端口；默认启动 MUST NOT 要求 `.env`、Docker、Nacos 或其他外部服务。
 
-#### Scenario: Start with defaults
-- **WHEN** 开发者没有运行 C02 基础设施且未提供外部配置中心或数据源配置时启动服务
-- **THEN** 服务使用应用名 `venueflow-resource-service` 和默认端口 8083 独立进入可用状态
+Resource Service MUST declare `spring.application.name=venueflow-resource-service` and
+MUST use `SERVER_PORT`, defaulting to `8083`, for its listening port. Its default
+`skeleton` profile MUST remain secret-free and runnable without Docker, MySQL, Nacos,
+Redis, RabbitMQ, or any other external service. An explicit persistence profile MAY enable
+accepted resource-catalog database capabilities, but MUST obtain credentials from
+environment variables or untracked local configuration rather than tracked secrets.
+
+#### Scenario: An isolated developer can start the default service
+
+- **GIVEN** no Docker daemon or external infrastructure
+- **WHEN** Resource Service starts with default configuration
+- **THEN** it starts on port 8083 unless `SERVER_PORT` is supplied
+- **AND** it does not connect to MySQL, Nacos, Redis, RabbitMQ, or another service
 
 #### Scenario: Override a conflicting local port
-- **WHEN** 操作者设置有效的 `SERVER_PORT` 后启动服务
-- **THEN** 服务监听指定端口且不需要修改已提交配置文件
+
+- **WHEN** a developer sets a valid `SERVER_PORT` before startup
+- **THEN** the service listens on that port without changing tracked configuration
+
+#### Scenario: Persistence is activated explicitly
+
+- **GIVEN** valid resource database environment variables
+- **WHEN** a developer explicitly selects the persistence profile
+- **THEN** Resource Service enables accepted resource-catalog persistence
+- **AND** the default skeleton profile remains available for infrastructure-free startup
 
 ### Requirement: Restricted Actuator health surface
-Resource Service MUST 提供 `/actuator/health/liveness` 与 `/actuator/health/readiness` HTTP 探针，MUST 仅通过 Actuator Web 暴露健康能力，MUST NOT 匿名暴露 `env`、`configprops`、`loggers`、`mappings`、`metrics` 或危险写端点，并 MUST NOT 向匿名调用者显示组件健康详情。
+
+Resource Service MUST expose `/actuator/health/liveness` and `/actuator/health/readiness`
+through Actuator Web. It MUST NOT anonymously expose `env`, `configprops`, `loggers`,
+`mappings`, `metrics`, dangerous write endpoints, or component health details.
 
 #### Scenario: Probe a healthy standalone process
-- **WHEN** 已启动服务收到 liveness 和 readiness 请求
-- **THEN** 两个请求均返回成功响应且状态为 `UP`
+
+- **WHEN** a running service receives liveness and readiness requests
+- **THEN** both respond successfully with status `UP`
 
 #### Scenario: Request a sensitive management endpoint
-- **WHEN** 匿名调用者请求未列入健康白名单的 Actuator Web 端点
-- **THEN** 服务不提供该端点且不泄露环境、配置、日志或映射信息
+
+- **WHEN** an anonymous caller requests an endpoint outside the health allowlist
+- **THEN** the service does not provide it or leak environment, configuration, log, or
+  mapping information
 
 ### Requirement: Infrastructure-independent automated verification
-Resource Service 的启动与 HTTP 探针测试 MUST 由默认 Maven `clean verify` 自动执行，MUST 使用隔离的随机端口，并 MUST 在 Docker、MySQL、Redis、RabbitMQ 和 Nacos 均未运行时仍可通过。
+
+Resource Service startup and HTTP probe tests MUST run in default Maven `clean verify`,
+use isolated random ports, and pass without Docker, MySQL, Redis, RabbitMQ, or Nacos.
 
 #### Scenario: Verify without the base profile
-- **WHEN** CI 或开发者在未启动任何 Compose profile 的环境执行默认 Maven 验证
-- **THEN** 测试启动真实 Spring 应用上下文、通过 HTTP 验证健康探针和暴露边界，并在有界时间内完成
+
+- **WHEN** CI or a developer runs default Maven verification without Compose services
+- **THEN** tests start a real Spring context, verify health probes and exposure boundaries,
+  and complete in bounded time
 
 #### Scenario: Run tests concurrently with another local service
-- **WHEN** 默认 8083 已被其他进程占用但 Maven 测试使用随机端口
-- **THEN** Resource Service 自动化测试不因固定端口冲突而失败
+
+- **WHEN** port 8083 is already occupied while Maven tests use random ports
+- **THEN** Resource Service automated tests do not fail due to that fixed-port conflict
 
 ### Requirement: C03 scope isolation
-C03 MUST NOT 创建资源业务 API、Entity、DTO、Mapper、数据库或用户、Flyway Migration、容量占用/释放逻辑、基础设施客户端、服务发现配置、消息拓扑、其他业务服务或应用容器编排。
+
+C03 MUST NOT itself introduce resource business APIs, Entities, DTOs, Mappers, databases,
+database users, Flyway migrations, capacity allocation/release, infrastructure clients,
+service discovery, messaging, additional business services, or application-container
+orchestration. Later accepted changes MAY extend this skeleton within their own scope.
 
 #### Scenario: Inspect the C03 implementation diff
-- **WHEN** 审查新增源码、配置、依赖和部署文件
-- **THEN** 变更仅包含最小 Resource Service 外壳、Actuator 验收及相应工程文档，不包含资源业务或后续阶段能力
+
+- **WHEN** C03 source, configuration, dependencies, and deployment files are inspected
+- **THEN** its changes contain only the minimal Resource Service shell, Actuator acceptance,
+  and corresponding engineering documentation

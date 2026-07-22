@@ -1,6 +1,6 @@
 # VenueFlow 园区共享资源预约平台
 
-VenueFlow 当前处于 v0.1.0 Resource Service 骨架阶段。本仓库已经具备可复现的 Maven 多模块构建、真实测试、基础质量门禁、按需启动的 MySQL/Redis/RabbitMQ/Nacos `base` profile，以及可独立启动的最小 Resource Service；资源业务 API 尚未实现。
+VenueFlow 正在实施 C04 Resource Catalog 与持久化配置。本仓库已经具备可复现的 Maven 多模块构建、真实测试、基础质量门禁、按需启动的 MySQL/Redis/RabbitMQ/Nacos `base` profile，以及可独立启动的 Resource Service。资源目录 Migration 与业务 API 将在后续 C04 任务中实现。
 
 ## 环境要求
 
@@ -62,15 +62,15 @@ docker compose --env-file deploy/versions.env --env-file .env -f deploy/compose/
 
 **禁止在普通停止、smoke 或 CI 清理中添加 `--volumes`。** 删除卷会清除基础组件数据，只能在明确确认 project 和卷名后人工执行。完整操作与故障排查见 [基础设施 Runbook](docs/runbook/base-infrastructure.md)。
 
-## Resource Service 骨架
+## Resource Service
 
-Resource Service 当前仅提供独立 Spring Boot 4 启动入口和 Actuator 健康探针，不依赖 C02 基础设施。模块级验证：
+默认 `skeleton` profile 仅提供独立 Spring Boot 4 启动入口和 Actuator 健康探针，不依赖 C02 基础设施或 MySQL。模块级验证：
 
 ```powershell
 .\mvnw.cmd -pl venueflow-resource-service -am clean verify
 ```
 
-全仓 `clean verify` 完成后，可直接运行生成的可执行 jar：
+全仓 `clean verify` 完成后，可直接运行生成的可执行 jar。默认启动使用 `skeleton` profile，既不读取也不连接数据库：
 
 ```powershell
 $env:SERVER_PORT = "18083" # 可选；未设置时默认 8083
@@ -92,12 +92,51 @@ GET http://127.0.0.1:18083/actuator/health/readiness
 
 两项探针应返回 `UP`。Actuator Web 只暴露 health，`env`、`configprops`、`loggers`、`mappings` 和 `metrics` 均不可访问；当前模块没有资源 CRUD、数据库、Nacos、Redis、RabbitMQ、认证或服务发现能力。使用 `Ctrl+C` 停止本地进程。
 
+### Resource Service persistence profile
+
+`persistence` profile 只在显式启用时读取数据库配置并启用 Flyway；默认 `mvn clean verify` 不会启用它，也不需要 Docker 或 MySQL。将以下同名键写入未提交的 `.env`，或仅在当前终端设置环境变量；`.env.example` 只提供安全占位符，绝不能填入或提交真实密码。
+
+- `VENUEFLOW_RESOURCE_DB_URL`：Resource Service 自己的 `venueflow_resource` schema JDBC URL。
+- `VENUEFLOW_RESOURCE_DB_USERNAME`：Resource Service 的最小权限数据库用户。
+- `VENUEFLOW_RESOURCE_DB_PASSWORD`：该用户的本机密码。
+
+其中 schema 和最小权限用户将在 C04 第 2 组任务中创建；在此之前 persistence 启动失败是预期行为。以仓库根目录作为当前目录，默认与 persistence 两种 jar 启动命令如下：
+
+```powershell
+# 默认 skeleton：不连接数据库
+$env:SERVER_PORT = "18083" # 可选；未设置时默认 8083
+java -jar venueflow-resource-service/target/venueflow-resource-service-0.1.0-SNAPSHOT.jar
+
+# persistence：必须显式选择，并在同一终端提供三个数据库变量
+$env:SPRING_PROFILES_ACTIVE = "persistence"
+$env:VENUEFLOW_RESOURCE_DB_URL = "jdbc:mysql://127.0.0.1:3306/venueflow_resource"
+$env:VENUEFLOW_RESOURCE_DB_USERNAME = "venueflow_resource"
+$env:VENUEFLOW_RESOURCE_DB_PASSWORD = "<仅本机使用的密码>"
+java -jar venueflow-resource-service/target/venueflow-resource-service-0.1.0-SNAPSHOT.jar
+```
+
+Linux、macOS 或 Git Bash：
+
+```bash
+# 默认 skeleton：不连接数据库
+SERVER_PORT=18083 java -jar venueflow-resource-service/target/venueflow-resource-service-0.1.0-SNAPSHOT.jar
+
+# persistence：变量值仅示例，密码不可提交
+SPRING_PROFILES_ACTIVE=persistence \
+VENUEFLOW_RESOURCE_DB_URL='jdbc:mysql://127.0.0.1:3306/venueflow_resource' \
+VENUEFLOW_RESOURCE_DB_USERNAME='venueflow_resource' \
+VENUEFLOW_RESOURCE_DB_PASSWORD='<local-only-password>' \
+java -jar venueflow-resource-service/target/venueflow-resource-service-0.1.0-SNAPSHOT.jar
+```
+
+缺少任一数据库变量，或数据库不可用时，persistence profile 必须启动失败；它不会降级为内存数据库或虚假资源目录。
+
 ## 当前模块
 
 - `venueflow-dependencies`：内部依赖 BOM，集中管理框架版本。
 - `venueflow-common`：公共模块聚合器。
 - `venueflow-common/venueflow-common-core`：最小、无业务含义的公共 Java 模块和基线测试。
-- `venueflow-resource-service`：可执行的最小 Spring Boot MVC 服务，仅包含安全收敛的 Actuator 健康探针。
+- `venueflow-resource-service`：可执行的 Spring Boot MVC 服务；默认 skeleton 仅暴露安全收敛的 Actuator 健康探针，persistence profile 为 C04 资源目录持久化保留显式数据库边界。
 
 根 `pom.xml` 只承担模块聚合、版本管理和质量门禁，不包含业务依赖。
 
@@ -113,6 +152,4 @@ GET http://127.0.0.1:18083/actuator/health/readiness
 
 ## 当前非目标
 
-本阶段不包含 Gateway、Resource/Booking/User 业务 API、Entity、Mapper、数据库 Migration、容量逻辑、基础设施客户端、Elasticsearch、观测栈或虚假的业务测试覆盖率。
-
-完成并归档 C03 后，下一项工作应通过独立 OpenSpec Change 规划 v0.2.0 最小业务闭环，不在骨架 Change 中提前扩展。
+C04 不包含 Gateway、ResourceSlot、容量占用/释放、Booking、审批、认证/授权、Nacos、Redis、RabbitMQ、Feign、消息、搜索、容器化应用编排或虚假的业务测试覆盖率。

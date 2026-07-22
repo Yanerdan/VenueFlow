@@ -1,6 +1,9 @@
 spring:
   application:
     name: venueflow-resource-service
+  profiles:
+    default: skeleton
+#    active: persistence
 
 server:
   port: ${SERVER_PORT:8083}

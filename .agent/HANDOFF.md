@@ -1,9 +1,9 @@
 # VenueFlow Handoff
 
-- 更新时间：2026-07-21 11:09:20 +08:00
-- 分支：`ops/add-resource-service-skeleton`
-- 当前 Change：无活动 Change
-- 当前目标：v0.1.0 C03 最小 Resource Service 与 Actuator 已完成、同步并归档。
+- 更新时间：2026-07-21 11:27:12 +08:00
+- 分支：`ops/add-resource-catalog-and-persistence`
+- 当前 Change：`add-resource-catalog-and-persistence`（C04，规划完成，尚未实现）
+- 当前目标：由开发者按 C04 `tasks.md` 手工实现 Resource Catalog 与 MySQL 持久化。
 
 ## 已完成
 
@@ -27,6 +27,8 @@
 - Actuator Web 只暴露不含详情的 health；liveness/readiness 可用，`env`、`configprops`、`loggers`、`mappings`、`metrics` 均不可访问。
 - 新增上下文、随机端口 HTTP 和实际可执行 jar 三层验收；jar 测试有界启动并只终止自身创建的进程。
 - `resource-service-skeleton` delta spec 已同步到主规格，Change 已归档至 `openspec/changes/archive/2026-07-21-add-resource-service-skeleton/`。
+- C03 提交 `ad5f134` 已推送至 `origin/ops/add-resource-service-skeleton` 并建立 upstream。
+- C04 `add-resource-catalog-and-persistence` 的 proposal、design、`resource-catalog` 新增 delta spec、`resource-service-skeleton` 修订 delta spec 和 30 项手工任务已完成；该 Change 尚未 apply。
 
 ## 验证记录
 
@@ -63,6 +65,7 @@
 - `git diff --check`、构建产物忽略、已知本地凭据指纹、私钥头和提交候选配置复核均通过。
 - C03 主规格同步：6/6 requirements 一致；同步后 `openspec validate --all --strict`：5 项通过，0 项失败。
 - C03 归档结构检查：无活动 Change，归档目录保留 `.openspec.yaml`。
+- `openspec validate add-resource-catalog-and-persistence --strict`：通过；4/4 规划工件完成，apply-ready。
 
 ## 待完成
 
@@ -71,11 +74,11 @@
 - 本机已有 MySQL/Redis/Nacos 相关端口占用，因此未提交的 `.env` 使用 13306、16379、18848、19848、19849；提交的 `.env.example` 仍使用标准端口。
 - Nacos 3.1.1 console 健康端点为容器内部 `8080/v3/console/health/liveness`；旧 v1 地址返回 410。console 8080 未发布到宿主机。
 - `deploy/image-digests.lock` 未创建；C02 只固定并验证精确标签，避免伪造尚未进入发布流程的 digest lock。
-- C03 实现尚未提交或推送；需要在复核后单独提交并推送。
+- C04 尚未实现；默认 `mvn clean verify` 必须继续 Docker-free，真实 MySQL 迁移/API 验收仅由显式 `mysql-it` profile 执行。
 
 ## 下一步
 
-复核 C03 diff 后提交并推送；随后通过新的 OpenSpec Change 规划 v0.2.0 最小业务闭环。不要继续修改已归档 C02 或 C03，任何修订都应创建新 Change。
+从 `openspec/changes/add-resource-catalog-and-persistence/tasks.md` 的 1.1 开始，按顺序手工实现并逐项勾选。完成后运行默认验证和显式 MySQL 集成验证；不要继续修改已归档 C02 或 C03，任何修订都应创建新 Change。
 
 ## 禁止操作
 

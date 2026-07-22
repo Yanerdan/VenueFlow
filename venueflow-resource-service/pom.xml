@@ -15,6 +15,18 @@
   <name>VenueFlow Resource Service</name>
   <description>Minimal executable Resource Service skeleton</description>
 
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.yanerdan.venueflow</groupId>
+        <artifactId>venueflow-dependencies</artifactId>
+        <version>${project.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
   <dependencies>
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -27,6 +39,54 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.baomidou</groupId>
+      <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-flyway</artifactId>
+    </dependency>
+
+    <!--    <dependency>-->
+    <!--      <groupId>org.flywaydb</groupId>-->
+    <!--      <artifactId>flyway-core</artifactId>-->
+    <!--    </dependency>-->
+
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-mysql</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.mysql</groupId>
+      <artifactId>mysql-connector-j</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-webmvc-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-mysql</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -51,23 +111,18 @@
               <rules>
                 <bannedDependencies>
                   <searchTransitive>true</searchTransitive>
-                  <message>C03 Resource Service must not include infrastructure, security or observability clients.</message>
+                  <message>C04 Resource Service must not include unrelated infrastructure, security or observability clients.</message>
                   <excludes>
                     <exclude>com.alibaba.cloud:spring-cloud-starter-alibaba-nacos-config</exclude>
                     <exclude>com.alibaba.cloud:spring-cloud-starter-alibaba-nacos-discovery</exclude>
                     <exclude>com.alibaba.cloud:spring-cloud-starter-alibaba-sentinel</exclude>
-                    <exclude>com.baomidou:*</exclude>
-                    <exclude>com.mysql:mysql-connector-j</exclude>
                     <exclude>io.micrometer:micrometer-registry-prometheus</exclude>
                     <exclude>io.micrometer:micrometer-tracing-*</exclude>
                     <exclude>io.opentelemetry:opentelemetry-exporter-otlp</exclude>
-                    <exclude>org.flywaydb:*</exclude>
-                    <exclude>org.mybatis:*</exclude>
                     <exclude>org.springframework.amqp:*</exclude>
                     <exclude>org.springframework.boot:spring-boot-starter-amqp</exclude>
                     <exclude>org.springframework.boot:spring-boot-starter-data-jdbc</exclude>
                     <exclude>org.springframework.boot:spring-boot-starter-data-redis</exclude>
-                    <exclude>org.springframework.boot:spring-boot-starter-jdbc</exclude>
                     <exclude>org.springframework.boot:spring-boot-starter-oauth2-resource-server</exclude>
                     <exclude>org.springframework.boot:spring-boot-starter-security</exclude>
                     <exclude>org.springframework.cloud:spring-cloud-starter-openfeign</exclude>
@@ -90,4 +145,40 @@
       </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <profile>
+      <id>mysql-it</id>
+
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>3.5.6</version>
+
+            <executions>
+              <execution>
+                <id>run-mysql-integration-tests</id>
+
+                <goals>
+                  <goal>integration-test</goal>
+                  <goal>verify</goal>
+                </goals>
+
+                <configuration>
+                  <includes>
+                    <include>**/*MysqlSuite.java</include>
+
+                  </includes>
+
+                  <failIfNoTests>true</failIfNoTests>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>
