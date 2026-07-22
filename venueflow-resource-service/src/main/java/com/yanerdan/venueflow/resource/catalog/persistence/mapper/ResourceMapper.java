@@ -21,4 +21,6 @@ public interface ResourceMapper extends BaseMapper<ResourceEntity> {
       @Param("currentStatus") ResourceStatus currentStatus,
       @Param("targetStatus") ResourceStatus targetStatus,
       @Param("expectedVersion") Long expectedVersion);
+
+  ResourceEntity selectByIdForUpdate(@Param("resourceId") Long resourceId);
 }

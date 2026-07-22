@@ -1,0 +1,29 @@
+package com.yanerdan.venueflow.resource.slot.http.response;
+
+import com.yanerdan.venueflow.resource.slot.application.ResourceSlotResult;
+import com.yanerdan.venueflow.resource.slot.domain.ResourceSlotStatus;
+import java.time.Instant;
+import java.time.LocalDateTime;
+
+public record ResourceSlotResponse(
+    Long id,
+    Long resourceId,
+    Instant startAt,
+    Instant endAt,
+    ResourceSlotStatus status,
+    Long version,
+    LocalDateTime createdAt,
+    LocalDateTime updatedAt) {
+
+  public static ResourceSlotResponse from(ResourceSlotResult result) {
+    return new ResourceSlotResponse(
+        result.id(),
+        result.resourceId(),
+        result.startAt(),
+        result.endAt(),
+        result.status(),
+        result.version(),
+        result.createdAt(),
+        result.updatedAt());
+  }
+}

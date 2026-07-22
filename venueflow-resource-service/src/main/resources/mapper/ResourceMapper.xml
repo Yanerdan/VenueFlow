@@ -77,4 +77,11 @@
     AND version = #{expectedVersion}
   </update>
 
+  <select id="selectByIdForUpdate" resultMap="ResourceEntityResultMap">
+    SELECT <include refid="ResourceColumns"/>
+    FROM `resource`
+    WHERE id = #{resourceId}
+    FOR UPDATE
+  </select>
+
 </mapper>

@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -55,6 +56,7 @@ class ResourceCatalogMysqlSuite {
 
   @BeforeEach
   void cleanBusinessTables() {
+    jdbcTemplate.update("DELETE FROM `resource_slot`");
     jdbcTemplate.update("DELETE FROM `resource`");
     jdbcTemplate.update("DELETE FROM `resource_category`");
   }
@@ -73,6 +75,18 @@ class ResourceCatalogMysqlSuite {
 
     assertThat(migrationCount).isEqualTo(1);
 
+    Integer slotMigrationCount =
+        jdbcTemplate.queryForObject(
+            """
+                SELECT COUNT(*)
+                FROM flyway_schema_history
+                WHERE script = 'V002__add_resource_slots.sql'
+                  AND success = 1
+                """,
+            Integer.class);
+
+    assertThat(slotMigrationCount).isEqualTo(1);
+
     List<String> businessTables =
         jdbcTemplate.queryForList(
             """
@@ -81,12 +95,14 @@ class ResourceCatalogMysqlSuite {
                 WHERE table_schema = DATABASE()
                   AND table_name IN (
                       'resource_category',
-                      'resource'
+                      'resource',
+                      'resource_slot'
                   )
                 """,
             String.class);
 
-    assertThat(businessTables).containsExactlyInAnyOrder("resource_category", "resource");
+    assertThat(businessTables)
+        .containsExactlyInAnyOrder("resource_category", "resource", "resource_slot");
   }
 
   private long createCategory(String code, String name) throws Exception {
@@ -127,6 +143,32 @@ class ResourceCatalogMysqlSuite {
                         }
                         """
                         .formatted(resourceNo, categoryId, name)))
+        .andExpect(status().isCreated())
+        .andReturn();
+  }
+
+  private void activateResource(long resourceId) throws Exception {
+    mockMvc
+        .perform(
+            patch("/api/v1/resources/{resourceId}/status", resourceId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{ \"targetStatus\": \"ACTIVE\", \"expectedVersion\": 1 }"))
+        .andExpect(status().isOk());
+  }
+
+  private MvcResult createSlot(long resourceId, String startAt, String endAt) throws Exception {
+    return mockMvc
+        .perform(
+            post("/api/v1/resources/{resourceId}/slots", resourceId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                        {
+                          "startAt": "%s",
+                          "endAt": "%s"
+                        }
+                        """
+                        .formatted(startAt, endAt)))
         .andExpect(status().isCreated())
         .andReturn();
   }
@@ -302,5 +344,124 @@ class ResourceCatalogMysqlSuite {
         .perform(get("/api/v1/resources/{resourceId}", resourceId))
         .andExpectAll(
             status().isOk(), jsonPath("$.status").value("ACTIVE"), jsonPath("$.version").value(2));
+  }
+
+  @Test
+  void persistsQueriesAndTransitionsResourceSlotsAgainstMysql() throws Exception {
+    long categoryId = createCategory("MEETING_ROOM", "Meeting Room");
+    long resourceId = readLong(createResource("ROOM-A-101", categoryId, "Room A101"), "$.id");
+    activateResource(resourceId);
+
+    long slotId =
+        readLong(
+            createSlot(resourceId, "2026-07-23T18:00:00+08:00", "2026-07-23T19:00:00+08:00"),
+            "$.id");
+
+    mockMvc
+        .perform(get("/api/v1/resource-slots/{slotId}", slotId))
+        .andExpectAll(
+            status().isOk(),
+            jsonPath("$.resourceId").value(resourceId),
+            jsonPath("$.startAt").value("2026-07-23T10:00:00Z"),
+            jsonPath("$.endAt").value("2026-07-23T11:00:00Z"),
+            jsonPath("$.status").value("OPEN"),
+            jsonPath("$.version").value(1));
+
+    mockMvc
+        .perform(
+            get("/api/v1/resources/{resourceId}/slots", resourceId)
+                .queryParam("from", "2026-07-23T09:30:00Z")
+                .queryParam("to", "2026-07-23T10:30:00Z"))
+        .andExpectAll(
+            status().isOk(),
+            jsonPath("$.items", hasSize(1)),
+            jsonPath("$.items[0].id").value(slotId),
+            jsonPath("$.size").value(20));
+
+    mockMvc
+        .perform(
+            patch("/api/v1/resource-slots/{slotId}/status", slotId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{ \"targetStatus\": \"CLOSED\", \"expectedVersion\": 1 }"))
+        .andExpectAll(
+            status().isOk(), jsonPath("$.status").value("CLOSED"), jsonPath("$.version").value(2));
+
+    mockMvc
+        .perform(
+            patch("/api/v1/resource-slots/{slotId}/status", slotId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{ \"targetStatus\": \"OPEN\", \"expectedVersion\": 1 }"))
+        .andExpectAll(status().isConflict(), jsonPath("$.code").value("OPTIMISTIC_LOCK_CONFLICT"));
+  }
+
+  @Test
+  void rejectsOverlappingSlotsButPermitsBoundaryAdjacentSlotsAgainstMysql() throws Exception {
+    long categoryId = createCategory("MEETING_ROOM", "Meeting Room");
+    long resourceId = readLong(createResource("ROOM-A-101", categoryId, "Room A101"), "$.id");
+    activateResource(resourceId);
+    createSlot(resourceId, "2026-07-23T10:00:00Z", "2026-07-23T11:00:00Z");
+
+    mockMvc
+        .perform(
+            post("/api/v1/resources/{resourceId}/slots", resourceId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                        { "startAt": "2026-07-23T10:30:00Z", "endAt": "2026-07-23T11:30:00Z" }
+                        """))
+        .andExpectAll(
+            status().isConflict(), jsonPath("$.code").value("RESOURCE_SLOT_TIME_OVERLAP"));
+
+    createSlot(resourceId, "2026-07-23T11:00:00Z", "2026-07-23T12:00:00Z");
+
+    Integer count =
+        jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM resource_slot WHERE resource_id = ?", Integer.class, resourceId);
+    assertThat(count).isEqualTo(2);
+  }
+
+  @Test
+  void enforcesResourceSlotForeignKeyAndStatusConstraintInMysql() {
+    assertThatThrownBy(
+            () ->
+                jdbcTemplate.update(
+                    """
+                        INSERT INTO resource_slot (resource_id, start_at, end_at, status, version)
+                        VALUES (?, ?, ?, ?, ?)
+                        """,
+                    999999L,
+                    "2026-07-23 10:00:00",
+                    "2026-07-23 11:00:00",
+                    "OPEN",
+                    1L))
+        .isInstanceOf(DataIntegrityViolationException.class);
+
+    jdbcTemplate.update("INSERT INTO resource_category (code, name) VALUES ('DESK', 'Desk')");
+    long categoryId =
+        jdbcTemplate.queryForObject(
+            "SELECT id FROM resource_category WHERE code = 'DESK'", Long.class);
+    jdbcTemplate.update(
+        """
+            INSERT INTO resource (resource_no, category_id, name, capacity, status, version)
+            VALUES ('DESK-A-1', ?, 'Desk A1', 1, 'ACTIVE', 1)
+            """,
+        categoryId);
+    long resourceId =
+        jdbcTemplate.queryForObject(
+            "SELECT id FROM resource WHERE resource_no = 'DESK-A-1'", Long.class);
+
+    assertThatThrownBy(
+            () ->
+                jdbcTemplate.update(
+                    """
+                        INSERT INTO resource_slot (resource_id, start_at, end_at, status, version)
+                        VALUES (?, ?, ?, ?, ?)
+                        """,
+                    resourceId,
+                    "2026-07-23 10:00:00",
+                    "2026-07-23 11:00:00",
+                    "UNKNOWN",
+                    1L))
+        .isInstanceOf(DataAccessException.class);
   }
 }

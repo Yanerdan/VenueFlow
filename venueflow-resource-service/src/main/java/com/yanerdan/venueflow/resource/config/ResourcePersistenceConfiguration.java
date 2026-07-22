@@ -6,5 +6,8 @@ import org.springframework.context.annotation.Profile;
 
 @Configuration(proxyBeanMethods = false)
 @Profile("persistence")
-@MapperScan("com.yanerdan.venueflow.resource.catalog.persistence.mapper")
+@MapperScan({
+  "com.yanerdan.venueflow.resource.catalog.persistence.mapper",
+  "com.yanerdan.venueflow.resource.slot.persistence.mapper"
+})
 public class ResourcePersistenceConfiguration {}

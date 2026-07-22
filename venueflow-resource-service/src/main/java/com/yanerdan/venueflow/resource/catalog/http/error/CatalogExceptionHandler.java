@@ -195,13 +195,16 @@ public class CatalogExceptionHandler {
 
   private static HttpStatus statusFor(CatalogErrorCode code) {
     return switch (code) {
-      case VALIDATION_ERROR -> HttpStatus.BAD_REQUEST;
+      case VALIDATION_ERROR, INVALID_SLOT_TIME_RANGE -> HttpStatus.BAD_REQUEST;
 
-      case CATEGORY_NOT_FOUND, RESOURCE_NOT_FOUND -> HttpStatus.NOT_FOUND;
+      case CATEGORY_NOT_FOUND, RESOURCE_NOT_FOUND, RESOURCE_SLOT_NOT_FOUND -> HttpStatus.NOT_FOUND;
 
       case CATEGORY_ALREADY_EXISTS,
           RESOURCE_NUMBER_ALREADY_EXISTS,
+          RESOURCE_NOT_ACTIVE_FOR_SLOT,
+          RESOURCE_SLOT_TIME_OVERLAP,
           INVALID_RESOURCE_STATUS_TRANSITION,
+          INVALID_RESOURCE_SLOT_STATUS_TRANSITION,
           OPTIMISTIC_LOCK_CONFLICT ->
           HttpStatus.CONFLICT;
 
