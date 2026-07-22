@@ -25,6 +25,9 @@ public class ResourceSlotEntity {
   @TableField("status")
   private ResourceSlotStatus status;
 
+  @TableField("allocated_quantity")
+  private Integer allocatedQuantity;
+
   @TableField("version")
   private Long version;
 
@@ -72,6 +75,14 @@ public class ResourceSlotEntity {
 
   public void setStatus(ResourceSlotStatus status) {
     this.status = status;
+  }
+
+  public Integer getAllocatedQuantity() {
+    return allocatedQuantity;
+  }
+
+  public void setAllocatedQuantity(Integer allocatedQuantity) {
+    this.allocatedQuantity = allocatedQuantity;
   }
 
   public Long getVersion() {

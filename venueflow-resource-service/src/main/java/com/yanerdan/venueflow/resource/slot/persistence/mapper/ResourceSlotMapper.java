@@ -26,6 +26,11 @@ public interface ResourceSlotMapper extends BaseMapper<ResourceSlotEntity> {
       @Param("offset") long offset,
       @Param("limit") int limit);
 
+  ResourceSlotEntity selectByIdForUpdate(@Param("slotId") Long slotId);
+
+  int updateAllocatedQuantity(
+      @Param("slotId") Long slotId, @Param("allocatedQuantity") int allocatedQuantity);
+
   int updateStatusIfVersionMatches(
       @Param("slotId") Long slotId,
       @Param("currentStatus") ResourceSlotStatus currentStatus,

@@ -208,6 +208,12 @@ public class CatalogExceptionHandler {
           OPTIMISTIC_LOCK_CONFLICT ->
           HttpStatus.CONFLICT;
 
+      case RESOURCE_SLOT_NOT_OPEN_FOR_ALLOCATION,
+          INSUFFICIENT_SLOT_CAPACITY,
+          RELEASE_EXCEEDS_OCCUPIED_CAPACITY,
+          ALLOCATION_OPERATION_CONFLICT ->
+          HttpStatus.CONFLICT;
+
       case CATALOG_PERSISTENCE_ERROR, INTERNAL_ERROR -> HttpStatus.INTERNAL_SERVER_ERROR;
     };
   }

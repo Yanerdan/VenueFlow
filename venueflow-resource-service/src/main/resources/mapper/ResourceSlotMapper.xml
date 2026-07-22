@@ -13,13 +13,14 @@
     <result column="start_at" property="startAt"/>
     <result column="end_at" property="endAt"/>
     <result column="status" property="status"/>
+    <result column="allocated_quantity" property="allocatedQuantity"/>
     <result column="version" property="version"/>
     <result column="created_at" property="createdAt"/>
     <result column="updated_at" property="updatedAt"/>
   </resultMap>
 
   <sql id="ResourceSlotColumns">
-    id, resource_id, start_at, end_at, status, version, created_at, updated_at
+    id, resource_id, start_at, end_at, status, allocated_quantity, version, created_at, updated_at
   </sql>
 
   <select id="countOverlappingSlots" resultType="long">
@@ -57,5 +58,19 @@
     WHERE id = #{slotId}
       AND status = #{currentStatus}
       AND version = #{expectedVersion}
+  </update>
+
+  <select id="selectByIdForUpdate" resultMap="ResourceSlotEntityResultMap">
+    SELECT <include refid="ResourceSlotColumns"/>
+    FROM resource_slot
+    WHERE id = #{slotId}
+    FOR UPDATE
+  </select>
+
+  <update id="updateAllocatedQuantity">
+    UPDATE resource_slot
+    SET allocated_quantity = #{allocatedQuantity},
+        updated_at = CURRENT_TIMESTAMP(6)
+    WHERE id = #{slotId}
   </update>
 </mapper>
