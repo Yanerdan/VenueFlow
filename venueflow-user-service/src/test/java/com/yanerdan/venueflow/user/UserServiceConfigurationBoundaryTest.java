@@ -38,7 +38,7 @@ class UserServiceConfigurationBoundaryTest {
 
   @Test
   void defaultConfigurationContainsNoExternalInfrastructureOrSecrets() throws IOException {
-    List<Path> applicationFiles = applicationConfigurationFiles();
+    List<Path> applicationFiles = skeletonApplicationConfigurationFiles();
 
     assertThat(applicationFiles)
         .extracting(path -> MAIN_RESOURCES.relativize(path).toString().replace('\\', '/'))
@@ -51,6 +51,24 @@ class UserServiceConfigurationBoundaryTest {
   }
 
   @Test
+  void persistenceConfigurationUsesOnlyUserServiceEnvironmentVariables() throws IOException {
+    Path persistenceConfiguration = MAIN_RESOURCES.resolve("application-persistence.yml");
+
+    assertThat(persistenceConfiguration).isRegularFile();
+
+    String configuration = Files.readString(persistenceConfiguration, StandardCharsets.UTF_8);
+
+    assertThat(configuration)
+        .contains("${VENUEFLOW_USER_DB_URL}")
+        .contains("${VENUEFLOW_USER_DB_USERNAME}")
+        .contains("${VENUEFLOW_USER_DB_PASSWORD}")
+        .contains("validate-on-migrate: true")
+        .contains("clean-disabled: true")
+        .contains("ddl-auto: none")
+        .doesNotContain("optional:file:", "jdbc:mysql://", "http://", "https://", "nacos");
+  }
+
+  @Test
   void moduleContainsNoInfrastructureOrSecretFiles() throws IOException {
     assertThat(MODULE_ROOT.resolve("compose.yaml")).doesNotExist();
 
@@ -58,17 +76,16 @@ class UserServiceConfigurationBoundaryTest {
 
     assertThat(MODULE_ROOT.resolve("Dockerfile")).doesNotExist();
 
-    assertThat(MAIN_RESOURCES.resolve("db")).doesNotExist();
-
     assertThat(environmentFiles()).isEmpty();
     assertThat(sensitiveSourceFiles()).isEmpty();
   }
 
-  private static List<Path> applicationConfigurationFiles() throws IOException {
+  private static List<Path> skeletonApplicationConfigurationFiles() throws IOException {
     try (Stream<Path> paths = Files.list(MAIN_RESOURCES)) {
       return paths
           .filter(Files::isRegularFile)
           .filter(path -> path.getFileName().toString().startsWith("application"))
+          .filter(path -> !path.getFileName().toString().contains("persistence"))
           .toList();
     }
   }

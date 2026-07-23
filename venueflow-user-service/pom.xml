@@ -16,6 +16,18 @@
   <name>VenueFlow User Service</name>
   <description>Infrastructure-independent VenueFlow User Service skeleton</description>
 
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.yanerdan.venueflow</groupId>
+        <artifactId>venueflow-dependencies</artifactId>
+        <version>${project.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
   <dependencies>
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -39,6 +51,43 @@
       <scope>test</scope>
     </dependency>
 
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.baomidou</groupId>
+      <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-flyway</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-mysql</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.mysql</groupId>
+      <artifactId>mysql-connector-j</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-mysql</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -58,8 +107,8 @@
             <configuration>
               <rules>
                 <bannedDependencies>
-                  <message>User Service skeleton may directly depend only
-                    on Spring Web MVC, Actuator, and approved test
+                  <message>User Service may directly depend only on its
+                    approved Web, Actuator, validation, persistence, and test
                     support.</message>
 
                   <searchTransitive>false</searchTransitive>
@@ -73,6 +122,13 @@
                     <include>org.springframework.boot:spring-boot-starter-actuator</include>
                     <include>org.springframework.boot:spring-boot-starter-test</include>
                     <include>org.springframework.boot:spring-boot-starter-webmvc-test</include>
+                    <include>org.springframework.boot:spring-boot-starter-validation</include>
+                    <include>com.baomidou:mybatis-plus-spring-boot4-starter</include>
+                    <include>org.springframework.boot:spring-boot-starter-flyway</include>
+                    <include>org.flywaydb:flyway-mysql</include>
+                    <include>com.mysql:mysql-connector-j</include>
+                    <include>org.testcontainers:testcontainers-junit-jupiter</include>
+                    <include>org.testcontainers:testcontainers-mysql</include>
                   </includes>
                 </bannedDependencies>
               </rules>
@@ -88,9 +144,9 @@
             <configuration>
               <rules>
                 <bannedDependencies>
-                  <message>User Service skeleton must remain free of persistence,
-                    security, distributed infrastructure, tracing, search,
-                    containers, and business-service clients.</message>
+                  <message>User Service must remain free of security,
+                    distributed infrastructure, tracing, search, and
+                    business-service clients.</message>
 
                   <searchTransitive>true</searchTransitive>
 
@@ -98,19 +154,14 @@
                     <!-- VenueFlow business modules -->
                     <exclude>com.yanerdan.venueflow:*</exclude>
 
-                    <!-- Persistence and migrations -->
+                    <!-- Persistence technologies not approved for User Service -->
                     <exclude>org.springframework.boot:spring-boot-starter-data-*</exclude>
-                    <exclude>org.springframework.boot:spring-boot-starter-jdbc</exclude>
                     <exclude>org.springframework.data:*</exclude>
-                    <exclude>org.mybatis:*</exclude>
-                    <exclude>com.baomidou:*</exclude>
                     <exclude>org.hibernate.orm:*</exclude>
                     <exclude>jakarta.persistence:*</exclude>
-                    <exclude>org.flywaydb:*</exclude>
                     <exclude>org.liquibase:*</exclude>
 
                     <!-- Database drivers -->
-                    <exclude>com.mysql:*</exclude>
                     <exclude>org.postgresql:*</exclude>
                     <exclude>org.mariadb.jdbc:*</exclude>
                     <exclude>com.h2database:*</exclude>
@@ -152,8 +203,6 @@
                     <exclude>co.elastic.clients:*</exclude>
                     <exclude>org.opensearch.client:*</exclude>
 
-                    <!-- Testcontainers / Docker-dependent tests -->
-                    <exclude>org.testcontainers:*</exclude>
                   </excludes>
                 </bannedDependencies>
               </rules>
@@ -169,6 +218,47 @@
           <mainClass>com.yanerdan.venueflow.user.UserServiceApplication</mainClass>
         </configuration>
       </plugin>
+      <plugin>
+        <groupId>com.github.spotbugs</groupId>
+        <artifactId>spotbugs-maven-plugin</artifactId>
+        <configuration>
+          <excludeFilterFile>${project.basedir}/spotbugs-exclude.xml</excludeFilterFile>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <profile>
+      <id>mysql-it</id>
+
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+
+            <executions>
+              <execution>
+                <id>run-user-mysql-integration-tests</id>
+
+                <goals>
+                  <goal>integration-test</goal>
+                  <goal>verify</goal>
+                </goals>
+
+                <configuration>
+                  <includes>
+                    <include>**/*MysqlSuite.java</include>
+                  </includes>
+
+                  <failIfNoTests>true</failIfNoTests>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

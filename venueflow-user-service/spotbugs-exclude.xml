@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+  <!-- MyBatis creates this mapper proxy; the repository does not expose it to callers. -->
+  <Match>
+    <Class name="com.yanerdan.venueflow.user.profile.persistence.MyBatisUserProfileRepository" />
+    <Field name="mapper" />
+    <Bug pattern="EI_EXPOSE_REP2" />
+  </Match>
+</FindBugsFilter>

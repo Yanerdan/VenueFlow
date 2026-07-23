@@ -133,9 +133,9 @@ capacity, create slots, or inspect Booking data.
 
 ### Requirement: Catalog errors use a stable safe envelope
 
-All catalog validation, duplicate, not-found, illegal-transition, and version-conflict
-failures SHALL return JSON containing only `code`, `message`, `details`, `traceId`, and
-`timestamp`. Stable codes MUST distinguish validation, duplicate resource number,
+The service SHALL return JSON containing only `code`, `message`, `details`, `traceId`, and
+`timestamp` for all catalog validation, duplicate, not-found, illegal-transition, and version-conflict
+failures. Stable codes MUST distinguish validation, duplicate resource number,
 Category/Resource not found, invalid state transition, and optimistic-lock conflict.
 The envelope MUST NOT include SQL, Java stack traces, JDBC URLs, usernames, passwords,
 or other secrets.

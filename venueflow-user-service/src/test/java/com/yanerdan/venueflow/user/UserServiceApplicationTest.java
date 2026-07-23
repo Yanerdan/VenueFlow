@@ -2,6 +2,8 @@ package com.yanerdan.venueflow.user;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.yanerdan.venueflow.user.profile.domain.UserProfileRepository;
+import com.yanerdan.venueflow.user.profile.persistence.UserProfileMapper;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,5 +37,9 @@ class UserServiceApplicationTest {
     assertThat(environment.getProperty("server.port", Integer.class)).isEqualTo(8082);
 
     assertThat(applicationContext.getBeansOfType(DataSource.class)).isEmpty();
+
+    assertThat(applicationContext.getBeansOfType(UserProfileRepository.class)).isEmpty();
+
+    assertThat(applicationContext.getBeansOfType(UserProfileMapper.class)).isEmpty();
   }
 }

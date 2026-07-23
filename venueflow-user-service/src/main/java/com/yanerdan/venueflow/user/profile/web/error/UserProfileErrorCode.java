@@ -1,0 +1,15 @@
+package com.yanerdan.venueflow.user.profile.web.error;
+
+public enum UserProfileErrorCode {
+  USER_PROFILE_INVALID_REQUEST,
+
+  USER_PROFILE_NOT_FOUND,
+
+  USER_PROFILE_EXTERNAL_ID_CONFLICT,
+
+  USER_PROFILE_VERSION_CONFLICT,
+
+  USER_PROFILE_PERSISTENCE_ERROR,
+
+  USER_PROFILE_INTERNAL_ERROR
+}

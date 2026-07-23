@@ -22,17 +22,27 @@ The repository SHALL provide `venueflow-user-service` as a Spring Boot MVC modul
 
 ### Requirement: User Service keeps an intentionally minimal dependency boundary
 
-User Service MUST limit its initial dependencies to Spring Web, Spring Boot Actuator, and test support accepted by the engineering baseline. It MUST NOT introduce persistence, security/JWT, Nacos, Redis, RabbitMQ, Feign, Sentinel, tracing, Prometheus, Elasticsearch, or any Resource, Booking, Auth, or other business-service client.
+User Service MUST limit its dependencies to Spring Web, Spring Boot Actuator, validation,
+and test support accepted by the engineering baseline, plus MyBatis-Plus, Flyway, MySQL
+driver, and test-only MySQL verification dependencies required by the explicit User Service
+`persistence` profile. It MUST NOT introduce security/JWT, Nacos, Redis, RabbitMQ, Feign,
+Sentinel, tracing, Prometheus, Elasticsearch, or any Resource, Booking, Auth, or other
+business-service client.
 
 #### Scenario: Inspect the User Service dependency tree
 
 - **WHEN** declared and resolved User Service dependencies are inspected
-- **THEN** only the accepted skeleton dependencies are present
-- **AND** no external infrastructure, security, persistence, or business client is resolved
+- **THEN** only the accepted skeleton, validation, and User Service persistence dependencies
+  are present
+- **AND** no external infrastructure client, security, or business client is resolved
 
 ### Requirement: User Service has deterministic standalone configuration
 
-User Service MUST declare `spring.application.name=venueflow-user-service` and obtain its listening port from `SERVER_PORT`, defaulting to `8082`. Its default `skeleton` profile MUST be secret-free and start without Docker, MySQL, Nacos, Redis, RabbitMQ, or another external service.
+User Service MUST declare `spring.application.name=venueflow-user-service` and obtain its
+listening port from `SERVER_PORT`, defaulting to `8082`. Its default `skeleton` profile MUST
+be secret-free and start without Docker, MySQL, Nacos, Redis, RabbitMQ, or another external
+service. Its explicit `persistence` profile MUST obtain User Service database configuration
+only from environment variables and MUST not alter default skeleton startup behavior.
 
 #### Scenario: Start with no external infrastructure
 
@@ -44,6 +54,13 @@ User Service MUST declare `spring.application.name=venueflow-user-service` and o
 
 - **WHEN** a developer supplies a valid `SERVER_PORT`
 - **THEN** User Service listens on that port without changing tracked configuration
+
+#### Scenario: Start persistence only with explicit environment configuration
+
+- **WHEN** a developer explicitly activates the `persistence` profile and supplies User
+  Service database environment variables
+- **THEN** User Service connects only to its configured User Service schema
+- **AND** skeleton configuration remains unchanged
 
 ### Requirement: User Service exposes only restricted health management endpoints
 
@@ -69,12 +86,12 @@ User Service startup, packaging, and HTTP probe tests MUST run in default Maven 
 - **THEN** User Service tests start a real Spring context, verify health exposure boundaries,
 - **AND** complete in bounded time
 
-### Requirement: This increment establishes no user domain or authentication behavior
+### Requirement: User Service scope excludes authentication and cross-service behavior
 
-This increment SHALL not introduce a User Entity, database, Flyway migration, registration, credentials, login, access or refresh token, JWT validation, roles, authorization, user eligibility, Gateway, service discovery, messaging, caching, search, or Booking behavior.
+User Service MUST retain local ownership of profile and eligibility facts and MUST NOT introduce registration credentials, login, access or refresh tokens, JWT validation, roles, authorization, Gateway, service discovery, messaging, caching, search, Booking behavior, shared tables, or cross-service database access.
 
 #### Scenario: Inspect the User Service skeleton scope
 
 - **WHEN** the User Service source, dependencies, configuration, and deployment files are inspected
-- **THEN** they contain only executable skeleton, restricted health exposure, and corresponding tests
-- **AND** no user-domain fact, security implementation, or external infrastructure client exists
+- **THEN** profile ownership remains local to User Service and health exposure remains restricted
+- **AND** no security implementation, cross-service behavior, or external infrastructure client exists
