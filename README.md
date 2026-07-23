@@ -1,6 +1,6 @@
 # VenueFlow 园区共享资源预约平台
 
-VenueFlow 正在实施 C10 最小预约闭环。Resource Service 已拥有资源、时段和幂等容量台账，User Service 已拥有资料与预约资格，Booking Service 正在增加独立持久化、`Idempotency-Key`、同步容量协调和取消补偿。
+VenueFlow 已完成 C11 Booking Outbox，并正在实施 C12 Notification Service 最小骨架。Resource Service 已拥有资源、时段和幂等容量台账，User Service 已拥有资料与预约资格，Booking Service 已拥有幂等预约、同步容量协调、取消补偿和可靠事件发布。
 
 ## 环境要求
 
@@ -32,7 +32,7 @@ Linux、macOS 或 Git Bash：
 ./mvnw clean verify
 ```
 
-该命令会执行编译、JUnit、Failsafe 集成测试、实际 Resource Service jar 启动与 HTTP 探针验证、JaCoCo 覆盖率报告、Enforcer、Spotless、SpotBugs 和 CycloneDX SBOM 生成。默认构建不连接 VMware、Docker、数据库、Redis、RabbitMQ、Nacos 或 Elasticsearch。
+该命令会执行编译、JUnit、Failsafe 集成测试、实际服务 JAR 启动与 HTTP 探针验证、JaCoCo 覆盖率报告、Enforcer、Spotless、SpotBugs 和 CycloneDX SBOM 生成。默认构建不连接 VMware、Docker、数据库、Redis、RabbitMQ、Nacos 或 Elasticsearch。
 
 ## 基础设施
 
@@ -139,6 +139,7 @@ java -jar venueflow-resource-service/target/venueflow-resource-service-0.1.0-SNA
 - `venueflow-resource-service`：可执行的 Spring Boot MVC 服务；默认 skeleton 仅暴露安全收敛的 Actuator 健康探针，persistence profile 为 C04 资源目录持久化保留显式数据库边界。
 - `venueflow-user-service`：用户资料与预约资格事实；显式 persistence profile 使用独立 User schema。
 - `venueflow-booking-service`：默认 skeleton 独立启动；显式 persistence profile 提供幂等预约创建、查询和取消。
+- `venueflow-notification-service`：端口 8085 的独立可执行骨架；默认 skeleton 仅暴露受限健康探针，不连接数据库、RabbitMQ 或通知渠道。
 
 根 `pom.xml` 只承担模块聚合、版本管理和质量门禁，不包含业务依赖。
 
@@ -154,7 +155,7 @@ java -jar venueflow-resource-service/target/venueflow-resource-service-0.1.0-SNA
 
 ## 当前非目标
 
-C10 不包含 Gateway、认证授权、Nacos/Feign、Redis、RabbitMQ/Outbox、搜索、支付、超时任务、核销完成或分布式事务。详见 [Booking 预约 Runbook](docs/runbook/booking-reservation.md)。
+C12 不包含 Gateway、认证授权、Nacos/Feign、Redis、搜索、支付、超时任务、核销完成、Notification 持久化或消息消费。详见 [Booking 预约 Runbook](docs/runbook/booking-reservation.md)。
 
 ## C11 Booking Outbox
 
@@ -162,3 +163,18 @@ Booking 现在通过 MySQL V002 在业务事务中记录确认和取消事件。
 `persistence,messaging` 下启用，采用持久 topic exchange、mandatory 持久消息、
 Publisher Confirm/Return、租约和有界重试/`DEAD`。交付语义为至少一次；消费者与消费端
 去重仍属于后续 Change。详见 [Booking Outbox Runbook](docs/runbook/booking-outbox.md)。
+
+## C12 Notification Service
+
+Notification Service 默认使用 `skeleton` profile 和端口 `8085`，只提供 liveness/readiness
+探针，不需要 Docker、MySQL、RabbitMQ 或其他服务：
+
+```powershell
+.\mvnw.cmd -pl venueflow-notification-service -am clean verify
+java -jar venueflow-notification-service\target\venueflow-notification-service-0.1.0-SNAPSHOT.jar
+```
+
+如端口冲突，可用 `SERVER_PORT` 覆盖。C12 不创建数据库、队列、绑定、AMQP listener、
+`ConsumedEvent`、重试/DLQ 或通知记录；C11 产生的 Booking 事件将在 C13 可靠消费者
+实现后才由 Notification Service 处理。模块说明见
+[Notification Service README](venueflow-notification-service/README.md)。
