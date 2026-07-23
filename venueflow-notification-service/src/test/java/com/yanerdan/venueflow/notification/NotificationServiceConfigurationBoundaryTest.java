@@ -21,7 +21,7 @@ class NotificationServiceConfigurationBoundaryTest {
 
   @Test
   void trackedConfigurationContainsNoInfrastructureOrSecrets() throws IOException {
-    String configuration = readConfiguration().toLowerCase(Locale.ROOT);
+    String configuration = readSkeletonConfiguration().toLowerCase(Locale.ROOT);
 
     assertThat(configuration)
         .doesNotContain(
@@ -40,7 +40,7 @@ class NotificationServiceConfigurationBoundaryTest {
 
   @Test
   void serverPortIsTheOnlyEnvironmentVariable() throws IOException {
-    Matcher matcher = ENVIRONMENT_VARIABLE.matcher(readConfiguration());
+    Matcher matcher = ENVIRONMENT_VARIABLE.matcher(readSkeletonConfiguration());
 
     Set<String> variables = new TreeSet<>();
 
@@ -62,7 +62,25 @@ class NotificationServiceConfigurationBoundaryTest {
     assertThat(RESOURCES.resolve("application-prod.yml")).doesNotExist();
   }
 
-  private static String readConfiguration() throws IOException {
+  @Test
+  void profiledInfrastructureConfigurationContainsOnlyEnvironmentPlaceholders() throws IOException {
+    String configuration =
+        Files.readString(RESOURCES.resolve("application-persistence.yml"))
+            + System.lineSeparator()
+            + Files.readString(RESOURCES.resolve("application-messaging.yml"));
+
+    assertThat(configuration)
+        .contains(
+            "${VENUEFLOW_NOTIFICATION_DB_URL}",
+            "${VENUEFLOW_NOTIFICATION_DB_USERNAME}",
+            "${VENUEFLOW_NOTIFICATION_DB_PASSWORD}",
+            "${VENUEFLOW_RABBITMQ_HOST}",
+            "${VENUEFLOW_RABBITMQ_USERNAME}",
+            "${VENUEFLOW_RABBITMQ_PASSWORD}")
+        .doesNotContain("jdbc:mysql://", "guest:guest", "localhost");
+  }
+
+  private static String readSkeletonConfiguration() throws IOException {
     return Files.readString(RESOURCES.resolve("application.yml"))
         + System.lineSeparator()
         + Files.readString(RESOURCES.resolve("application-skeleton.yml"));

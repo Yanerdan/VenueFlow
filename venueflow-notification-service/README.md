@@ -1,46 +1,63 @@
 # VenueFlow Notification Service
 
-`venueflow-notification-service` 是独立可执行的 Notification Service 骨架。C12 仅建立
-服务边界，不消费 Booking 事件，也不发送站内信或邮件。
+`venueflow-notification-service` consumes the C11 Booking confirmation and cancellation
+events and creates deterministic in-app notification records.
 
-## 启动
+## Default startup
 
-默认 `skeleton` profile 监听 `8085`，无需 Docker、MySQL、RabbitMQ 或其他服务：
+The default `skeleton` profile listens on port `8085` and needs no Docker, MySQL, or
+RabbitMQ:
 
 ```powershell
 .\mvnw.cmd -pl venueflow-notification-service -am clean package
 java -jar venueflow-notification-service\target\venueflow-notification-service-0.1.0-SNAPSHOT.jar
 ```
 
-端口冲突时可在当前终端覆盖：
-
-```powershell
-$env:SERVER_PORT = "18085"
-java -jar venueflow-notification-service\target\venueflow-notification-service-0.1.0-SNAPSHOT.jar
-```
-
-## 健康探针
+Only liveness and readiness are exposed:
 
 ```text
 GET http://127.0.0.1:8085/actuator/health/liveness
 GET http://127.0.0.1:8085/actuator/health/readiness
 ```
 
-两项探针应返回 `UP`。Actuator Web 不暴露 `env`、`configprops`、`loggers`、`mappings`
-或 `metrics`。
+## Reliable consumer
 
-## 验证
+Enable both `persistence,messaging` profiles and provide Notification-owned MySQL
+credentials plus RabbitMQ credentials:
 
-默认验证完全不使用 Docker 或外部基础设施：
+```powershell
+$env:SPRING_PROFILES_ACTIVE = "persistence,messaging"
+$env:VENUEFLOW_NOTIFICATION_DB_URL = "jdbc:mysql://127.0.0.1:3306/venueflow_notification"
+$env:VENUEFLOW_NOTIFICATION_DB_USERNAME = "venueflow_notification"
+$env:VENUEFLOW_NOTIFICATION_DB_PASSWORD = "<local-only-password>"
+$env:VENUEFLOW_RABBITMQ_HOST = "127.0.0.1"
+$env:VENUEFLOW_RABBITMQ_USERNAME = "<consumer-user>"
+$env:VENUEFLOW_RABBITMQ_PASSWORD = "<local-only-password>"
+java -jar venueflow-notification-service\target\venueflow-notification-service-0.1.0-SNAPSHOT.jar
+```
+
+Flyway V001 creates the consumed-event inbox, in-app notification record, and bounded
+failure-audit tables. The listener accepts only the exact C11 confirmed/cancelled
+envelopes, commits inbox and notification facts in one transaction, and then manually
+ACKs. Exact duplicate delivery is harmless.
+
+The consumer declares a fixed-delay retry queue and a terminal DLQ. Transfers use
+persistent messages, mandatory routing, and Publisher Confirm/Return; an uncertain
+transfer is NACKed and requeued instead of being acknowledged.
+
+## Verification
+
+Default verification is Docker-free:
 
 ```powershell
 .\mvnw.cmd -pl venueflow-notification-service -am clean verify
 ```
 
-验证覆盖应用上下文、配置和依赖边界、HTTP 探针以及实际可执行 JAR 启停。
+Real MySQL 8.4.10 and RabbitMQ 4.1.8 evidence is opt-in:
 
-## 当前边界
+```powershell
+.\mvnw.cmd -pl venueflow-notification-service verify -Pconsumer-it
+```
 
-C12 不包含数据库、Migration、AMQP listener、队列或绑定、`ConsumedEvent`、手动 ACK、
-重试/DLQ、通知记录、邮件模拟、跨服务调用或 Compose 应用容器。C11 Booking Outbox
-仍只负责可靠发布；上述消费端能力将在 C13 单独实现。
+Operational details, topology, replay guardrails, shutdown, and rollback are in the
+[Notification consumer runbook](../docs/runbook/notification-consumer.md).

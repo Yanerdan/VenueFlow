@@ -1,0 +1,28 @@
+spring:
+  config:
+    activate:
+      on-profile: messaging
+
+  rabbitmq:
+    host: ${VENUEFLOW_RABBITMQ_HOST}
+    port: ${VENUEFLOW_RABBITMQ_PORT:5672}
+    username: ${VENUEFLOW_RABBITMQ_USERNAME}
+    password: ${VENUEFLOW_RABBITMQ_PASSWORD}
+    virtual-host: ${VENUEFLOW_RABBITMQ_VHOST:/}
+    connection-timeout: ${VENUEFLOW_RABBITMQ_CONNECT_TIMEOUT_MS:2000}
+
+venueflow:
+  notification:
+    consumer-name: ${VENUEFLOW_NOTIFICATION_CONSUMER_NAME:notification-booking-v1}
+    source-exchange: ${VENUEFLOW_NOTIFICATION_SOURCE_EXCHANGE:venueflow.events.v1}
+    work-queue: ${VENUEFLOW_NOTIFICATION_WORK_QUEUE:venueflow.notification.booking.v1}
+    retry-exchange: ${VENUEFLOW_NOTIFICATION_RETRY_EXCHANGE:venueflow.notification.retry.v1}
+    retry-queue: ${VENUEFLOW_NOTIFICATION_RETRY_QUEUE:venueflow.notification.booking.retry.v1}
+    dead-exchange: ${VENUEFLOW_NOTIFICATION_DEAD_EXCHANGE:venueflow.dead.v1}
+    dead-queue: ${VENUEFLOW_NOTIFICATION_DEAD_QUEUE:venueflow.notification.booking.dlq.v1}
+    prefetch: ${VENUEFLOW_NOTIFICATION_PREFETCH:10}
+    concurrency: ${VENUEFLOW_NOTIFICATION_CONCURRENCY:1}
+    retry-delay-ms: ${VENUEFLOW_NOTIFICATION_RETRY_DELAY_MS:1000}
+    max-attempts: ${VENUEFLOW_NOTIFICATION_MAX_ATTEMPTS:3}
+    max-message-bytes: ${VENUEFLOW_NOTIFICATION_MAX_MESSAGE_BYTES:4096}
+    confirm-timeout-ms: ${VENUEFLOW_NOTIFICATION_CONFIRM_TIMEOUT_MS:2000}

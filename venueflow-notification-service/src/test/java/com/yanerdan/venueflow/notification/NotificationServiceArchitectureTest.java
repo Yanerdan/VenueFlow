@@ -12,7 +12,7 @@ import org.springframework.util.ClassUtils;
 class NotificationServiceArchitectureTest {
 
   @Test
-  void mainSourceContainsOnlyTheSkeletonEntryPoint() throws IOException {
+  void mainSourceStaysInsideNotificationBoundary() throws IOException {
     Path sourceRoot = Path.of("src", "main", "java");
 
     List<String> sourceFiles;
@@ -30,8 +30,12 @@ class NotificationServiceArchitectureTest {
     }
 
     assertThat(sourceFiles)
-        .containsExactly(
-            "com/yanerdan/venueflow/notification/" + "NotificationServiceApplication.java");
+        .isNotEmpty()
+        .allSatisfy(
+            file ->
+                assertThat(file)
+                    .startsWith("com/yanerdan/venueflow/notification/")
+                    .doesNotContain("/web/", "/mail/", "/security/", "/client/"));
   }
 
   @Test
@@ -40,17 +44,12 @@ class NotificationServiceArchitectureTest {
 
     List<String> forbiddenClasses =
         List.of(
-            "org.springframework.jdbc.core.JdbcTemplate",
-            "org.flywaydb.core.Flyway",
             "com.baomidou.mybatisplus.core.mapper.BaseMapper",
-            "org.springframework.amqp.rabbit.connection.ConnectionFactory",
-            "com.rabbitmq.client.ConnectionFactory",
             "org.springframework.mail.javamail.JavaMailSender",
             "org.springframework.security.core.Authentication",
             "org.springframework.data.redis.core.RedisTemplate",
             "org.springframework.kafka.core.KafkaTemplate",
-            "org.springframework.cloud.client.discovery.DiscoveryClient",
-            "org.testcontainers.containers.GenericContainer");
+            "org.springframework.cloud.client.discovery.DiscoveryClient");
 
     assertThat(forbiddenClasses)
         .allSatisfy(

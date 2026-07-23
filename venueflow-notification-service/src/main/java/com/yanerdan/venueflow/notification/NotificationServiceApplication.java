@@ -1,9 +1,10 @@
 package com.yanerdan.venueflow.notification;
 
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.amqp.autoconfigure.RabbitAutoConfiguration;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@SpringBootApplication
+@SpringBootApplication(exclude = RabbitAutoConfiguration.class)
 public class NotificationServiceApplication {
 
   public static void main(String[] args) {

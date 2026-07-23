@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+  <!-- Spring owns and injects these collaborators; none are returned to application callers. -->
+  <Match>
+    <Package name="~com\.yanerdan\.venueflow\.notification\.consumer\..*" />
+    <Bug pattern="EI_EXPOSE_REP2" />
+  </Match>
+</FindBugsFilter>

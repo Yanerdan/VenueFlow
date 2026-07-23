@@ -1,0 +1,21 @@
+spring:
+  config:
+    activate:
+      on-profile: persistence
+
+  datasource:
+    url: ${VENUEFLOW_NOTIFICATION_DB_URL}
+    username: ${VENUEFLOW_NOTIFICATION_DB_USERNAME}
+    password: ${VENUEFLOW_NOTIFICATION_DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
+    clean-disabled: true
+    baseline-on-migrate: false
+
+  sql:
+    init:
+      mode: never
