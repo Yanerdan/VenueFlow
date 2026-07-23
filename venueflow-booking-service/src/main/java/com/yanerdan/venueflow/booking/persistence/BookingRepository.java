@@ -5,6 +5,9 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.yanerdan.venueflow.booking.domain.BookingReservation;
 import com.yanerdan.venueflow.booking.domain.BookingStatus;
 import com.yanerdan.venueflow.booking.domain.IdempotencyStatus;
+import com.yanerdan.venueflow.booking.outbox.domain.OutboxEventFactory;
+import com.yanerdan.venueflow.booking.outbox.persistence.OutboxEventEntity;
+import com.yanerdan.venueflow.booking.outbox.persistence.OutboxEventMapper;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import org.springframework.context.annotation.Profile;
@@ -17,11 +20,18 @@ public class BookingRepository {
   private static final String CREATE = "CREATE";
   private final BookingReservationMapper reservationMapper;
   private final BookingIdempotencyMapper idempotencyMapper;
+  private final OutboxEventMapper outboxMapper;
+  private final OutboxEventFactory outboxFactory;
 
   public BookingRepository(
-      BookingReservationMapper reservationMapper, BookingIdempotencyMapper idempotencyMapper) {
+      BookingReservationMapper reservationMapper,
+      BookingIdempotencyMapper idempotencyMapper,
+      OutboxEventMapper outboxMapper,
+      OutboxEventFactory outboxFactory) {
     this.reservationMapper = reservationMapper;
     this.idempotencyMapper = idempotencyMapper;
+    this.outboxMapper = outboxMapper;
+    this.outboxFactory = outboxFactory;
   }
 
   @Transactional
@@ -66,6 +76,8 @@ public class BookingRepository {
     entity.setConfirmedAt(now);
     entity.setUpdatedAt(now);
     reservationMapper.insert(entity);
+    BookingReservation reservation = entity.toDomain();
+    outboxMapper.insert(OutboxEventEntity.from(outboxFactory.create(reservation)));
     int updated =
         idempotencyMapper.update(
             null,
@@ -77,7 +89,7 @@ public class BookingRepository {
                 .set(BookingIdempotencyEntity::getUpdatedAt, now)
                 .setSql("version = version + 1"));
     if (updated != 1) throw new IllegalStateException("Idempotency finalization failed");
-    return entity.toDomain();
+    return reservation;
   }
 
   @Transactional
@@ -105,17 +117,26 @@ public class BookingRepository {
   @Transactional
   public boolean cancel(String bookingNo, long expectedVersion) {
     LocalDateTime now = LocalDateTime.now();
-    return reservationMapper.update(
-            null,
-            new LambdaUpdateWrapper<BookingReservationEntity>()
-                .eq(BookingReservationEntity::getBookingNo, bookingNo)
-                .eq(BookingReservationEntity::getStatus, BookingStatus.CONFIRMED)
-                .eq(BookingReservationEntity::getVersion, expectedVersion)
-                .set(BookingReservationEntity::getStatus, BookingStatus.CANCELLED)
-                .set(BookingReservationEntity::getCancelledAt, now)
-                .set(BookingReservationEntity::getUpdatedAt, now)
-                .setSql("version = version + 1"))
-        == 1;
+    boolean updated =
+        reservationMapper.update(
+                null,
+                new LambdaUpdateWrapper<BookingReservationEntity>()
+                    .eq(BookingReservationEntity::getBookingNo, bookingNo)
+                    .eq(BookingReservationEntity::getStatus, BookingStatus.CONFIRMED)
+                    .eq(BookingReservationEntity::getVersion, expectedVersion)
+                    .set(BookingReservationEntity::getStatus, BookingStatus.CANCELLED)
+                    .set(BookingReservationEntity::getCancelledAt, now)
+                    .set(BookingReservationEntity::getUpdatedAt, now)
+                    .setSql("version = version + 1"))
+            == 1;
+    if (updated) {
+      BookingReservationEntity entity =
+          reservationMapper.selectOne(
+              new LambdaQueryWrapper<BookingReservationEntity>()
+                  .eq(BookingReservationEntity::getBookingNo, bookingNo));
+      outboxMapper.insert(OutboxEventEntity.from(outboxFactory.create(entity.toDomain())));
+    }
+    return updated;
   }
 
   private BookingIdempotencyEntity findClaim(long userId, String key) {

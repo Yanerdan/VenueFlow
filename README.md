@@ -155,3 +155,10 @@ java -jar venueflow-resource-service/target/venueflow-resource-service-0.1.0-SNA
 ## 当前非目标
 
 C10 不包含 Gateway、认证授权、Nacos/Feign、Redis、RabbitMQ/Outbox、搜索、支付、超时任务、核销完成或分布式事务。详见 [Booking 预约 Runbook](docs/runbook/booking-reservation.md)。
+
+## C11 Booking Outbox
+
+Booking 现在通过 MySQL V002 在业务事务中记录确认和取消事件。发布功能只在
+`persistence,messaging` 下启用，采用持久 topic exchange、mandatory 持久消息、
+Publisher Confirm/Return、租约和有界重试/`DEAD`。交付语义为至少一次；消费者与消费端
+去重仍属于后续 Change。详见 [Booking Outbox Runbook](docs/runbook/booking-outbox.md)。

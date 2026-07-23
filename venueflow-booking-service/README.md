@@ -30,3 +30,18 @@ VENUEFLOW_RESOURCE_LOOKUP_ATTEMPTS
 operationId 查询结果。当前版本只有 `CONFIRMED -> CANCELLED`，不包含认证、消息或超时任务。
 
 操作与补偿检查见 [Booking 预约 Runbook](../docs/runbook/booking-reservation.md)。
+
+## C11 Booking Outbox
+
+`persistence` 会在 MySQL 事务中追加确认/取消事件，但不连接 RabbitMQ。只有显式启用
+`persistence,messaging` 并提供 `VENUEFLOW_RABBITMQ_*` 变量后才会启动有界发布器。
+Booking 只声明持久 topic exchange `venueflow.events.v1`，队列和绑定归消费者所有。
+
+```powershell
+.\mvnw.cmd -pl venueflow-booking-service -am clean verify
+.\mvnw.cmd -pl venueflow-booking-service verify -Pmysql-it
+.\mvnw.cmd -pl venueflow-booking-service verify -Poutbox-it
+```
+
+启停、检查、DEAD 事件重排及故障处理见
+[Booking Outbox Runbook](../docs/runbook/booking-outbox.md)。

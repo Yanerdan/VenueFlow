@@ -65,8 +65,26 @@ class BookingServiceConfigurationBoundaryTest {
           .filter(Files::isRegularFile)
           .filter(path -> path.getFileName().toString().startsWith("application"))
           .filter(path -> !path.getFileName().toString().contains("persistence"))
+          .filter(path -> !path.getFileName().toString().contains("messaging"))
           .toList();
     }
+  }
+
+  @Test
+  void messagingConfigurationUsesEnvironmentCredentialsAndBoundedDefaults() throws IOException {
+    String configuration =
+        Files.readString(
+            MAIN_RESOURCES.resolve("application-messaging.yml"), StandardCharsets.UTF_8);
+
+    assertThat(configuration)
+        .contains("on-profile: messaging")
+        .contains("${VENUEFLOW_RABBITMQ_HOST}")
+        .contains("${VENUEFLOW_RABBITMQ_USERNAME}")
+        .contains("${VENUEFLOW_RABBITMQ_PASSWORD}")
+        .contains("publisher-confirm-type: correlated")
+        .contains("publisher-returns: true")
+        .contains("mandatory: true")
+        .doesNotContain("guest");
   }
 
   private static String readConfiguration(List<Path> applicationFiles) throws IOException {

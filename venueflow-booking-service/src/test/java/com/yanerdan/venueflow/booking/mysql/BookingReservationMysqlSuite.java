@@ -63,6 +63,7 @@ class BookingReservationMysqlSuite {
 
   @BeforeEach
   void clean() {
+    jdbcTemplate.update("DELETE FROM booking_outbox_event");
     jdbcTemplate.update("DELETE FROM booking_idempotency");
     jdbcTemplate.update("DELETE FROM booking_reservation");
     when(userClient.isBookingPermitted(1L)).thenReturn(true);
@@ -74,10 +75,13 @@ class BookingReservationMysqlSuite {
         jdbcTemplate.queryForObject(
             """
             SELECT COUNT(*) FROM flyway_schema_history
-            WHERE script = 'V001__init_booking_reservations.sql' AND success = 1
+            WHERE script IN (
+              'V001__init_booking_reservations.sql',
+              'V002__add_booking_outbox.sql'
+            ) AND success = 1
             """,
             Integer.class);
-    assertThat(migrations).isEqualTo(1);
+    assertThat(migrations).isEqualTo(2);
 
     MvcResult created =
         mockMvc
@@ -109,6 +113,10 @@ class BookingReservationMysqlSuite {
     assertThat(
             jdbcTemplate.queryForObject("SELECT COUNT(*) FROM booking_reservation", Integer.class))
         .isEqualTo(1);
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT event_type FROM booking_outbox_event ORDER BY id", String.class))
+        .containsExactly("BOOKING_RESERVATION_CONFIRMED", "BOOKING_RESERVATION_CANCELLED");
     verify(resourceClient)
         .allocate(
             org.mockito.ArgumentMatchers.eq(2L),
@@ -149,6 +157,10 @@ class BookingReservationMysqlSuite {
               jdbcTemplate.queryForObject(
                   "SELECT booking_no FROM booking_reservation", String.class))
           .isEqualTo(bookingNo);
+      assertThat(
+              jdbcTemplate.queryForObject(
+                  "SELECT COUNT(*) FROM booking_outbox_event", Integer.class))
+          .isEqualTo(1);
       verify(userClient).isBookingPermitted(1L);
       verify(resourceClient).allocate(2L, "allocate:" + requestId(), 1);
     } finally {

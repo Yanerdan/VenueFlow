@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
@@ -30,5 +32,7 @@ class BookingServiceApplicationTest {
     assertThat(environment.getDefaultProfiles()).contains("skeleton");
     assertThat(environment.getProperty("server.port", Integer.class)).isEqualTo(8084);
     assertThat(applicationContext.getBeansOfType(DataSource.class)).isEmpty();
+    assertThat(applicationContext.getBeansOfType(ConnectionFactory.class)).isEmpty();
+    assertThat(applicationContext.getBeansOfType(RabbitTemplate.class)).isEmpty();
   }
 }

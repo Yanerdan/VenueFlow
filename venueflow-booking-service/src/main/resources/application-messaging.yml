@@ -1,0 +1,27 @@
+spring:
+  config:
+    activate:
+      on-profile: messaging
+  rabbitmq:
+    host: ${VENUEFLOW_RABBITMQ_HOST}
+    port: ${VENUEFLOW_RABBITMQ_PORT:5672}
+    username: ${VENUEFLOW_RABBITMQ_USERNAME}
+    password: ${VENUEFLOW_RABBITMQ_PASSWORD}
+    virtual-host: ${VENUEFLOW_RABBITMQ_VHOST:/}
+    connection-timeout: ${VENUEFLOW_RABBITMQ_CONNECT_TIMEOUT_MS:2000}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+
+venueflow:
+  outbox:
+    exchange: ${VENUEFLOW_OUTBOX_EXCHANGE:venueflow.events.v1}
+    batch-size: ${VENUEFLOW_OUTBOX_BATCH_SIZE:20}
+    scan-delay-ms: ${VENUEFLOW_OUTBOX_SCAN_DELAY_MS:1000}
+    confirm-timeout-ms: ${VENUEFLOW_OUTBOX_CONFIRM_TIMEOUT_MS:2000}
+    lease-ms: ${VENUEFLOW_OUTBOX_LEASE_MS:5000}
+    max-attempts: ${VENUEFLOW_OUTBOX_MAX_ATTEMPTS:5}
+    initial-backoff-ms: ${VENUEFLOW_OUTBOX_INITIAL_BACKOFF_MS:1000}
+    max-backoff-ms: ${VENUEFLOW_OUTBOX_MAX_BACKOFF_MS:60000}
+    enabled: ${VENUEFLOW_OUTBOX_ENABLED:true}
