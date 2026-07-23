@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.yanerdan.venueflow.resource.catalog.error.CatalogException;
+import com.yanerdan.venueflow.resource.slot.allocation.application.SlotAllocationOperationResult;
 import com.yanerdan.venueflow.resource.slot.allocation.application.SlotCapacityApplicationService;
 import com.yanerdan.venueflow.resource.slot.allocation.application.SlotCapacityChangeCommand;
 import com.yanerdan.venueflow.resource.slot.allocation.application.SlotCapacityChangeResult;
@@ -20,6 +21,7 @@ import com.yanerdan.venueflow.resource.slot.allocation.application.SlotCapacityR
 import com.yanerdan.venueflow.resource.slot.allocation.domain.SlotAllocationOperationType;
 import com.yanerdan.venueflow.resource.slot.allocation.http.controller.SlotCapacityController;
 import com.yanerdan.venueflow.resource.slot.domain.ResourceSlotStatus;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -102,6 +104,30 @@ class SlotCapacityHttpApiTest {
             jsonPath("$.code").value("INSUFFICIENT_SLOT_CAPACITY"),
             jsonPath("$.details.slotId").value(500),
             jsonPath("$.traceId").isNotEmpty());
+  }
+
+  @Test
+  void getsOneOperationThroughDtoBoundary() throws Exception {
+    when(slotCapacityApplicationService.getOperation(500L, "op-1"))
+        .thenReturn(
+            new SlotAllocationOperationResult(
+                9L,
+                "op-1",
+                SlotAllocationOperationType.ALLOCATE,
+                2,
+                5,
+                LocalDateTime.of(2026, 7, 23, 10, 0)));
+
+    mockMvc
+        .perform(
+            get(
+                "/api/v1/resource-slots/{slotId}/allocation-operations/{operationId}",
+                500L,
+                "op-1"))
+        .andExpectAll(
+            status().isOk(),
+            jsonPath("$.operationId").value("op-1"),
+            jsonPath("$.operationType").value("ALLOCATE"));
   }
 
   private static SlotCapacityChangeResult changeResult(

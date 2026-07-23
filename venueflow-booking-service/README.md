@@ -1,61 +1,32 @@
 # VenueFlow Booking Service
 
-`venueflow-booking-service` is an independently executable Spring Boot MVC service
-skeleton. It establishes the Booking Service runtime and verification boundary for future
-work; it does not yet implement a reservation workflow.
+默认 `skeleton` profile 仅提供端口 8084 和受限健康探针，不连接外部服务。显式
+`persistence` profile 使用 Booking 自有 MySQL schema，并通过有界 Java HTTP 客户端读取
+User 预约资格、调用 Resource 容量台账。
 
-## Requirements
-
-- JDK 21
-- Maven Wrapper from this repository
-- No Docker, database, or external infrastructure for the default build and runtime profile
-
-## Scope
-
-The default `skeleton` profile is secret-free, listens on port `8084`, and exposes only
-health probes. This increment deliberately contains no Booking API, entity, DTO, database,
-migration, Resource/User call, authentication, messaging, caching, discovery, or Gateway
-integration.
-
-## Build and verify
-
-From the repository root:
+## 验证
 
 ```powershell
 .\mvnw.cmd -pl venueflow-booking-service -am clean verify
+.\mvnw.cmd -pl venueflow-booking-service -am verify -Pmysql-it
 ```
 
-The command completes without Docker or another external service. To verify the entire
-reactor, run:
+默认命令不需要 Docker。`mysql-it` 使用隔离 MySQL 验证 V001、幂等创建、重放、查询和取消。
 
-```powershell
-.\mvnw.cmd clean verify
+## Persistence 变量
+
+```text
+VENUEFLOW_BOOKING_DB_URL
+VENUEFLOW_BOOKING_DB_USERNAME
+VENUEFLOW_BOOKING_DB_PASSWORD
+VENUEFLOW_USER_SERVICE_BASE_URL
+VENUEFLOW_RESOURCE_SERVICE_BASE_URL
+VENUEFLOW_COLLABORATOR_CONNECT_TIMEOUT_MS
+VENUEFLOW_COLLABORATOR_REQUEST_TIMEOUT_MS
+VENUEFLOW_RESOURCE_LOOKUP_ATTEMPTS
 ```
 
-## Run
+创建预约使用 `Idempotency-Key` Header。Resource 写请求不会自动重试；分配响应超时后按
+operationId 查询结果。当前版本只有 `CONFIRMED -> CANCELLED`，不包含认证、消息或超时任务。
 
-Package the module, then run the generated JAR:
-
-```powershell
-.\mvnw.cmd -pl venueflow-booking-service package
-java -jar venueflow-booking-service\target\venueflow-booking-service-0.1.0-SNAPSHOT.jar
-```
-
-Override a locally occupied port without changing tracked configuration:
-
-```powershell
-$env:SERVER_PORT = "18084"
-java -jar venueflow-booking-service\target\venueflow-booking-service-0.1.0-SNAPSHOT.jar
-```
-
-## Health probes
-
-```powershell
-curl.exe http://localhost:8084/actuator/health
-curl.exe http://localhost:8084/actuator/health/liveness
-curl.exe http://localhost:8084/actuator/health/readiness
-```
-
-Each probe reports `UP`. Sensitive Actuator endpoints, including `/actuator/env`,
-`/actuator/configprops`, `/actuator/loggers`, `/actuator/mappings`, and
-`/actuator/metrics`, are intentionally unavailable.
+操作与补偿检查见 [Booking 预约 Runbook](../docs/runbook/booking-reservation.md)。

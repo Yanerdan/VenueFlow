@@ -1,0 +1,82 @@
+package com.yanerdan.venueflow.booking.web;
+
+import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.yanerdan.venueflow.booking.application.BookingReservationService;
+import com.yanerdan.venueflow.booking.domain.BookingReservation;
+import com.yanerdan.venueflow.booking.domain.BookingStatus;
+import java.time.LocalDateTime;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+@WebMvcTest(controllers = BookingReservationController.class)
+@ActiveProfiles("persistence")
+class BookingReservationControllerTest {
+  @Autowired private MockMvc mockMvc;
+  @MockitoBean private BookingReservationService service;
+
+  @Test
+  void createsThroughHeaderAndDtoEnvelope() throws Exception {
+    when(service.create(
+            anyString(),
+            org.mockito.ArgumentMatchers.anyLong(),
+            org.mockito.ArgumentMatchers.anyLong(),
+            org.mockito.ArgumentMatchers.anyInt()))
+        .thenReturn(new BookingReservationService.CreateResult(reservation(), false));
+
+    mockMvc
+        .perform(
+            post("/api/v1/bookings")
+                .header("Idempotency-Key", "f4f4266a-b145-44f4-a375-0d59450f5147")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"userId\":1,\"slotId\":2,\"quantity\":1}"))
+        .andExpectAll(
+            status().isCreated(),
+            jsonPath("$.*", hasSize(4)),
+            jsonPath("$.code").value("OK"),
+            jsonPath("$.data.bookingNo").value("booking-1"),
+            jsonPath("$.data.status").value("CONFIRMED"));
+  }
+
+  @Test
+  void rejectsMissingHeaderWithSafeEnvelope() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/bookings")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"userId\":1,\"slotId\":2,\"quantity\":1}"))
+        .andExpectAll(
+            status().isBadRequest(),
+            jsonPath("$.*", hasSize(5)),
+            jsonPath("$.code").value("BOOKING_VALIDATION_FAILED"));
+  }
+
+  private static BookingReservation reservation() {
+    LocalDateTime now = LocalDateTime.of(2026, 7, 23, 12, 0);
+    return new BookingReservation(
+        1L,
+        "booking-1",
+        "request-1",
+        1L,
+        2L,
+        1,
+        BookingStatus.CONFIRMED,
+        "allocate:request-1",
+        "release:request-1",
+        0L,
+        now,
+        now,
+        null,
+        now);
+  }
+}

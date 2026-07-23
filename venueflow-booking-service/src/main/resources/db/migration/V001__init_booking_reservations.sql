@@ -1,0 +1,46 @@
+CREATE TABLE booking_reservation (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  booking_no VARCHAR(64) NOT NULL,
+  request_id VARCHAR(36) NOT NULL,
+  user_id BIGINT NOT NULL,
+  slot_id BIGINT NOT NULL,
+  quantity INT NOT NULL,
+  status VARCHAR(24) NOT NULL,
+  allocation_operation_id VARCHAR(64) NOT NULL,
+  release_operation_id VARCHAR(80) NOT NULL,
+  version BIGINT NOT NULL DEFAULT 0,
+  created_at DATETIME(6) NOT NULL,
+  confirmed_at DATETIME(6) NOT NULL,
+  cancelled_at DATETIME(6) NULL,
+  updated_at DATETIME(6) NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_booking_reservation_no (booking_no),
+  UNIQUE KEY uk_booking_reservation_request (request_id),
+  UNIQUE KEY uk_booking_reservation_allocation (allocation_operation_id),
+  UNIQUE KEY uk_booking_reservation_release (release_operation_id),
+  CONSTRAINT ck_booking_reservation_quantity CHECK (quantity > 0),
+  CONSTRAINT ck_booking_reservation_status CHECK (status IN ('CONFIRMED', 'CANCELLED'))
+);
+
+CREATE TABLE booking_idempotency (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  user_id BIGINT NOT NULL,
+  operation VARCHAR(24) NOT NULL,
+  idempotency_key VARCHAR(64) NOT NULL,
+  request_hash CHAR(64) NOT NULL,
+  request_id VARCHAR(36) NOT NULL,
+  booking_id BIGINT NULL,
+  status VARCHAR(24) NOT NULL,
+  failure_code VARCHAR(64) NULL,
+  version BIGINT NOT NULL DEFAULT 0,
+  created_at DATETIME(6) NOT NULL,
+  updated_at DATETIME(6) NOT NULL,
+  expires_at DATETIME(6) NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_booking_idempotency_scope (user_id, operation, idempotency_key),
+  UNIQUE KEY uk_booking_idempotency_request (request_id),
+  CONSTRAINT fk_booking_idempotency_booking
+    FOREIGN KEY (booking_id) REFERENCES booking_reservation(id),
+  CONSTRAINT ck_booking_idempotency_operation CHECK (operation IN ('CREATE')),
+  CONSTRAINT ck_booking_idempotency_status CHECK (status IN ('PROCESSING', 'SUCCEEDED', 'FAILED'))
+);

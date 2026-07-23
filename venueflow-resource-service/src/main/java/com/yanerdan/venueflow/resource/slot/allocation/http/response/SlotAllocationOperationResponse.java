@@ -12,7 +12,7 @@ public record SlotAllocationOperationResponse(
     int occupiedQuantityAfter,
     LocalDateTime createdAt) {
 
-  static SlotAllocationOperationResponse from(SlotAllocationOperationResult result) {
+  public static SlotAllocationOperationResponse from(SlotAllocationOperationResult result) {
     return new SlotAllocationOperationResponse(
         result.id(),
         result.operationId(),

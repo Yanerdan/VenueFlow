@@ -12,7 +12,7 @@ public record SlotAllocationOperationResult(
     int occupiedQuantityAfter,
     LocalDateTime createdAt) {
 
-  static SlotAllocationOperationResult from(ResourceSlotAllocationEntity entity) {
+  public static SlotAllocationOperationResult from(ResourceSlotAllocationEntity entity) {
     return new SlotAllocationOperationResult(
         entity.getId(),
         entity.getOperationId(),

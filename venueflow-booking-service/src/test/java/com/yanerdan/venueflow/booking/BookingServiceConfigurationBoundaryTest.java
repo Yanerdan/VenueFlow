@@ -64,6 +64,7 @@ class BookingServiceConfigurationBoundaryTest {
       return paths
           .filter(Files::isRegularFile)
           .filter(path -> path.getFileName().toString().startsWith("application"))
+          .filter(path -> !path.getFileName().toString().contains("persistence"))
           .toList();
     }
   }

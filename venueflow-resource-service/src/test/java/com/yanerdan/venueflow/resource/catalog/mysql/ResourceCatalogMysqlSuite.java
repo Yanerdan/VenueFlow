@@ -544,6 +544,16 @@ class ResourceCatalogMysqlSuite {
             jsonPath("$.size").value(20),
             jsonPath("$.items[0].operationId").value("allocate-1"),
             jsonPath("$.items[1].operationId").value("release-1"));
+    mockMvc
+        .perform(
+            get(
+                "/api/v1/resource-slots/{slotId}/allocation-operations/{operationId}",
+                slotId,
+                "allocate-1"))
+        .andExpectAll(
+            status().isOk(),
+            jsonPath("$.operationId").value("allocate-1"),
+            jsonPath("$.operationType").value("ALLOCATE"));
 
     allocate(slotId, "allocate-1", 3)
         .andExpectAll(

@@ -1,6 +1,7 @@
 package com.yanerdan.venueflow.resource.slot.allocation.application;
 
 import static com.yanerdan.venueflow.resource.catalog.error.CatalogErrorCode.ALLOCATION_OPERATION_CONFLICT;
+import static com.yanerdan.venueflow.resource.catalog.error.CatalogErrorCode.ALLOCATION_OPERATION_NOT_FOUND;
 import static com.yanerdan.venueflow.resource.catalog.error.CatalogErrorCode.CATALOG_PERSISTENCE_ERROR;
 import static com.yanerdan.venueflow.resource.catalog.error.CatalogErrorCode.INSUFFICIENT_SLOT_CAPACITY;
 import static com.yanerdan.venueflow.resource.catalog.error.CatalogErrorCode.RELEASE_EXCEEDS_OCCUPIED_CAPACITY;
@@ -85,6 +86,20 @@ public class SlotCapacityApplicationService {
     } catch (DataAccessException exception) {
       throw persistenceFailure("Slot allocation operations could not be queried", exception);
     }
+  }
+
+  @Transactional(readOnly = true)
+  public SlotAllocationOperationResult getOperation(Long slotId, String operationId) {
+    requireSlot(slotId);
+    ResourceSlotAllocationEntity operation = allocationMapper.selectByOperationId(operationId);
+    if (operation == null || !operation.getSlotId().equals(slotId)) {
+      throw new CatalogException(
+          ALLOCATION_OPERATION_NOT_FOUND,
+          "Slot allocation operation was not found",
+          Map.of("slotId", slotId, "operationId", operationId),
+          null);
+    }
+    return SlotAllocationOperationResult.from(operation);
   }
 
   private SlotCapacityChangeResult change(

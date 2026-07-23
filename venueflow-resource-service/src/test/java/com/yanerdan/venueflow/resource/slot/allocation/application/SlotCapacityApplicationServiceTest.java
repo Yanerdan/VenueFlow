@@ -135,6 +135,21 @@ class SlotCapacityApplicationServiceTest {
             exception -> assertThat(exception.getCode()).isEqualTo(ALLOCATION_OPERATION_CONFLICT));
   }
 
+  @Test
+  void getsOperationOnlyFromRequestedSlot() {
+    ResourceSlotAllocationEntity operation = new ResourceSlotAllocationEntity();
+    operation.setId(9L);
+    operation.setSlotId(500L);
+    operation.setOperationId("op-1");
+    operation.setOperationType(SlotAllocationOperationType.ALLOCATE);
+    operation.setQuantity(2);
+    operation.setOccupiedQuantityAfter(5);
+    when(resourceSlotMapper.selectById(500L)).thenReturn(slot(5));
+    when(allocationMapper.selectByOperationId("op-1")).thenReturn(operation);
+
+    assertThat(service.getOperation(500L, "op-1").operationId()).isEqualTo("op-1");
+  }
+
   private static ResourceEntity resource(int capacity) {
     ResourceEntity entity = new ResourceEntity();
     entity.setId(100L);

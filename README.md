@@ -1,6 +1,6 @@
 # VenueFlow 园区共享资源预约平台
 
-VenueFlow 正在实施 C04 Resource Catalog 与持久化配置。本仓库已经具备可复现的 Maven 多模块构建、真实测试、基础质量门禁、按需启动的 MySQL/Redis/RabbitMQ/Nacos `base` profile，以及可独立启动的 Resource Service。资源目录 Migration 与业务 API 将在后续 C04 任务中实现。
+VenueFlow 正在实施 C10 最小预约闭环。Resource Service 已拥有资源、时段和幂等容量台账，User Service 已拥有资料与预约资格，Booking Service 正在增加独立持久化、`Idempotency-Key`、同步容量协调和取消补偿。
 
 ## 环境要求
 
@@ -137,6 +137,8 @@ java -jar venueflow-resource-service/target/venueflow-resource-service-0.1.0-SNA
 - `venueflow-common`：公共模块聚合器。
 - `venueflow-common/venueflow-common-core`：最小、无业务含义的公共 Java 模块和基线测试。
 - `venueflow-resource-service`：可执行的 Spring Boot MVC 服务；默认 skeleton 仅暴露安全收敛的 Actuator 健康探针，persistence profile 为 C04 资源目录持久化保留显式数据库边界。
+- `venueflow-user-service`：用户资料与预约资格事实；显式 persistence profile 使用独立 User schema。
+- `venueflow-booking-service`：默认 skeleton 独立启动；显式 persistence profile 提供幂等预约创建、查询和取消。
 
 根 `pom.xml` 只承担模块聚合、版本管理和质量门禁，不包含业务依赖。
 
@@ -152,4 +154,4 @@ java -jar venueflow-resource-service/target/venueflow-resource-service-0.1.0-SNA
 
 ## 当前非目标
 
-C04 不包含 Gateway、ResourceSlot、容量占用/释放、Booking、审批、认证/授权、Nacos、Redis、RabbitMQ、Feign、消息、搜索、容器化应用编排或虚假的业务测试覆盖率。
+C10 不包含 Gateway、认证授权、Nacos/Feign、Redis、RabbitMQ/Outbox、搜索、支付、超时任务、核销完成或分布式事务。详见 [Booking 预约 Runbook](docs/runbook/booking-reservation.md)。

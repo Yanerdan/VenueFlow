@@ -4,10 +4,13 @@ import com.yanerdan.venueflow.resource.slot.allocation.application.SlotCapacityA
 import com.yanerdan.venueflow.resource.slot.allocation.http.request.SlotAllocationOperationPageRequest;
 import com.yanerdan.venueflow.resource.slot.allocation.http.request.SlotCapacityChangeRequest;
 import com.yanerdan.venueflow.resource.slot.allocation.http.response.SlotAllocationOperationPageResponse;
+import com.yanerdan.venueflow.resource.slot.allocation.http.response.SlotAllocationOperationResponse;
 import com.yanerdan.venueflow.resource.slot.allocation.http.response.SlotCapacityChangeResponse;
 import com.yanerdan.venueflow.resource.slot.allocation.http.response.SlotCapacityResponse;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -60,5 +63,16 @@ public class SlotCapacityController {
       @Valid @ModelAttribute SlotAllocationOperationPageRequest request) {
     return SlotAllocationOperationPageResponse.from(
         slotCapacityApplicationService.listOperations(request.toQuery(slotId)));
+  }
+
+  @GetMapping("/api/v1/resource-slots/{slotId}/allocation-operations/{operationId}")
+  public SlotAllocationOperationResponse getOperation(
+      @PathVariable @Positive(message = "slotId must be positive") Long slotId,
+      @PathVariable
+          @NotBlank(message = "operationId must not be blank")
+          @Size(max = 64, message = "operationId must not exceed 64 characters")
+          String operationId) {
+    return SlotAllocationOperationResponse.from(
+        slotCapacityApplicationService.getOperation(slotId, operationId));
   }
 }

@@ -197,7 +197,11 @@ public class CatalogExceptionHandler {
     return switch (code) {
       case VALIDATION_ERROR, INVALID_SLOT_TIME_RANGE -> HttpStatus.BAD_REQUEST;
 
-      case CATEGORY_NOT_FOUND, RESOURCE_NOT_FOUND, RESOURCE_SLOT_NOT_FOUND -> HttpStatus.NOT_FOUND;
+      case CATEGORY_NOT_FOUND,
+          RESOURCE_NOT_FOUND,
+          RESOURCE_SLOT_NOT_FOUND,
+          ALLOCATION_OPERATION_NOT_FOUND ->
+          HttpStatus.NOT_FOUND;
 
       case CATEGORY_ALREADY_EXISTS,
           RESOURCE_NUMBER_ALREADY_EXISTS,
