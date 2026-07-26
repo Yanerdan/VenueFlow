@@ -175,3 +175,14 @@ Compose，未加入邮件、通知 HTTP API、超时取消或跨服务数据库�
 - Default `skeleton` remains datasource-, key-, and security-filter-free.
 - Module/root verification, MySQL 8.4.10 lifecycle, dependency, scope, secret, diff, and strict
   OpenSpec gates passed.
+
+## C19 implementation status
+
+- Archived change: `openspec/changes/archive/2026-07-26-add-secure-api-gateway`.
+- `venueflow-gateway` is a reactive, executable entry module on default port `8080`; default
+  `skeleton` startup needs no key, Docker, or downstream service.
+- Explicit `gateway` profile owns four static routes, RS256 issuer/subject validation, safe JSON
+  `401/403`, trusted subject and UUID trace propagation, CORS, security headers, and a declared
+  request-size bound.
+- Verification uses only generated in-memory RSA keys and a local isolated HTTP stub.
+- Module/root verification, 21/21 strict OpenSpec, dependency, scope, secret, and diff gates passed.

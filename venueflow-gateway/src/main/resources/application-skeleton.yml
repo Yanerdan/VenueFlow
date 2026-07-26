@@ -1,0 +1,9 @@
+spring:
+  config:
+    activate:
+      on-profile: skeleton
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.security.autoconfigure.ReactiveUserDetailsServiceAutoConfiguration
+      - org.springframework.boot.security.autoconfigure.web.reactive.ReactiveWebSecurityAutoConfiguration
+      - org.springframework.boot.security.autoconfigure.actuate.web.reactive.ReactiveManagementWebSecurityAutoConfiguration

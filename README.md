@@ -223,6 +223,14 @@ C17 仅建立可执行服务边界；登录、密码、Access/Refresh Token、JW
 协作将在后续独立 Change 中实现。详见
 [Auth Service README](venueflow-auth-service/README.md)。
 
+## C19 Secure API Gateway
+
+`venueflow-gateway` is the reactive entry module on port `8080`. Its default `skeleton` profile is
+connection-free. The explicit `gateway` profile exposes only Auth, User, Resource, and Booking
+route prefixes, validates Auth-issued RS256 JWTs for business routes, replaces untrusted identity
+headers, propagates UUID traces, and applies bounded CORS and request limits. See
+[the Gateway runbook](docs/runbook/secure-api-gateway.md).
+
 ## C18 Auth credential and token lifecycle
 
 显式 `persistence` profile 使用 Auth 自有 MySQL V001，提供 BCrypt 凭据、失败锁定、
