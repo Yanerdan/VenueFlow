@@ -155,3 +155,12 @@ Compose，未加入邮件、通知 HTTP API、超时取消或跨服务数据库�
 - Notification V003 admits the exact completion event and reuses inbox-idempotent consumption.
 - All unit, static, MySQL, check-in, Outbox, consumer, dependency, scope, secret, diff, and strict
   OpenSpec gates passed.
+
+## C17 implementation status
+
+- Archived change: `openspec/changes/archive/2026-07-26-add-auth-service-skeleton`.
+- `venueflow-auth-service` is an independent Spring Boot MVC skeleton on default port `8081`.
+- Default startup exposes only liveness/readiness and creates no security, persistence,
+  collaborator, broker, cache, discovery, or key connection.
+- C17 intentionally adds no credentials, login API, token/JWT behavior, Gateway, or User call.
+- Module/root verification and dependency, scope, secret, diff, and strict OpenSpec gates passed.

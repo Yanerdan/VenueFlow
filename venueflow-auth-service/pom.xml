@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.yanerdan.venueflow</groupId>
+    <artifactId>venueflow-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>venueflow-auth-service</artifactId>
+  <packaging>jar</packaging>
+
+  <name>VenueFlow Auth Service</name>
+  <description>Infrastructure-independent Auth Service skeleton.</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-webmvc</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+        <configuration>
+          <mainClass>com.yanerdan.venueflow.auth.AuthServiceApplication</mainClass>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>repackage</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>enforce-auth-boundary</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <bannedDependencies>
+                  <message>C17 Auth Service must remain free of security, persistence, messaging,
+                    discovery, cache, tracing and other service dependencies.</message>
+                  <searchTransitive>true</searchTransitive>
+                  <excludes>
+                    <exclude>com.yanerdan.venueflow:venueflow-*</exclude>
+                    <exclude>org.springframework.security:*</exclude>
+                    <exclude>com.auth0:*</exclude>
+                    <exclude>io.jsonwebtoken:*</exclude>
+                    <exclude>org.springframework.boot:spring-boot-starter-jdbc</exclude>
+                    <exclude>org.springframework.boot:spring-boot-starter-data-*</exclude>
+                    <exclude>org.flywaydb:*</exclude>
+                    <exclude>org.liquibase:*</exclude>
+                    <exclude>com.mysql:*</exclude>
+                    <exclude>com.baomidou:*</exclude>
+                    <exclude>org.mybatis:*</exclude>
+                    <exclude>org.springframework.amqp:*</exclude>
+                    <exclude>com.rabbitmq:*</exclude>
+                    <exclude>org.springframework.kafka:*</exclude>
+                    <exclude>org.apache.kafka:*</exclude>
+                    <exclude>org.springframework.cloud:*</exclude>
+                    <exclude>com.alibaba.cloud:*</exclude>
+                    <exclude>org.springframework.data:spring-data-redis</exclude>
+                    <exclude>io.lettuce:*</exclude>
+                    <exclude>redis.clients:*</exclude>
+                    <exclude>org.elasticsearch:*</exclude>
+                    <exclude>io.micrometer:micrometer-tracing*</exclude>
+                    <exclude>io.opentelemetry:*</exclude>
+                    <exclude>org.testcontainers:*</exclude>
+                  </excludes>
+                </bannedDependencies>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+</project>

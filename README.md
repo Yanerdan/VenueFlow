@@ -137,6 +137,7 @@ java -jar venueflow-resource-service/target/venueflow-resource-service-0.1.0-SNA
 - `venueflow-common`：公共模块聚合器。
 - `venueflow-common/venueflow-common-core`：最小、无业务含义的公共 Java 模块和基线测试。
 - `venueflow-resource-service`：可执行的 Spring Boot MVC 服务；默认 skeleton 仅暴露安全收敛的 Actuator 健康探针，persistence profile 为 C04 资源目录持久化保留显式数据库边界。
+- `venueflow-auth-service`：默认 skeleton 独立启动；当前仅提供受限健康探针。
 - `venueflow-user-service`：用户资料与预约资格事实；显式 persistence profile 使用独立 User schema。
 - `venueflow-booking-service`：默认 skeleton 独立启动；显式 persistence profile 提供幂等预约创建、查询和取消。
 - `venueflow-notification-service`：默认 skeleton 保持无基础设施启动；显式 `persistence,messaging` profiles 消费 Booking 事件并持久化站内通知。
@@ -207,3 +208,17 @@ An eligible confirmed reservation can be checked in with
 enforces bounded early/late windows, and atomically commits `COMPLETED`, status audit, and one
 completion Outbox event. Notification consumes the completion event idempotently. See the
 [check-in runbook](docs/runbook/booking-check-in-completion.md).
+
+## C17 Auth Service skeleton
+
+Auth Service 默认使用 `skeleton` profile 和端口 `8081`，只公开 liveness/readiness，不需要
+Docker、数据库、JWT 密钥或其他服务：
+
+```powershell
+.\mvnw.cmd -pl venueflow-auth-service -am clean verify
+java -jar venueflow-auth-service\target\venueflow-auth-service-0.1.0-SNAPSHOT.jar
+```
+
+C17 仅建立可执行服务边界；登录、密码、Access/Refresh Token、JWT、Gateway 和 User
+协作将在后续独立 Change 中实现。详见
+[Auth Service README](venueflow-auth-service/README.md)。

@@ -21,6 +21,7 @@
   <modules>
     <module>venueflow-dependencies</module>
     <module>venueflow-common</module>
+    <module>venueflow-auth-service</module>
     <module>venueflow-resource-service</module>
     <module>venueflow-user-service</module>
     <module>venueflow-booking-service</module>
