@@ -63,6 +63,10 @@ class BookingReservationMysqlSuite {
 
   @BeforeEach
   void clean() {
+    jdbcTemplate.update("DELETE FROM repair_action");
+    jdbcTemplate.update("DELETE FROM reconciliation_issue");
+    jdbcTemplate.update("DELETE FROM reconciliation_run");
+    jdbcTemplate.update("DELETE FROM booking_reconciliation_intent");
     jdbcTemplate.update("DELETE FROM booking_outbox_event");
     jdbcTemplate.update("DELETE FROM booking_idempotency");
     jdbcTemplate.update("DELETE FROM booking_reservation");
@@ -77,11 +81,12 @@ class BookingReservationMysqlSuite {
             SELECT COUNT(*) FROM flyway_schema_history
             WHERE script IN (
               'V001__init_booking_reservations.sql',
-              'V002__add_booking_outbox.sql'
+              'V002__add_booking_outbox.sql',
+              'V003__add_booking_reconciliation.sql'
             ) AND success = 1
             """,
             Integer.class);
-    assertThat(migrations).isEqualTo(2);
+    assertThat(migrations).isEqualTo(3);
 
     MvcResult created =
         mockMvc
@@ -117,6 +122,10 @@ class BookingReservationMysqlSuite {
             jdbcTemplate.queryForList(
                 "SELECT event_type FROM booking_outbox_event ORDER BY id", String.class))
         .containsExactly("BOOKING_RESERVATION_CONFIRMED", "BOOKING_RESERVATION_CANCELLED");
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT state FROM booking_reconciliation_intent ORDER BY id", String.class))
+        .containsExactly("RESOLVED", "RESOLVED");
     verify(resourceClient)
         .allocate(
             org.mockito.ArgumentMatchers.eq(2L),
@@ -160,6 +169,10 @@ class BookingReservationMysqlSuite {
       assertThat(
               jdbcTemplate.queryForObject(
                   "SELECT COUNT(*) FROM booking_outbox_event", Integer.class))
+          .isEqualTo(1);
+      assertThat(
+              jdbcTemplate.queryForObject(
+                  "SELECT COUNT(*) FROM booking_reconciliation_intent", Integer.class))
           .isEqualTo(1);
       verify(userClient).isBookingPermitted(1L);
       verify(resourceClient).allocate(2L, "allocate:" + requestId(), 1);

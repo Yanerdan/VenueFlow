@@ -6,6 +6,7 @@ import com.yanerdan.venueflow.booking.domain.BookingReservation;
 import com.yanerdan.venueflow.booking.domain.BookingStatus;
 import com.yanerdan.venueflow.booking.persistence.BookingRepository;
 import com.yanerdan.venueflow.booking.persistence.ClaimResult;
+import com.yanerdan.venueflow.booking.reconciliation.domain.ReconciliationOutcomeCode;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -36,7 +37,7 @@ public class BookingReservationService {
   public CreateResult create(String key, long userId, long slotId, int quantity) {
     validateKey(key);
     String hash = hash(userId, slotId, quantity);
-    ClaimResult claim = repository.claim(userId, key, hash);
+    ClaimResult claim = repository.claim(userId, key, hash, slotId, quantity);
     switch (claim.kind()) {
       case SUCCEEDED:
         return new CreateResult(claim.reservation(), true);
@@ -56,9 +57,20 @@ public class BookingReservationService {
       if (!userClient.isBookingPermitted(userId)) {
         throw error(BookingErrorCode.BOOKING_USER_NOT_ELIGIBLE, "User is not eligible");
       }
+    } catch (BookingException exception) {
+      repository.fail(
+          claim.requestId(), exception.getCode().name(), ReconciliationOutcomeCode.NO_ALLOCATION);
+      throw exception;
+    }
+    try {
       resourceClient.allocate(slotId, allocationId, quantity);
     } catch (BookingException exception) {
-      repository.fail(claim.requestId(), exception.getCode().name());
+      repository.fail(
+          claim.requestId(),
+          exception.getCode().name(),
+          exception.getCode() == BookingErrorCode.BOOKING_CAPACITY_UNAVAILABLE
+              ? ReconciliationOutcomeCode.NO_ALLOCATION
+              : null);
       throw exception;
     }
 
@@ -70,7 +82,8 @@ public class BookingReservationService {
       try {
         resourceClient.release(slotId, releaseId, quantity);
       } catch (BookingException compensationFailure) {
-        repository.fail(claim.requestId(), BookingErrorCode.BOOKING_COMPENSATION_REQUIRED.name());
+        repository.fail(
+            claim.requestId(), BookingErrorCode.BOOKING_COMPENSATION_REQUIRED.name(), null);
         LOGGER.error(
             "Booking compensation required. requestId={}, operationId={}, code={}",
             claim.requestId(),
@@ -82,7 +95,10 @@ public class BookingReservationService {
             "Booking compensation requires operator attention",
             compensationFailure);
       }
-      repository.fail(claim.requestId(), BookingErrorCode.BOOKING_PERSISTENCE_FAILED.name());
+      repository.fail(
+          claim.requestId(),
+          BookingErrorCode.BOOKING_PERSISTENCE_FAILED.name(),
+          ReconciliationOutcomeCode.ORPHAN_RELEASED);
       throw error(
           BookingErrorCode.BOOKING_PERSISTENCE_FAILED,
           "Booking persistence failed after allocation",
@@ -99,9 +115,10 @@ public class BookingReservationService {
   public BookingReservation cancel(String bookingNo) {
     BookingReservation reservation = get(bookingNo);
     if (reservation.status() == BookingStatus.CANCELLED) return reservation;
+    repository.prepareCancellation(reservation);
     resourceClient.release(
         reservation.slotId(), reservation.releaseOperationId(), reservation.quantity());
-    if (!repository.cancel(bookingNo, reservation.version())) {
+    if (!repository.cancelAndResolve(bookingNo, reservation.version())) {
       BookingReservation current = get(bookingNo);
       if (current.status() == BookingStatus.CANCELLED) return current;
       throw error(BookingErrorCode.BOOKING_STATE_CONFLICT, "Booking state changed concurrently");

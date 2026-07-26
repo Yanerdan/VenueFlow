@@ -179,3 +179,15 @@ Notification 自有 MySQL schema、手动 ACK、事务 inbox 去重、固定延�
 处理 C11 的确认/取消事件并生成确定性的站内通知。运行和受控重放说明见
 [Notification consumer runbook](docs/runbook/notification-consumer.md)，模块说明见
 [Notification Service README](venueflow-notification-service/README.md)。
+
+## C14 Booking capacity reconciliation
+
+Booking now persists recovery intent before Resource capacity calls and can reconcile uncertain
+allocation or cancellation outcomes with leased, bounded, opt-in work. The default reactor remains
+Docker-free; real MySQL 8.4.10 and HTTP-stub evidence runs only with:
+
+```powershell
+.\mvnw.cmd -pl venueflow-booking-service -Preconciliation-it verify
+```
+
+See the [Booking reconciliation runbook](docs/runbook/booking-capacity-reconciliation.md).

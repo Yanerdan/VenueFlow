@@ -1,0 +1,18 @@
+spring:
+  config:
+    activate:
+      on-profile: reconciliation
+
+venueflow:
+  booking:
+    reconciliation:
+      enabled: ${VENUEFLOW_RECONCILIATION_ENABLED:false}
+      batch-size: ${VENUEFLOW_RECONCILIATION_BATCH_SIZE:20}
+      lease-duration: ${VENUEFLOW_RECONCILIATION_LEASE_DURATION:PT30S}
+      scan-delay: ${VENUEFLOW_RECONCILIATION_SCAN_DELAY:PT10S}
+      max-attempts: ${VENUEFLOW_RECONCILIATION_MAX_ATTEMPTS:8}
+      initial-backoff: ${VENUEFLOW_RECONCILIATION_INITIAL_BACKOFF:PT5S}
+      max-backoff: ${VENUEFLOW_RECONCILIATION_MAX_BACKOFF:PT15M}
+      operation-lookup-timeout: ${VENUEFLOW_RECONCILIATION_LOOKUP_TIMEOUT:PT3S}
+      connect-timeout: ${VENUEFLOW_RECONCILIATION_CONNECT_TIMEOUT:PT2S}
+      request-timeout: ${VENUEFLOW_RECONCILIATION_REQUEST_TIMEOUT:PT5S}

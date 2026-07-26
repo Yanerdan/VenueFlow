@@ -117,3 +117,15 @@ git diff HEAD --check
 范围仅包含 Notification 的依赖/profile、V001、消费/事务/消息转移/管理代码、测试和
 文档，以及 C13 OpenSpec 制品；未修改 Booking 代码或既有 migration，未修改生产
 Compose，未加入邮件、通知 HTTP API、超时取消或跨服务数据库访问。
+
+## C14 implementation status
+
+- Archived change:
+  `openspec/changes/archive/2026-07-26-add-booking-capacity-reconciliation`.
+- Booking V003 adds recovery intents, runs, deduplicated issues, and immutable repair actions.
+- Allocation and cancellation paths persist recovery intent before Resource writes and resolve it
+  atomically with Booking/Outbox completion when the outcome is proven.
+- `persistence,reconciliation` provides bounded leased reconciliation, opt-in scheduling, and
+  guarded non-HTTP preview/run controls. Default startup remains infrastructure-free.
+- Unit tests and `reconciliation-it` cover MySQL 8.4.10 migration/leases plus HTTP-stub orphan
+  release and cancellation recovery. All final gates and strict OpenSpec validation passed.

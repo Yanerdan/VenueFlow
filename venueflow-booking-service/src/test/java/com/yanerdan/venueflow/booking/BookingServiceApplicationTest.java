@@ -2,6 +2,11 @@ package com.yanerdan.venueflow.booking;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.yanerdan.venueflow.booking.reconciliation.application.ReconciliationScheduler;
+import com.yanerdan.venueflow.booking.reconciliation.application.ReconciliationService;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
@@ -34,5 +39,35 @@ class BookingServiceApplicationTest {
     assertThat(applicationContext.getBeansOfType(DataSource.class)).isEmpty();
     assertThat(applicationContext.getBeansOfType(ConnectionFactory.class)).isEmpty();
     assertThat(applicationContext.getBeansOfType(RabbitTemplate.class)).isEmpty();
+    assertThat(applicationContext.getBeansOfType(ReconciliationService.class)).isEmpty();
+    assertThat(applicationContext.getBeansOfType(ReconciliationScheduler.class)).isEmpty();
+  }
+
+  @Test
+  void reconciliationMigrationContainsOnlyBookingOwnedRecoveryTables() throws IOException {
+    String migration =
+        Files.readString(
+            Path.of(
+                "src",
+                "main",
+                "resources",
+                "db",
+                "migration",
+                "V003__add_booking_reconciliation.sql"));
+
+    assertThat(migration)
+        .contains(
+            "CREATE TABLE booking_reconciliation_intent",
+            "CREATE TABLE reconciliation_run",
+            "CREATE TABLE reconciliation_issue",
+            "CREATE TABLE repair_action")
+        .doesNotContain(
+            "CREATE TABLE resource",
+            "ALTER TABLE resource",
+            "response_body",
+            "request_body",
+            "stack_trace",
+            "password",
+            "jdbc_url");
   }
 }

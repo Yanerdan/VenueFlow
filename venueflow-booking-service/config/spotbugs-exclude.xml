@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+  <!-- Spring owns these injected collaborators for the full application-context lifetime. -->
+  <Match>
+    <Class name="com.yanerdan.venueflow.booking.reconciliation.application.ReconciliationService"/>
+    <Bug pattern="EI_EXPOSE_REP2,THROWS_METHOD_THROWS_RUNTIMEEXCEPTION"/>
+  </Match>
+  <Match>
+    <Class name="com.yanerdan.venueflow.booking.reconciliation.persistence.MyBatisReconciliationIntentRepository"/>
+    <Bug pattern="EI_EXPOSE_REP2"/>
+  </Match>
+  <Match>
+    <Class name="com.yanerdan.venueflow.booking.reconciliation.persistence.ReconciliationAuditRepository"/>
+    <Bug pattern="EI_EXPOSE_REP2,OBL_UNSATISFIED_OBLIGATION_EXCEPTION_EDGE"/>
+  </Match>
+</FindBugsFilter>

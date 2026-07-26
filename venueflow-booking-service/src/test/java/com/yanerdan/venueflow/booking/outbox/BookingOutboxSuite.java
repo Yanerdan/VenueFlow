@@ -90,6 +90,10 @@ class BookingOutboxSuite {
 
   @BeforeEach
   void clean() {
+    jdbcTemplate.update("DELETE FROM repair_action");
+    jdbcTemplate.update("DELETE FROM reconciliation_issue");
+    jdbcTemplate.update("DELETE FROM reconciliation_run");
+    jdbcTemplate.update("DELETE FROM booking_reconciliation_intent");
     jdbcTemplate.update("DELETE FROM booking_outbox_event");
     jdbcTemplate.update("DELETE FROM booking_idempotency");
     jdbcTemplate.update("DELETE FROM booking_reservation");

@@ -13,6 +13,7 @@ import com.yanerdan.venueflow.booking.domain.BookingReservation;
 import com.yanerdan.venueflow.booking.domain.BookingStatus;
 import com.yanerdan.venueflow.booking.persistence.BookingRepository;
 import com.yanerdan.venueflow.booking.persistence.ClaimResult;
+import com.yanerdan.venueflow.booking.reconciliation.domain.ReconciliationOutcomeCode;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,7 +36,7 @@ class BookingReservationServiceTest {
 
   @Test
   void createsOnceAndReturnsSucceededReplayWithoutCollaboratorCalls() {
-    when(repository.claim(1L, KEY, hash())).thenReturn(owner());
+    when(repository.claim(1L, KEY, hash(), 2L, 1)).thenReturn(owner());
     when(userClient.isBookingPermitted(1L)).thenReturn(true);
     when(repository.complete("request-1", 1L, 2L, 1, "allocate:request-1", "release:request-1"))
         .thenReturn(reservation(BookingStatus.CONFIRMED));
@@ -43,7 +44,7 @@ class BookingReservationServiceTest {
     assertThat(service.create(KEY, 1L, 2L, 1).replay()).isFalse();
     verify(resourceClient).allocate(2L, "allocate:request-1", 1);
 
-    when(repository.claim(1L, KEY, hash()))
+    when(repository.claim(1L, KEY, hash(), 2L, 1))
         .thenReturn(
             new ClaimResult(
                 ClaimResult.Kind.SUCCEEDED,
@@ -55,7 +56,7 @@ class BookingReservationServiceTest {
 
   @Test
   void rejectsConflictBeforeCollaboratorCalls() {
-    when(repository.claim(1L, KEY, hash()))
+    when(repository.claim(1L, KEY, hash(), 2L, 1))
         .thenReturn(new ClaimResult(ClaimResult.Kind.CONFLICT, null, null, null));
 
     assertThatThrownBy(() -> service.create(KEY, 1L, 2L, 1))
@@ -69,7 +70,7 @@ class BookingReservationServiceTest {
 
   @Test
   void compensatesWhenFinalPersistenceFails() {
-    when(repository.claim(1L, KEY, hash())).thenReturn(owner());
+    when(repository.claim(1L, KEY, hash(), 2L, 1)).thenReturn(owner());
     when(userClient.isBookingPermitted(1L)).thenReturn(true);
     when(repository.complete("request-1", 1L, 2L, 1, "allocate:request-1", "release:request-1"))
         .thenThrow(new IllegalStateException("database unavailable"));
@@ -81,11 +82,16 @@ class BookingReservationServiceTest {
                 assertThat(exception.getCode())
                     .isEqualTo(BookingErrorCode.BOOKING_PERSISTENCE_FAILED));
     verify(resourceClient).release(2L, "release:request-1", 1);
+    verify(repository)
+        .fail(
+            "request-1",
+            BookingErrorCode.BOOKING_PERSISTENCE_FAILED.name(),
+            ReconciliationOutcomeCode.ORPHAN_RELEASED);
   }
 
   @Test
   void reportsCompensationRequiredWhenReleaseFails() {
-    when(repository.claim(1L, KEY, hash())).thenReturn(owner());
+    when(repository.claim(1L, KEY, hash(), 2L, 1)).thenReturn(owner());
     when(userClient.isBookingPermitted(1L)).thenReturn(true);
     when(repository.complete("request-1", 1L, 2L, 1, "allocate:request-1", "release:request-1"))
         .thenThrow(new IllegalStateException("database unavailable"));
@@ -109,9 +115,10 @@ class BookingReservationServiceTest {
     when(repository.find("booking-1"))
         .thenReturn(confirmed)
         .thenReturn(reservation(BookingStatus.CANCELLED));
-    when(repository.cancel("booking-1", 0L)).thenReturn(true);
+    when(repository.cancelAndResolve("booking-1", 0L)).thenReturn(true);
 
     assertThat(service.cancel("booking-1").status()).isEqualTo(BookingStatus.CANCELLED);
+    verify(repository).prepareCancellation(confirmed);
     verify(resourceClient).release(2L, "release:request-1", 1);
   }
 

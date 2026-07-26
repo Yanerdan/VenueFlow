@@ -45,3 +45,17 @@ Booking 只声明持久 topic exchange `venueflow.events.v1`，队列和绑定�
 
 启停、检查、DEAD 事件重排及故障处理见
 [Booking Outbox Runbook](../docs/runbook/booking-outbox.md)。
+
+## C14 Booking capacity reconciliation
+
+`persistence,reconciliation` adds an opt-in leased worker for durable allocation/cancellation
+recovery intents. Scheduling remains off unless `VENUEFLOW_RECONCILIATION_ENABLED=true`.
+Operator `PREVIEW` is read-only; `RUN` requires a bounded reason and explicit confirmation.
+
+```powershell
+.\mvnw.cmd -pl venueflow-booking-service test
+.\mvnw.cmd -pl venueflow-booking-service -Preconciliation-it verify
+```
+
+Configuration, issue handling, shutdown, and rollback are documented in the
+[Booking reconciliation runbook](../docs/runbook/booking-capacity-reconciliation.md).

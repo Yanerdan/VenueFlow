@@ -91,6 +91,13 @@
   <build>
     <plugins>
       <plugin>
+        <groupId>com.github.spotbugs</groupId>
+        <artifactId>spotbugs-maven-plugin</artifactId>
+        <configuration>
+          <excludeFilterFile>${project.basedir}/config/spotbugs-exclude.xml</excludeFilterFile>
+        </configuration>
+      </plugin>
+      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-enforcer-plugin</artifactId>
         <executions>
@@ -235,6 +242,42 @@
                     <include>**/*OutboxSuite.java</include>
                   </includes>
                   <failIfNoTests>true</failIfNoTests>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>reconciliation-it</id>
+
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>3.5.6</version>
+
+            <executions>
+              <execution>
+                <id>reconciliation-integration-tests</id>
+
+                <goals>
+                  <goal>integration-test</goal>
+                  <goal>verify</goal>
+                </goals>
+
+                <configuration>
+                  <includes>
+                    <include>**/*ReconciliationSuite.java</include>
+                  </includes>
+
+                  <failIfNoTests>true</failIfNoTests>
+
+                  <systemPropertyVariables>
+                    <venueflow.reconciliation.it>true</venueflow.reconciliation.it>
+                  </systemPropertyVariables>
                 </configuration>
               </execution>
             </executions>
