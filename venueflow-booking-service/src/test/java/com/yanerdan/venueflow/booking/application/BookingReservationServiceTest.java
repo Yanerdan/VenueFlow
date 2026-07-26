@@ -3,6 +3,7 @@ package com.yanerdan.venueflow.booking.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -16,7 +17,11 @@ import com.yanerdan.venueflow.booking.domain.BookingStatus;
 import com.yanerdan.venueflow.booking.persistence.BookingRepository;
 import com.yanerdan.venueflow.booking.persistence.ClaimResult;
 import com.yanerdan.venueflow.booking.reconciliation.domain.ReconciliationOutcomeCode;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -143,6 +148,103 @@ class BookingReservationServiceTest {
     assertThat(service.cancel("booking-1").status()).isEqualTo(BookingStatus.CANCELLED);
     verify(repository).prepareCancellation(confirmed);
     verify(resourceClient).release(2L, "release:request-1", 1);
+  }
+
+  @Test
+  void checkInCompletesInsideWindowAndReplaysWithoutAnotherLookup() {
+    Instant now = Instant.parse("2026-07-26T10:00:00Z");
+    service =
+        new BookingReservationService(
+            repository,
+            userClient,
+            resourceClient,
+            Duration.ofMinutes(15),
+            Duration.ofMinutes(30),
+            Duration.ofMinutes(30),
+            Clock.fixed(now, ZoneOffset.UTC));
+    BookingReservation confirmed = reservation(BookingStatus.CONFIRMED);
+    BookingReservation completed = reservation(BookingStatus.COMPLETED);
+    when(repository.find("booking-1")).thenReturn(confirmed).thenReturn(completed);
+    when(resourceClient.findSlot(2L))
+        .thenReturn(
+            new ResourceCapacityClient.ResourceSlot(2L, now.minusSeconds(60), now.plusSeconds(60)));
+    when(repository.completeCheckIn("booking-1", 0L, LocalDateTime.ofInstant(now, ZoneOffset.UTC)))
+        .thenReturn(true);
+
+    assertThat(service.checkIn("booking-1").status()).isEqualTo(BookingStatus.COMPLETED);
+    assertThat(service.checkIn("booking-1").status()).isEqualTo(BookingStatus.COMPLETED);
+    verify(resourceClient).findSlot(2L);
+  }
+
+  @Test
+  void checkInOutsideWindowDoesNotWrite() {
+    Instant now = Instant.parse("2026-07-26T10:00:00Z");
+    service =
+        new BookingReservationService(
+            repository,
+            userClient,
+            resourceClient,
+            Duration.ofMinutes(15),
+            Duration.ZERO,
+            Duration.ZERO,
+            Clock.fixed(now, ZoneOffset.UTC));
+    when(repository.find("booking-1")).thenReturn(reservation(BookingStatus.CONFIRMED));
+    when(resourceClient.findSlot(2L))
+        .thenReturn(
+            new ResourceCapacityClient.ResourceSlot(2L, now.plusSeconds(60), now.plusSeconds(120)));
+
+    assertThatThrownBy(() -> service.checkIn("booking-1"))
+        .isInstanceOfSatisfying(
+            BookingException.class,
+            exception ->
+                assertThat(exception.getCode())
+                    .isEqualTo(BookingErrorCode.BOOKING_CHECK_IN_WINDOW_INVALID));
+    verify(repository, never())
+        .completeCheckIn(anyString(), org.mockito.ArgumentMatchers.anyLong(), any());
+  }
+
+  @Test
+  void cancellationAndCheckInHaveOneWinner() {
+    Instant now = Instant.parse("2026-07-26T10:00:00Z");
+    service =
+        new BookingReservationService(
+            repository,
+            userClient,
+            resourceClient,
+            Duration.ofMinutes(15),
+            Duration.ofMinutes(30),
+            Duration.ofMinutes(30),
+            Clock.fixed(now, ZoneOffset.UTC));
+    when(repository.find("booking-1"))
+        .thenReturn(reservation(BookingStatus.CONFIRMED))
+        .thenReturn(reservation(BookingStatus.CANCELLED));
+    when(resourceClient.findSlot(2L))
+        .thenReturn(
+            new ResourceCapacityClient.ResourceSlot(2L, now.minusSeconds(60), now.plusSeconds(60)));
+    when(repository.completeCheckIn("booking-1", 0L, LocalDateTime.ofInstant(now, ZoneOffset.UTC)))
+        .thenReturn(false);
+
+    assertThatThrownBy(() -> service.checkIn("booking-1"))
+        .isInstanceOfSatisfying(
+            BookingException.class,
+            exception ->
+                assertThat(exception.getCode()).isEqualTo(BookingErrorCode.BOOKING_STATE_CONFLICT));
+  }
+
+  @Test
+  void completedReservationCannotReleaseCapacityThroughCancellation() {
+    when(repository.find("booking-1")).thenReturn(reservation(BookingStatus.COMPLETED));
+
+    assertThatThrownBy(() -> service.cancel("booking-1"))
+        .isInstanceOfSatisfying(
+            BookingException.class,
+            exception ->
+                assertThat(exception.getCode()).isEqualTo(BookingErrorCode.BOOKING_STATE_CONFLICT));
+    verify(resourceClient, never())
+        .release(
+            org.mockito.ArgumentMatchers.anyLong(),
+            anyString(),
+            org.mockito.ArgumentMatchers.anyInt());
   }
 
   private static ClaimResult owner() {

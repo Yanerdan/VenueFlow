@@ -10,8 +10,11 @@ import com.yanerdan.venueflow.booking.reconciliation.domain.ReconciliationOutcom
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.HexFormat;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -29,24 +32,57 @@ public class BookingReservationService {
   private final UserEligibilityClient userClient;
   private final ResourceCapacityClient resourceClient;
   private final Duration confirmationWindow;
+  private final Duration checkInEarlyWindow;
+  private final Duration checkInLateWindow;
+  private final Clock clock;
 
   @Autowired
   public BookingReservationService(
       BookingRepository repository,
       UserEligibilityClient userClient,
       ResourceCapacityClient resourceClient,
-      @Value("${venueflow.booking.confirmation-window:PT15M}") Duration confirmationWindow) {
+      @Value("${venueflow.booking.confirmation-window:PT15M}") Duration confirmationWindow,
+      @Value("${venueflow.booking.check-in-early-window:PT30M}") Duration checkInEarlyWindow,
+      @Value("${venueflow.booking.check-in-late-window:PT30M}") Duration checkInLateWindow) {
+    this(
+        repository,
+        userClient,
+        resourceClient,
+        confirmationWindow,
+        checkInEarlyWindow,
+        checkInLateWindow,
+        Clock.systemUTC());
+  }
+
+  BookingReservationService(
+      BookingRepository repository,
+      UserEligibilityClient userClient,
+      ResourceCapacityClient resourceClient,
+      Duration confirmationWindow,
+      Duration checkInEarlyWindow,
+      Duration checkInLateWindow,
+      Clock clock) {
     this.repository = repository;
     this.userClient = userClient;
     this.resourceClient = resourceClient;
     this.confirmationWindow = confirmationWindow;
+    this.checkInEarlyWindow = boundedWindow(checkInEarlyWindow, "check-in early window");
+    this.checkInLateWindow = boundedWindow(checkInLateWindow, "check-in late window");
+    this.clock = clock;
   }
 
   BookingReservationService(
       BookingRepository repository,
       UserEligibilityClient userClient,
       ResourceCapacityClient resourceClient) {
-    this(repository, userClient, resourceClient, Duration.ofMinutes(15));
+    this(
+        repository,
+        userClient,
+        resourceClient,
+        Duration.ofMinutes(15),
+        Duration.ofMinutes(30),
+        Duration.ofMinutes(30),
+        Clock.systemUTC());
   }
 
   public CreateResult create(String key, long userId, long slotId, int quantity) {
@@ -137,8 +173,9 @@ public class BookingReservationService {
   public BookingReservation cancel(String bookingNo) {
     BookingReservation reservation = get(bookingNo);
     if (reservation.status() == BookingStatus.CANCELLED) return reservation;
-    if (reservation.status() == BookingStatus.EXPIRED) {
-      throw error(BookingErrorCode.BOOKING_STATE_CONFLICT, "Expired booking is terminal");
+    if (reservation.status() != BookingStatus.PENDING_CONFIRMATION
+        && reservation.status() != BookingStatus.CONFIRMED) {
+      throw error(BookingErrorCode.BOOKING_STATE_CONFLICT, "Booking is terminal");
     }
     if (repository.hasLiveTimeoutLease(bookingNo)) {
       throw error(BookingErrorCode.BOOKING_TIMEOUT_IN_PROGRESS, "Timeout owns this reservation");
@@ -177,6 +214,37 @@ public class BookingReservationService {
           "Booking confirmation deadline expired");
     }
     throw error(BookingErrorCode.BOOKING_STATE_CONFLICT, "Booking state changed concurrently");
+  }
+
+  public BookingReservation checkIn(String bookingNo) {
+    BookingReservation current = get(bookingNo);
+    if (current.status() == BookingStatus.COMPLETED) return current;
+    if (current.status() != BookingStatus.CONFIRMED) {
+      throw error(BookingErrorCode.BOOKING_STATE_CONFLICT, "Booking cannot be checked in");
+    }
+    ResourceCapacityClient.ResourceSlot slot = resourceClient.findSlot(current.slotId());
+    Instant now = clock.instant();
+    Instant opensAt = slot.startAt().minus(checkInEarlyWindow);
+    Instant closesAt = slot.endAt().plus(checkInLateWindow);
+    if (now.isBefore(opensAt) || now.isAfter(closesAt)) {
+      throw error(
+          BookingErrorCode.BOOKING_CHECK_IN_WINDOW_INVALID,
+          "Booking is outside the check-in window");
+    }
+    LocalDateTime completedAt = LocalDateTime.ofInstant(now, ZoneOffset.UTC);
+    if (repository.completeCheckIn(bookingNo, current.version(), completedAt)) {
+      return get(bookingNo);
+    }
+    BookingReservation latest = get(bookingNo);
+    if (latest.status() == BookingStatus.COMPLETED) return latest;
+    throw error(BookingErrorCode.BOOKING_STATE_CONFLICT, "Booking state changed concurrently");
+  }
+
+  private static Duration boundedWindow(Duration value, String name) {
+    if (value == null || value.isNegative() || value.compareTo(Duration.ofHours(24)) > 0) {
+      throw new IllegalArgumentException(name + " must be between PT0S and PT24H");
+    }
+    return value;
   }
 
   private static void validateKey(String key) {

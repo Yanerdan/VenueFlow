@@ -312,5 +312,32 @@
         </plugins>
       </build>
     </profile>
+    <profile>
+      <id>checkin-it</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>3.5.6</version>
+            <executions>
+              <execution>
+                <id>check-in-integration-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                  <goal>verify</goal>
+                </goals>
+                <configuration>
+                  <includes>
+                    <include>**/*CheckInSuite.java</include>
+                  </includes>
+                  <failIfNoTests>true</failIfNoTests>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
   </profiles>
 </project>

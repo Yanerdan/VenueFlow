@@ -172,16 +172,18 @@ process termination after release MUST be able to complete through reconciliatio
 
 ### Requirement: Booking APIs use bounded DTOs and stable envelopes
 
-Booking Service SHALL provide DTO-only create, booking-number retrieval, confirmation, and
-cancellation APIs. Controllers MUST NOT accept or return persistence Entities or invoke Mappers.
+Booking Service SHALL provide DTO-only create, booking-number retrieval, confirmation,
+cancellation, and check-in APIs. Controllers MUST NOT accept or return persistence Entities or
+invoke Mappers.
 Successful responses MUST use `code`, `message`, `data`, and `traceId`; failures MUST use only
 `code`, `message`, `details`, `traceId`, and `timestamp`. DTO status MUST support
-`PENDING_CONFIRMATION`, `CONFIRMED`, `CANCELLED`, and `EXPIRED`, and pending responses MUST expose
-the bounded server-owned expiration time.
+`PENDING_CONFIRMATION`, `CONFIRMED`, `CANCELLED`, `EXPIRED`, and `COMPLETED`; pending responses
+MUST expose the bounded server-owned expiration time and completed responses MUST expose the UTC
+completion time.
 
 Validation, idempotency conflict, in-progress, not found, eligibility, capacity, downstream,
-unknown outcome, persistence, compensation, deadline, timeout ownership, and state failures MUST
-have distinct stable codes and appropriate non-200 HTTP statuses.
+unknown outcome, persistence, compensation, deadline, timeout ownership, check-in window, and
+state failures MUST have distinct stable codes and appropriate non-200 HTTP statuses.
 
 #### Scenario: A caller retrieves a reservation safely
 
@@ -194,6 +196,12 @@ have distinct stable codes and appropriate non-200 HTTP statuses.
 - **WHEN** creation or retrieval returns `PENDING_CONFIRMATION`
 - **THEN** the DTO includes its exact server-owned expiration time
 - **AND** it exposes no timeout lease or internal retry fact
+
+#### Scenario: A completed reservation is returned
+
+- **WHEN** check-in or retrieval returns `COMPLETED`
+- **THEN** the DTO includes its exact UTC completion time
+- **AND** it exposes no collaborator response or internal audit fact
 
 ### Requirement: Reservation verification remains Docker-free by default
 
@@ -229,15 +237,14 @@ User remains the eligibility source of truth, and Booking owns only reservation 
 ### Requirement: Effective reservation state changes append one Outbox event atomically
 
 Booking Service SHALL append one immutable Outbox event in the same local transaction that wins
-the effective transition to `CONFIRMED`, `CANCELLED`, or `EXPIRED`. Pending reservation creation
-MUST append no state event. The event MUST describe the committed state. HTTP replay, a losing
-concurrent confirmation/cancellation/expiration, or a failed local transaction MUST NOT append
-another effective business event.
+the effective transition to `CONFIRMED`, `CANCELLED`, `EXPIRED`, or `COMPLETED`. Pending
+reservation creation MUST append no state event. The event MUST describe the committed state.
+HTTP replay, a losing concurrent confirmation/cancellation/expiration/completion, or a failed
+local transaction MUST NOT append another effective business event.
 
 No RabbitMQ call, collaborator HTTP call, confirm wait, retry delay, or other network operation
 MAY occur inside the reservation transaction. Failure to append the required Outbox event MUST
-roll back the associated Booking transaction and follow the established compensation/state
-handling.
+roll back the associated Booking transition and follow the established recovery handling.
 
 #### Scenario: Reservation confirmation commits
 
@@ -262,3 +269,9 @@ handling.
 - **WHEN** one timeout worker wins the conditional transition to `EXPIRED`
 - **THEN** the same transaction persists one expiration Outbox event
 - **AND** a losing confirmation, cancellation, or timeout worker inserts no event
+
+#### Scenario: Completion transition wins
+
+- **WHEN** one eligible check-in wins the conditional transition to `COMPLETED`
+- **THEN** the same transaction persists one completion Outbox event
+- **AND** a losing cancellation or replayed check-in inserts no event

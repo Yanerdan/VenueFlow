@@ -43,6 +43,17 @@ class OutboxEventFactoryTest {
     assertThat(event.payload()).contains("\"status\":\"CANCELLED\"");
   }
 
+  @Test
+  void createsVersionedCompletedEnvelope() {
+    OutboxEvent event =
+        new OutboxEventFactory(new ObjectMapper(), Clock.fixed(NOW, ZoneOffset.UTC))
+            .create(booking(BookingStatus.COMPLETED));
+
+    assertThat(event.eventType()).isEqualTo("BOOKING_RESERVATION_COMPLETED");
+    assertThat(event.routingKey()).isEqualTo("booking.reservation.completed.v1");
+    assertThat(event.payload()).contains("\"status\":\"COMPLETED\"");
+  }
+
   private static BookingReservation booking(BookingStatus status) {
     return new BookingReservation(
         99L,

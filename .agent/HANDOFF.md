@@ -142,3 +142,16 @@ Compose，未加入邮件、通知 HTTP API、超时取消或跨服务数据库�
   operation before atomically committing `EXPIRED` and its event.
 - Notification accepts the exact expiration route and derives an inbox-idempotent in-app
   expiration notification.
+
+## C16 implementation status
+
+- Archived change:
+  `openspec/changes/archive/2026-07-26-add-booking-check-in-completion`.
+- Booking V005 adds `COMPLETED` and `completed_at` without changing V001-V004.
+- `POST /api/v1/bookings/{bookingNo}/check-in` validates the existing Resource slot time and a
+  bounded early/late window before an atomic completion, status audit, and Outbox event.
+- Completed replay performs no collaborator call or duplicate write; cancellation and completion
+  share the conditional status/version winner boundary.
+- Notification V003 admits the exact completion event and reuses inbox-idempotent consumption.
+- All unit, static, MySQL, check-in, Outbox, consumer, dependency, scope, secret, diff, and strict
+  OpenSpec gates passed.

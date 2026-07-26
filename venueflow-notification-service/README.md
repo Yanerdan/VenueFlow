@@ -1,7 +1,7 @@
 # VenueFlow Notification Service
 
-`venueflow-notification-service` consumes Booking confirmation, cancellation, and expiration
-events and creates deterministic in-app notification records.
+`venueflow-notification-service` consumes Booking confirmation, cancellation, expiration, and
+completion events and creates deterministic in-app notification records.
 
 ## Default startup
 
@@ -37,9 +37,9 @@ java -jar venueflow-notification-service\target\venueflow-notification-service-0
 ```
 
 Flyway V001 creates the consumed-event inbox, in-app notification record, and bounded
-failure-audit tables. The listener accepts only the exact C11 confirmed/cancelled
-envelopes, commits inbox and notification facts in one transaction, and then manually
-ACKs. Exact duplicate delivery is harmless.
+failure-audit tables; V002/V003 add expiration/completion notification types. The listener
+accepts only the exact versioned Booking lifecycle envelopes, commits inbox and notification
+facts in one transaction, and then manually ACKs. Exact duplicate delivery is harmless.
 
 The consumer declares a fixed-delay retry queue and a terminal DLQ. Transfers use
 persistent messages, mandatory routing, and Publisher Confirm/Return; an uncertain

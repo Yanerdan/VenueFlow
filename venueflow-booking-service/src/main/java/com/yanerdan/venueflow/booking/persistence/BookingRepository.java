@@ -202,6 +202,33 @@ public class BookingRepository {
     return confirmed.toDomain();
   }
 
+  @Transactional
+  public boolean completeCheckIn(
+      String bookingNo, long expectedVersion, LocalDateTime completedAt) {
+    int updated =
+        reservationMapper.update(
+            null,
+            new LambdaUpdateWrapper<BookingReservationEntity>()
+                .eq(BookingReservationEntity::getBookingNo, bookingNo)
+                .eq(BookingReservationEntity::getStatus, BookingStatus.CONFIRMED)
+                .eq(BookingReservationEntity::getVersion, expectedVersion)
+                .set(BookingReservationEntity::getStatus, BookingStatus.COMPLETED)
+                .set(BookingReservationEntity::getCompletedAt, completedAt)
+                .set(BookingReservationEntity::getUpdatedAt, completedAt)
+                .setSql("version = version + 1"));
+    if (updated != 1) return false;
+    BookingReservationEntity completed = findEntity(bookingNo);
+    statusLogMapper.insertLog(
+        completed.getId(),
+        BookingStatus.CONFIRMED.name(),
+        BookingStatus.COMPLETED.name(),
+        "CHECK_IN",
+        null,
+        completedAt);
+    outboxMapper.insert(OutboxEventEntity.from(outboxFactory.create(completed.toDomain())));
+    return true;
+  }
+
   @Transactional(readOnly = true)
   public boolean hasLiveTimeoutLease(String bookingNo) {
     BookingReservationEntity entity = findEntity(bookingNo);

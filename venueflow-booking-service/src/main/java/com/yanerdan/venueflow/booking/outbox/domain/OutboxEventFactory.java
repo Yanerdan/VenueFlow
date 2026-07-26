@@ -36,6 +36,7 @@ public class OutboxEventFactory {
           case CONFIRMED -> "confirmed";
           case CANCELLED -> "cancelled";
           case EXPIRED -> "expired";
+          case COMPLETED -> "completed";
           case PENDING_CONFIRMATION ->
               throw new IllegalArgumentException("Pending reservation has no outbox event");
         };

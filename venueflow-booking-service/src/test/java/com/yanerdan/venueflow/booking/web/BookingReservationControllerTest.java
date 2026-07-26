@@ -61,7 +61,23 @@ class BookingReservationControllerTest {
             jsonPath("$.code").value("BOOKING_VALIDATION_FAILED"));
   }
 
+  @Test
+  void checksInThroughBoundedDtoEndpoint() throws Exception {
+    when(service.checkIn("booking-1")).thenReturn(reservation(BookingStatus.COMPLETED));
+
+    mockMvc
+        .perform(post("/api/v1/bookings/{bookingNo}/check-in", "booking-1"))
+        .andExpectAll(
+            status().isOk(),
+            jsonPath("$.data.bookingNo").value("booking-1"),
+            jsonPath("$.data.status").value("COMPLETED"));
+  }
+
   private static BookingReservation reservation() {
+    return reservation(BookingStatus.CONFIRMED);
+  }
+
+  private static BookingReservation reservation(BookingStatus status) {
     LocalDateTime now = LocalDateTime.of(2026, 7, 23, 12, 0);
     return new BookingReservation(
         1L,
@@ -70,7 +86,7 @@ class BookingReservationControllerTest {
         1L,
         2L,
         1,
-        BookingStatus.CONFIRMED,
+        status,
         "allocate:request-1",
         "release:request-1",
         0L,

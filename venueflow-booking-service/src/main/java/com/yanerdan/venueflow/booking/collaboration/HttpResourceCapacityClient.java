@@ -10,6 +10,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
@@ -26,12 +27,11 @@ public class HttpResourceCapacityClient implements ResourceCapacityClient {
   private final int lookupAttempts;
 
   public HttpResourceCapacityClient(
-      ObjectMapper objectMapper,
       @Value("${venueflow.collaborators.resource-base-url}") String baseUrl,
       @Value("${venueflow.collaborators.connect-timeout-ms:1000}") long connectTimeoutMs,
       @Value("${venueflow.collaborators.request-timeout-ms:2000}") long requestTimeoutMs,
       @Value("${venueflow.collaborators.lookup-attempts:2}") int lookupAttempts) {
-    this.objectMapper = objectMapper.copy();
+    this.objectMapper = new ObjectMapper();
     this.baseUrl = baseUrl;
     this.client =
         HttpClient.newBuilder().connectTimeout(Duration.ofMillis(connectTimeoutMs)).build();
@@ -110,6 +110,36 @@ public class HttpResourceCapacityClient implements ResourceCapacityClient {
     }
   }
 
+  @Override
+  public ResourceSlot findSlot(long slotId) {
+    try {
+      HttpRequest request =
+          HttpRequest.newBuilder(URI.create(baseUrl + "/api/v1/resource-slots/" + slotId))
+              .timeout(requestTimeout)
+              .GET()
+              .build();
+      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      if (response.statusCode() != 200) throw unavailable(null);
+      com.fasterxml.jackson.databind.JsonNode body = objectMapper.readTree(response.body());
+      long returnedId = body.path("id").asLong(-1L);
+      String startAt = body.path("startAt").asText(null);
+      String endAt = body.path("endAt").asText(null);
+      if (returnedId != slotId || startAt == null || endAt == null) {
+        throw invalidSlot();
+      }
+      return new ResourceSlot(returnedId, Instant.parse(startAt), Instant.parse(endAt));
+    } catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
+      throw unavailable(exception);
+    } catch (BookingException exception) {
+      throw exception;
+    } catch (IllegalArgumentException exception) {
+      throw invalidSlot();
+    } catch (Exception exception) {
+      throw unavailable(exception);
+    }
+  }
+
   private void write(long slotId, String action, String operationId, int quantity)
       throws IOException, InterruptedException {
     String body = objectMapper.writeValueAsString(new CapacityChange(operationId, quantity));
@@ -134,6 +164,11 @@ public class HttpResourceCapacityClient implements ResourceCapacityClient {
         BookingErrorCode.BOOKING_DOWNSTREAM_UNAVAILABLE,
         "Resource capacity service is unavailable",
         cause);
+  }
+
+  private static BookingException invalidSlot() {
+    return new BookingException(
+        BookingErrorCode.BOOKING_RESOURCE_CONTRACT_INVALID, "Resource slot response is invalid");
   }
 
   private record CapacityChange(String operationId, int quantity) {}

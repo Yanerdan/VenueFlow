@@ -60,8 +60,7 @@ class HttpCollaboratorClientTest {
                 "{\"operationId\":\"allocate-request-1\",\"operationType\":\"ALLOCATE\",\"quantity\":1}"));
     server.start();
 
-    HttpResourceCapacityClient client =
-        new HttpResourceCapacityClient(new ObjectMapper(), baseUrl(), 200, 50, 1);
+    HttpResourceCapacityClient client = new HttpResourceCapacityClient(baseUrl(), 200, 50, 1);
     client.allocate(2L, "allocate-request-1", 1);
 
     assertThat(allocations).hasValue(1);

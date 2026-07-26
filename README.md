@@ -176,7 +176,7 @@ java -jar venueflow-notification-service\target\venueflow-notification-service-0
 
 如端口冲突，可用 `SERVER_PORT` 覆盖。显式启用 `persistence,messaging` 后，C13 使用
 Notification 自有 MySQL schema、手动 ACK、事务 inbox 去重、固定延迟重试和 DLQ，
-处理 C11 的确认/取消事件并生成确定性的站内通知。运行和受控重放说明见
+处理确认、取消、过期和完成事件并生成确定性的站内通知。运行和受控重放说明见
 [Notification consumer runbook](docs/runbook/notification-consumer.md)，模块说明见
 [Notification Service README](venueflow-notification-service/README.md)。
 
@@ -199,3 +199,11 @@ publishes the confirmation event; an opt-in leased expiration worker proves Reso
 committing `EXPIRED`. Notification consumes the additive expiration event through its existing
 inbox/retry/DLQ path. Operations and rollout are documented in the
 [expiration runbook](docs/runbook/booking-timeout-expiration.md).
+
+## C16 Booking check-in completion
+
+An eligible confirmed reservation can be checked in with
+`POST /api/v1/bookings/{bookingNo}/check-in`. Booking reads the existing Resource slot time,
+enforces bounded early/late windows, and atomically commits `COMPLETED`, status audit, and one
+completion Outbox event. Notification consumes the completion event idempotently. See the
+[check-in runbook](docs/runbook/booking-check-in-completion.md).

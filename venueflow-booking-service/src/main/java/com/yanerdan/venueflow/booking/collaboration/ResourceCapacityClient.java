@@ -1,5 +1,6 @@
 package com.yanerdan.venueflow.booking.collaboration;
 
+import java.time.Instant;
 import java.util.Optional;
 
 public interface ResourceCapacityClient {
@@ -9,5 +10,15 @@ public interface ResourceCapacityClient {
 
   Optional<ResourceOperation> findOperation(long slotId, String operationId);
 
+  ResourceSlot findSlot(long slotId);
+
   record ResourceOperation(String operationId, String operationType, int quantity) {}
+
+  record ResourceSlot(long slotId, Instant startAt, Instant endAt) {
+    public ResourceSlot {
+      if (slotId <= 0 || startAt == null || endAt == null || !endAt.isAfter(startAt)) {
+        throw new IllegalArgumentException("Resource slot facts are invalid");
+      }
+    }
+  }
 }

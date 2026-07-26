@@ -15,10 +15,13 @@ public final class BookingEventDecoder {
   public static final String CONFIRMED_ROUTE = "booking.reservation.confirmed.v1";
   public static final String CANCELLED_ROUTE = "booking.reservation.cancelled.v1";
   public static final String EXPIRED_ROUTE = "booking.reservation.expired.v1";
+  public static final String COMPLETED_ROUTE = "booking.reservation.completed.v1";
   private static final String CONFIRMED_TYPE = "booking.reservation.confirmed";
   private static final String CANCELLED_TYPE = "booking.reservation.cancelled";
   private static final String EXPIRED_TYPE = "booking.reservation.expired";
-  private static final Set<String> ROUTES = Set.of(CONFIRMED_ROUTE, CANCELLED_ROUTE, EXPIRED_ROUTE);
+  private static final String COMPLETED_TYPE = "booking.reservation.completed";
+  private static final Set<String> ROUTES =
+      Set.of(CONFIRMED_ROUTE, CANCELLED_ROUTE, EXPIRED_ROUTE, COMPLETED_ROUTE);
   private static final String PRODUCER = "venueflow-booking-service";
   private final ObjectMapper objectMapper;
   private final int maximumBytes;
@@ -133,9 +136,12 @@ public final class BookingEventDecoder {
     } else if (CANCELLED_ROUTE.equals(routingKey)) {
       expectedType = CANCELLED_TYPE;
       expectedStatus = "CANCELLED";
-    } else {
+    } else if (EXPIRED_ROUTE.equals(routingKey)) {
       expectedType = EXPIRED_TYPE;
       expectedStatus = "EXPIRED";
+    } else {
+      expectedType = COMPLETED_TYPE;
+      expectedStatus = "COMPLETED";
     }
     if (eventVersion != 1
         || !expectedType.equals(eventType)

@@ -128,7 +128,8 @@ public class ReconciliationService {
     BookingReservation booking = bookings.findByRequestId(intent.requestId());
     if (booking != null
         && (booking.status() == BookingStatus.PENDING_CONFIRMATION
-            || booking.status() == BookingStatus.CONFIRMED)) {
+            || booking.status() == BookingStatus.CONFIRMED
+            || booking.status() == BookingStatus.COMPLETED)) {
       resolve(intent, owner, ReconciliationOutcomeCode.ALREADY_CONSISTENT, summary, false);
       return;
     }

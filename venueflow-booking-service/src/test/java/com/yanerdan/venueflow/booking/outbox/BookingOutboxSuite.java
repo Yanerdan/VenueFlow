@@ -208,6 +208,37 @@ class BookingOutboxSuite {
         .contains("\"status\":\"EXPIRED\"");
   }
 
+  @Test
+  void publishesRoutedPersistentCompletionEvent() {
+    LocalDateTime now = LocalDateTime.now();
+    eventMapper.insert(
+        OutboxEventEntity.from(
+            eventFactory.create(
+                new BookingReservation(
+                    1L,
+                    "completed-booking",
+                    "completed-request",
+                    1L,
+                    2L,
+                    1,
+                    BookingStatus.COMPLETED,
+                    "allocate:completed-request",
+                    "release:completed-request",
+                    1L,
+                    now,
+                    now,
+                    null,
+                    now))));
+
+    assertThat(scanner.scanOnce()).isEqualTo(1);
+    Message message = rabbitTemplate.receive(QUEUE, Duration.ofSeconds(3).toMillis());
+    assertThat(message).isNotNull();
+    assertThat(message.getMessageProperties().getReceivedRoutingKey())
+        .isEqualTo("booking.reservation.completed.v1");
+    assertThat(new String(message.getBody(), java.nio.charset.StandardCharsets.UTF_8))
+        .contains("\"status\":\"COMPLETED\"");
+  }
+
   private void createBooking(String key) throws Exception {
     String response =
         mockMvc

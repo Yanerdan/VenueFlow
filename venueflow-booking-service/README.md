@@ -24,10 +24,12 @@ VENUEFLOW_RESOURCE_SERVICE_BASE_URL
 VENUEFLOW_COLLABORATOR_CONNECT_TIMEOUT_MS
 VENUEFLOW_COLLABORATOR_REQUEST_TIMEOUT_MS
 VENUEFLOW_RESOURCE_LOOKUP_ATTEMPTS
+VENUEFLOW_CHECK_IN_EARLY_WINDOW
+VENUEFLOW_CHECK_IN_LATE_WINDOW
 ```
 
 创建预约使用 `Idempotency-Key` Header。Resource 写请求不会自动重试；分配响应超时后按
-operationId 查询结果。当前版本只有 `CONFIRMED -> CANCELLED`，不包含认证、消息或超时任务。
+operationId 查询结果。当前生命周期支持待确认、确认、取消、过期和完成。
 
 操作与补偿检查见 [Booking 预约 Runbook](../docs/runbook/booking-reservation.md)。
 
@@ -67,3 +69,15 @@ Creation now returns `PENDING_CONFIRMATION` with `expireAt`. Confirm with
 reservations. The opt-in `persistence,expiration` runtime safely releases overdue holds before
 committing `EXPIRED`. Scheduling remains disabled unless `VENUEFLOW_EXPIRATION_ENABLED=true`.
 See the [expiration runbook](../docs/runbook/booking-timeout-expiration.md).
+
+## C16 check-in completion
+
+`POST /api/v1/bookings/{bookingNo}/check-in` reads the Resource-owned slot time and permits a
+confirmed reservation only inside the configured early/late window. The winning transaction
+commits `COMPLETED`, `completedAt`, one status audit, and one Outbox event; replay is read-only.
+
+```powershell
+.\mvnw.cmd -pl venueflow-booking-service verify -Pcheckin-it
+```
+
+See the [check-in runbook](../docs/runbook/booking-check-in-completion.md).

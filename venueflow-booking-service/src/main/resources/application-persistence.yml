@@ -22,6 +22,8 @@ spring:
 venueflow:
   booking:
     confirmation-window: ${VENUEFLOW_CONFIRMATION_WINDOW:PT15M}
+    check-in-early-window: ${VENUEFLOW_CHECK_IN_EARLY_WINDOW:PT30M}
+    check-in-late-window: ${VENUEFLOW_CHECK_IN_LATE_WINDOW:PT30M}
   collaborators:
     user-base-url: ${VENUEFLOW_USER_SERVICE_BASE_URL}
     resource-base-url: ${VENUEFLOW_RESOURCE_SERVICE_BASE_URL}

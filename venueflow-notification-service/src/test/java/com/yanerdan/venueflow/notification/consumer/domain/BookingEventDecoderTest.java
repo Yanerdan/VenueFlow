@@ -100,6 +100,19 @@ public class BookingEventDecoderTest {
     assertThat(NotificationDraft.from(event).type()).isEqualTo("BOOKING_EXPIRED");
   }
 
+  @Test
+  void decodesCompletionAndDerivesTypedNotification() {
+    BookingEvent event =
+        decoder.decode(
+            completion("5ba9722b-654d-4dc3-935b-978d4a9ac606").getBytes(StandardCharsets.UTF_8),
+            BookingEventDecoder.COMPLETED_ROUTE,
+            "application/json",
+            "UTF-8");
+
+    assertThat(event.status()).isEqualTo("COMPLETED");
+    assertThat(NotificationDraft.from(event).type()).isEqualTo("BOOKING_COMPLETED");
+  }
+
   public static String confirmation(String eventId) {
     return """
         {
@@ -129,6 +142,23 @@ public class BookingEventDecoderTest {
           "aggregateId":"B-1",
           "traceId":null,
           "payload":{"bookingNo":"B-1","userId":1,"slotId":2,"quantity":1,"status":"EXPIRED"}
+        }
+        """
+        .formatted(eventId);
+  }
+
+  public static String completion(String eventId) {
+    return """
+        {
+          "eventId":"%s",
+          "eventType":"booking.reservation.completed",
+          "eventVersion":1,
+          "occurredAt":"2026-07-26T10:00:00Z",
+          "producer":"venueflow-booking-service",
+          "aggregateType":"BOOKING",
+          "aggregateId":"B-1",
+          "traceId":null,
+          "payload":{"bookingNo":"B-1","userId":1,"slotId":2,"quantity":1,"status":"COMPLETED"}
         }
         """
         .formatted(eventId);

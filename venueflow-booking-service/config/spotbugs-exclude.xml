@@ -25,4 +25,9 @@
     <Class name="com.yanerdan.venueflow.booking.persistence.BookingRepository"/>
     <Bug pattern="EI_EXPOSE_REP2"/>
   </Match>
+  <!-- Invalid check-in windows intentionally fail application startup. -->
+  <Match>
+    <Class name="com.yanerdan.venueflow.booking.application.BookingReservationService"/>
+    <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+  </Match>
 </FindBugsFilter>

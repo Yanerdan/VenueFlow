@@ -26,6 +26,7 @@ public class BookingReservationEntity {
   private LocalDateTime confirmedAt;
   private LocalDateTime cancelledAt;
   private LocalDateTime expiredAt;
+  private LocalDateTime completedAt;
   private String terminalReason;
   private String timeoutState;
   private String timeoutLeaseOwner;
@@ -52,6 +53,7 @@ public class BookingReservationEntity {
         confirmedAt,
         cancelledAt,
         expiredAt,
+        completedAt,
         terminalReason,
         updatedAt);
   }
@@ -174,6 +176,14 @@ public class BookingReservationEntity {
 
   public void setExpiredAt(LocalDateTime expiredAt) {
     this.expiredAt = expiredAt;
+  }
+
+  public LocalDateTime getCompletedAt() {
+    return completedAt;
+  }
+
+  public void setCompletedAt(LocalDateTime completedAt) {
+    this.completedAt = completedAt;
   }
 
   public String getTerminalReason() {

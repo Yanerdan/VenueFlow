@@ -147,6 +147,14 @@ public class NotificationMessagingConfiguration {
   }
 
   @Bean
+  Binding completedWorkBinding(
+      Queue notificationWorkQueue, TopicExchange notificationSourceExchange) {
+    return BindingBuilder.bind(notificationWorkQueue)
+        .to(notificationSourceExchange)
+        .with(BookingEventDecoder.COMPLETED_ROUTE);
+  }
+
+  @Bean
   Binding confirmedRetryBinding(
       Queue notificationRetryQueue, TopicExchange notificationRetryExchange) {
     return BindingBuilder.bind(notificationRetryQueue)
@@ -168,6 +176,14 @@ public class NotificationMessagingConfiguration {
     return BindingBuilder.bind(notificationRetryQueue)
         .to(notificationRetryExchange)
         .with(BookingEventDecoder.EXPIRED_ROUTE);
+  }
+
+  @Bean
+  Binding completedRetryBinding(
+      Queue notificationRetryQueue, TopicExchange notificationRetryExchange) {
+    return BindingBuilder.bind(notificationRetryQueue)
+        .to(notificationRetryExchange)
+        .with(BookingEventDecoder.COMPLETED_ROUTE);
   }
 
   @Bean
