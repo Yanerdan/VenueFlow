@@ -1,0 +1,11 @@
+venueflow:
+  search:
+    elasticsearch-uri: ${ELASTICSEARCH_URI:http://127.0.0.1:9200}
+    resource-base-uri: ${RESOURCE_SERVICE_BASE_URI:http://venueflow-resource-service}
+    read-alias: venueflow-resource-read
+    write-alias: venueflow-resource-write
+    inbox-index: venueflow-search-inbox
+    exchange: venueflow.resource.exchange
+    queue: venueflow.search.resource-changed
+    dead-exchange: venueflow.dead.exchange
+    dead-routing-key: search.resource.changed.dead

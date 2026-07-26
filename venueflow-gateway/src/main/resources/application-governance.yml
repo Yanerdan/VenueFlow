@@ -31,3 +31,4 @@ venueflow:
     user-service-id: venueflow-user-service
     resource-service-id: venueflow-resource-service
     booking-service-id: venueflow-booking-service
+    search-service-id: venueflow-search-service

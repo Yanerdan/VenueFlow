@@ -115,6 +115,31 @@ services:
       timeout: 5s
       retries: 18
 
+  elasticsearch:
+    image: ${ELASTICSEARCH_IMAGE:?ELASTICSEARCH_IMAGE must be set by deploy/versions.env}
+    profiles: [search]
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+      TZ: UTC
+    ports:
+      - ${INFRA_BIND_ADDRESS:?INFRA_BIND_ADDRESS must be set}:${ELASTICSEARCH_PORT:-9200}:9200
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks: [base-network]
+    mem_limit: 1024m
+    cpus: 1.0
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl --fail --silent http://127.0.0.1:9200/_cluster/health >/dev/null
+      start_period: 60s
+      interval: 10s
+      timeout: 5s
+      retries: 18
+
 networks:
   base-network:
     driver: bridge
@@ -124,3 +149,4 @@ volumes:
   redis-data:
   rabbitmq-data:
   nacos-data:
+  elasticsearch-data:

@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Profile;
 @Profile("persistence")
 @MapperScan({
   "com.yanerdan.venueflow.resource.catalog.persistence.mapper",
+  "com.yanerdan.venueflow.resource.event.persistence",
   "com.yanerdan.venueflow.resource.slot.persistence.mapper",
   "com.yanerdan.venueflow.resource.slot.allocation.persistence.mapper"
 })

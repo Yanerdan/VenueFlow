@@ -9,6 +9,7 @@ import static com.yanerdan.venueflow.resource.catalog.error.CatalogErrorCode.RES
 import static com.yanerdan.venueflow.resource.catalog.error.CatalogErrorCode.RESOURCE_NUMBER_ALREADY_EXISTS;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.yanerdan.venueflow.resource.cache.ResourceDetailCache;
 import com.yanerdan.venueflow.resource.catalog.domain.ResourceStatus;
 import com.yanerdan.venueflow.resource.catalog.domain.ResourceStatusTransitions;
 import com.yanerdan.venueflow.resource.catalog.error.CatalogException;
@@ -16,8 +17,11 @@ import com.yanerdan.venueflow.resource.catalog.persistence.entity.ResourceCatego
 import com.yanerdan.venueflow.resource.catalog.persistence.entity.ResourceEntity;
 import com.yanerdan.venueflow.resource.catalog.persistence.mapper.ResourceCategoryMapper;
 import com.yanerdan.venueflow.resource.catalog.persistence.mapper.ResourceMapper;
+import com.yanerdan.venueflow.resource.event.ResourceChangeRecorder;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
@@ -30,11 +34,35 @@ public class CatalogApplicationService {
 
   private final ResourceMapper resourceMapper;
   private final ResourceCategoryMapper categoryMapper;
+  private final ResourceDetailCache resourceCache;
+  private final ResourceChangeRecorder changeRecorder;
 
+  @Autowired
   public CatalogApplicationService(
-      ResourceCategoryMapper categoryMapper, ResourceMapper resourceMapper) {
+      ResourceCategoryMapper categoryMapper,
+      ResourceMapper resourceMapper,
+      ResourceDetailCache resourceCache,
+      ResourceChangeRecorder changeRecorder) {
     this.categoryMapper = categoryMapper;
     this.resourceMapper = resourceMapper;
+    this.resourceCache = resourceCache;
+    this.changeRecorder = changeRecorder;
+  }
+
+  CatalogApplicationService(ResourceCategoryMapper categoryMapper, ResourceMapper resourceMapper) {
+    this(
+        categoryMapper,
+        resourceMapper,
+        new ResourceDetailCache() {
+          @Override
+          public ResourceResult get(Long resourceId, Supplier<ResourceResult> loader) {
+            return loader.get();
+          }
+
+          @Override
+          public void evictAfterCommit(Long resourceId) {}
+        },
+        resource -> {});
   }
 
   @Transactional
@@ -120,7 +148,10 @@ public class CatalogApplicationService {
       throw persistenceFailure("Created Resource could not be reloaded", null);
     }
 
-    return ResourceResult.from(persistedEntity);
+    ResourceResult result = ResourceResult.from(persistedEntity);
+    changeRecorder.record(result);
+    resourceCache.evictAfterCommit(result.id());
+    return result;
   }
 
   private void validateCategoryExists(Long categoryId) {
@@ -155,6 +186,10 @@ public class CatalogApplicationService {
       throw new IllegalArgumentException("resourceId must be positive");
     }
 
+    return resourceCache.get(resourceId, () -> loadResource(resourceId));
+  }
+
+  private ResourceResult loadResource(Long resourceId) {
     ResourceEntity entity;
 
     try {
@@ -237,7 +272,10 @@ public class CatalogApplicationService {
       throw resourceNotFound(command.resourceId());
     }
 
-    return ResourceResult.from(updatedEntity);
+    ResourceResult result = ResourceResult.from(updatedEntity);
+    changeRecorder.record(result);
+    resourceCache.evictAfterCommit(result.id());
+    return result;
   }
 
   private ResourceEntity findResourceForStatusChange(Long resourceId) {

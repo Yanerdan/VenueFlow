@@ -53,6 +53,14 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-validation</artifactId>
     </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-redis</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-amqp</artifactId>
+    </dependency>
 
     <dependency>
       <groupId>com.baomidou</groupId>
@@ -125,10 +133,7 @@
                     <exclude>io.micrometer:micrometer-registry-prometheus</exclude>
                     <exclude>io.micrometer:micrometer-tracing-*</exclude>
                     <exclude>io.opentelemetry:opentelemetry-exporter-otlp</exclude>
-                    <exclude>org.springframework.amqp:*</exclude>
-                    <exclude>org.springframework.boot:spring-boot-starter-amqp</exclude>
                     <exclude>org.springframework.boot:spring-boot-starter-data-jdbc</exclude>
-                    <exclude>org.springframework.boot:spring-boot-starter-data-redis</exclude>
                     <exclude>org.springframework.boot:spring-boot-starter-oauth2-resource-server</exclude>
                     <exclude>org.springframework.boot:spring-boot-starter-security</exclude>
                     <exclude>org.springframework.cloud:spring-cloud-starter-openfeign</exclude>

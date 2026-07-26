@@ -53,6 +53,7 @@ class GatewaySecurityRoutingIT {
     registry.add("venueflow.gateway.user-uri", () -> uri);
     registry.add("venueflow.gateway.resource-uri", () -> uri);
     registry.add("venueflow.gateway.booking-uri", () -> uri);
+    registry.add("venueflow.gateway.search-uri", () -> uri);
     registry.add("venueflow.gateway.issuer", () -> ISSUER);
     registry.add("venueflow.gateway.jwt-public-key", GatewaySecurityRoutingIT::publicKeyPem);
     registry.add("venueflow.gateway.allowed-origins", () -> "https://app.example.test");

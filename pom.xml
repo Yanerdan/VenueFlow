@@ -27,6 +27,7 @@
     <module>venueflow-user-service</module>
     <module>venueflow-booking-service</module>
     <module>venueflow-notification-service</module>
+    <module>venueflow-search-service</module>
   </modules>
 
   <properties>

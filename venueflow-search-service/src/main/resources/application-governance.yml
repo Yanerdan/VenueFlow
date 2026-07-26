@@ -1,0 +1,26 @@
+spring:
+  config:
+    activate:
+      on-profile: governance
+    import:
+      - optional:nacos:venueflow-common.yml?group=${VENUEFLOW_NACOS_GROUP:VENUEFLOW_GROUP}
+      - optional:nacos:venueflow-search-service.yml?group=${VENUEFLOW_NACOS_GROUP:VENUEFLOW_GROUP}
+  cloud:
+    discovery:
+      enabled: true
+    service-registry:
+      auto-registration:
+        enabled: true
+    nacos:
+      server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+      username: ${NACOS_USERNAME:}
+      password: ${NACOS_PASSWORD:}
+      discovery:
+        enabled: true
+        namespace: ${VENUEFLOW_NACOS_NAMESPACE:}
+        group: ${VENUEFLOW_NACOS_GROUP:VENUEFLOW_GROUP}
+        instance-id: ${VENUEFLOW_INSTANCE_ID:${spring.application.name}-${server.port}}
+      config:
+        enabled: true
+        namespace: ${VENUEFLOW_NACOS_NAMESPACE:}
+        group: ${VENUEFLOW_NACOS_GROUP:VENUEFLOW_GROUP}

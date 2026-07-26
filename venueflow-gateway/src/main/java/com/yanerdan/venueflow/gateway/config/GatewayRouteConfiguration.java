@@ -19,13 +19,15 @@ public class GatewayRouteConfiguration {
       @Value("${venueflow.gateway.auth-uri}") String authUri,
       @Value("${venueflow.gateway.user-uri}") String userUri,
       @Value("${venueflow.gateway.resource-uri}") String resourceUri,
-      @Value("${venueflow.gateway.booking-uri}") String bookingUri) {
+      @Value("${venueflow.gateway.booking-uri}") String bookingUri,
+      @Value("${venueflow.gateway.search-uri}") String searchUri) {
     return builder
         .routes()
         .route("auth", route -> route.path("/api/v1/auth/**").uri(baseUri(authUri)))
         .route("users", route -> route.path("/api/v1/users/**").uri(baseUri(userUri)))
         .route("resources", route -> route.path("/api/v1/resources/**").uri(baseUri(resourceUri)))
         .route("bookings", route -> route.path("/api/v1/bookings/**").uri(baseUri(bookingUri)))
+        .route("search", route -> route.path("/api/v1/search/**").uri(baseUri(searchUri)))
         .build();
   }
 
@@ -36,7 +38,8 @@ public class GatewayRouteConfiguration {
       @Value("${venueflow.gateway.auth-service-id}") String authService,
       @Value("${venueflow.gateway.user-service-id}") String userService,
       @Value("${venueflow.gateway.resource-service-id}") String resourceService,
-      @Value("${venueflow.gateway.booking-service-id}") String bookingService) {
+      @Value("${venueflow.gateway.booking-service-id}") String bookingService,
+      @Value("${venueflow.gateway.search-service-id}") String searchService) {
     return builder
         .routes()
         .route("auth", route -> route.path("/api/v1/auth/**").uri(serviceUri(authService)))
@@ -46,6 +49,7 @@ public class GatewayRouteConfiguration {
             route -> route.path("/api/v1/resources/**").uri(serviceUri(resourceService)))
         .route(
             "bookings", route -> route.path("/api/v1/bookings/**").uri(serviceUri(bookingService)))
+        .route("search", route -> route.path("/api/v1/search/**").uri(serviceUri(searchService)))
         .build();
   }
 

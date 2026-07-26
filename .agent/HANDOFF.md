@@ -199,3 +199,18 @@ Compose，未加入邮件、通知 HTTP API、超时取消或跨服务数据库�
 - Deterministic tests cover Feign retry boundaries and two Resource instances with one removed.
 - Affected-module and root verification, dependency, scope, credential, diff, and strict OpenSpec
   gates passed.
+
+## C21 implementation status
+
+- Archived change:
+  `openspec/changes/archive/2026-07-26-add-resource-cache-and-search`.
+- Resource has opt-in Redis Cache Aside and a V004 transactional resource-change Outbox.
+- `venueflow-search-service` is a connection-free-by-default executable module on port `8086`;
+  its `search` profile owns bounded search, durable event projection, rebuild validation, and
+  atomic read/write Alias switching.
+- Gateway adds one explicit static/governed search route; discovery locator remains disabled.
+- Elasticsearch client/image compatibility is locked to 9.2.8. Module/root verification, the
+  real MySQL 8.4.10 V004 migration, Compose/profile checks, protocol-level ES client checks,
+  dependency/scope/credential/diff gates, and 24/24 strict OpenSpec validation passed.
+- The optional full ES container smoke remains unclaimed: Elastic registry pull produced no
+  progress before its bounded timeout and created no container or volume.

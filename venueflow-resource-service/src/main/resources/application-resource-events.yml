@@ -1,0 +1,20 @@
+spring:
+  config:
+    activate:
+      on-profile: resource-events
+  rabbitmq:
+    host: ${RABBITMQ_HOST:127.0.0.1}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    connection-timeout: 1000
+
+venueflow:
+  resource-events:
+    exchange: venueflow.resource.exchange
+    routing-key: resource.changed.v1
+    batch-size: 50
+    fixed-delay-ms: 1000
+    confirm-timeout-ms: 2000
+    max-attempts: 8

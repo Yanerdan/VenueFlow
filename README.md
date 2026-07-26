@@ -245,3 +245,12 @@ Static profiles remain available for isolated work. See the
 短期 RS256 Access JWT、单次轮换 Refresh Token，以及注册/登录/刷新/退出 API。默认
 `skeleton` 仍不读取数据库或密钥。详见
 [Auth runbook](docs/runbook/auth-credential-token-lifecycle.md)。
+
+## C21 Resource cache and search
+
+Resource detail reads can opt into Redis Cache Aside with negative caching, jittered TTL, local
+stampede protection, and post-commit eviction. Resource changes are appended to a transactional
+Outbox. The new Search Service consumes versioned events into a rebuildable Elasticsearch 9.2.8
+projection, exposes bounded resource search, returns explicit `SEARCH_UNAVAILABLE` degradation,
+and supports validated atomic Alias rebuilds. Gateway adds only the explicit search route.
+See the [cache/search runbook](docs/runbook/resource-cache-search.md).

@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: venueflow-search-service
+  profiles:
+    default: skeleton
+  cloud:
+    discovery:
+      enabled: false
+    service-registry:
+      auto-registration:
+        enabled: false
+    nacos:
+      discovery:
+        enabled: false
+      config:
+        enabled: false
+
+server:
+  port: ${SERVER_PORT:8086}
+
+management:
+  endpoints:
+    access:
+      default: none
+    web:
+      exposure:
+        include: health
+      discovery:
+        enabled: false
+  endpoint:
+    health:
+      access: read-only
+      show-details: never
+      show-components: never
+      probes:
+        enabled: true
+  health:
+    elasticsearch:
+      enabled: false
+    rabbit:
+      enabled: false

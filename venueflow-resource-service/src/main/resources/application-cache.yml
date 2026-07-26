@@ -1,0 +1,20 @@
+spring:
+  config:
+    activate:
+      on-profile: cache
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      connect-timeout: 500ms
+      timeout: 700ms
+      repositories:
+        enabled: false
+
+venueflow:
+  cache:
+    environment: ${VENUEFLOW_ENV:dev}
+    detail-ttl: 300s
+    missing-ttl: 30s
+    jitter-seconds: 30
