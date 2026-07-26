@@ -129,3 +129,16 @@ Compose，未加入邮件、通知 HTTP API、超时取消或跨服务数据库�
   guarded non-HTTP preview/run controls. Default startup remains infrastructure-free.
 - Unit tests and `reconciliation-it` cover MySQL 8.4.10 migration/leases plus HTTP-stub orphan
   release and cancellation recovery. All final gates and strict OpenSpec validation passed.
+
+## C15 implementation status
+
+- Archived change:
+  `openspec/changes/archive/2026-07-26-add-booking-timeout-expiration`.
+- Booking V004 adds pending confirmation, deadlines, status audit, leased timeout retry, and
+  expiration while preserving historical confirmed/cancelled rows.
+- Creation is now breaking: it returns `PENDING_CONFIRMATION`; explicit confirmation creates the
+  confirmation Outbox event.
+- The opt-in `persistence,expiration` worker releases capacity with the deterministic release
+  operation before atomically committing `EXPIRED` and its event.
+- Notification accepts the exact expiration route and derives an inbox-idempotent in-app
+  expiration notification.

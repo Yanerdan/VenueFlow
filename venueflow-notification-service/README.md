@@ -1,6 +1,6 @@
 # VenueFlow Notification Service
 
-`venueflow-notification-service` consumes the C11 Booking confirmation and cancellation
+`venueflow-notification-service` consumes Booking confirmation, cancellation, and expiration
 events and creates deterministic in-app notification records.
 
 ## Default startup

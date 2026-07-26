@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.yanerdan.venueflow.booking.domain.BookingReservation;
 import com.yanerdan.venueflow.booking.domain.BookingStatus;
 import com.yanerdan.venueflow.booking.domain.IdempotencyStatus;
+import com.yanerdan.venueflow.booking.expiration.domain.TimeoutReservation;
 import com.yanerdan.venueflow.booking.outbox.domain.OutboxEventFactory;
 import com.yanerdan.venueflow.booking.outbox.persistence.OutboxEventEntity;
 import com.yanerdan.venueflow.booking.outbox.persistence.OutboxEventMapper;
@@ -27,6 +28,7 @@ public class BookingRepository {
   private final BookingIdempotencyMapper idempotencyMapper;
   private final OutboxEventMapper outboxMapper;
   private final OutboxEventFactory outboxFactory;
+  private final BookingStatusLogMapper statusLogMapper;
   private final ReconciliationIntentRepository reconciliationIntents;
 
   public BookingRepository(
@@ -34,11 +36,13 @@ public class BookingRepository {
       BookingIdempotencyMapper idempotencyMapper,
       OutboxEventMapper outboxMapper,
       OutboxEventFactory outboxFactory,
+      BookingStatusLogMapper statusLogMapper,
       ReconciliationIntentRepository reconciliationIntents) {
     this.reservationMapper = reservationMapper;
     this.idempotencyMapper = idempotencyMapper;
     this.outboxMapper = outboxMapper;
     this.outboxFactory = outboxFactory;
+    this.statusLogMapper = statusLogMapper;
     this.reconciliationIntents = reconciliationIntents;
   }
 
@@ -78,7 +82,8 @@ public class BookingRepository {
       long slotId,
       int quantity,
       String allocationId,
-      String releaseId) {
+      String releaseId,
+      LocalDateTime expireAt) {
     LocalDateTime now = LocalDateTime.now();
     BookingReservationEntity entity = new BookingReservationEntity();
     entity.setBookingNo(UUID.randomUUID().toString());
@@ -86,16 +91,20 @@ public class BookingRepository {
     entity.setUserId(userId);
     entity.setSlotId(slotId);
     entity.setQuantity(quantity);
-    entity.setStatus(BookingStatus.CONFIRMED);
+    entity.setStatus(BookingStatus.PENDING_CONFIRMATION);
     entity.setAllocationOperationId(allocationId);
     entity.setReleaseOperationId(releaseId);
     entity.setVersion(0L);
     entity.setCreatedAt(now);
-    entity.setConfirmedAt(now);
+    entity.setExpireAt(expireAt);
+    entity.setTimeoutState("IDLE");
+    entity.setTimeoutAttemptCount(0);
+    entity.setTimeoutNextCheckAt(expireAt);
     entity.setUpdatedAt(now);
     reservationMapper.insert(entity);
     BookingReservation reservation = entity.toDomain();
-    outboxMapper.insert(OutboxEventEntity.from(outboxFactory.create(reservation)));
+    statusLogMapper.insertLog(
+        entity.getId(), null, BookingStatus.PENDING_CONFIRMATION.name(), CREATE, null, now);
     int updated =
         idempotencyMapper.update(
             null,
@@ -149,6 +158,60 @@ public class BookingRepository {
   }
 
   @Transactional
+  public BookingReservation confirm(String bookingNo) {
+    BookingReservationEntity current = findEntity(bookingNo);
+    if (current == null) return null;
+    if (current.getStatus() == BookingStatus.CONFIRMED) return current.toDomain();
+    LocalDateTime now = LocalDateTime.now();
+    if (current.getStatus() != BookingStatus.PENDING_CONFIRMATION) {
+      throw new IllegalStateException("Reservation is terminal");
+    }
+    if (current.getExpireAt() == null || !now.isBefore(current.getExpireAt())) {
+      throw new IllegalArgumentException("Reservation confirmation deadline expired");
+    }
+    int updated =
+        reservationMapper.update(
+            null,
+            new LambdaUpdateWrapper<BookingReservationEntity>()
+                .eq(BookingReservationEntity::getId, current.getId())
+                .eq(BookingReservationEntity::getStatus, BookingStatus.PENDING_CONFIRMATION)
+                .eq(BookingReservationEntity::getVersion, current.getVersion())
+                .gt(BookingReservationEntity::getExpireAt, now)
+                .and(
+                    wrapper ->
+                        wrapper
+                            .isNull(BookingReservationEntity::getTimeoutLeaseOwner)
+                            .or()
+                            .le(BookingReservationEntity::getTimeoutLeaseExpiresAt, now))
+                .set(BookingReservationEntity::getStatus, BookingStatus.CONFIRMED)
+                .set(BookingReservationEntity::getConfirmedAt, now)
+                .set(BookingReservationEntity::getTimeoutState, "COMPLETED")
+                .set(BookingReservationEntity::getTimeoutNextCheckAt, null)
+                .set(BookingReservationEntity::getUpdatedAt, now)
+                .setSql("version = version + 1"));
+    if (updated != 1) return findEntity(bookingNo).toDomain();
+    BookingReservationEntity confirmed = findEntity(bookingNo);
+    statusLogMapper.insertLog(
+        confirmed.getId(),
+        BookingStatus.PENDING_CONFIRMATION.name(),
+        BookingStatus.CONFIRMED.name(),
+        "CONFIRM",
+        null,
+        now);
+    outboxMapper.insert(OutboxEventEntity.from(outboxFactory.create(confirmed.toDomain())));
+    return confirmed.toDomain();
+  }
+
+  @Transactional(readOnly = true)
+  public boolean hasLiveTimeoutLease(String bookingNo) {
+    BookingReservationEntity entity = findEntity(bookingNo);
+    return entity != null
+        && entity.getTimeoutLeaseOwner() != null
+        && entity.getTimeoutLeaseExpiresAt() != null
+        && entity.getTimeoutLeaseExpiresAt().isAfter(LocalDateTime.now());
+  }
+
+  @Transactional
   public void prepareCancellation(BookingReservation reservation) {
     reconciliationIntents.create(
         new NewReconciliationIntent(
@@ -165,15 +228,28 @@ public class BookingRepository {
   @Transactional
   public boolean cancelAndResolve(String bookingNo, long expectedVersion) {
     LocalDateTime now = LocalDateTime.now();
+    BookingReservationEntity before = findEntity(bookingNo);
     boolean updated =
         reservationMapper.update(
                 null,
                 new LambdaUpdateWrapper<BookingReservationEntity>()
                     .eq(BookingReservationEntity::getBookingNo, bookingNo)
-                    .eq(BookingReservationEntity::getStatus, BookingStatus.CONFIRMED)
+                    .in(
+                        BookingReservationEntity::getStatus,
+                        BookingStatus.PENDING_CONFIRMATION,
+                        BookingStatus.CONFIRMED)
                     .eq(BookingReservationEntity::getVersion, expectedVersion)
+                    .and(
+                        wrapper ->
+                            wrapper
+                                .isNull(BookingReservationEntity::getTimeoutLeaseOwner)
+                                .or()
+                                .le(BookingReservationEntity::getTimeoutLeaseExpiresAt, now))
                     .set(BookingReservationEntity::getStatus, BookingStatus.CANCELLED)
                     .set(BookingReservationEntity::getCancelledAt, now)
+                    .set(BookingReservationEntity::getTerminalReason, "USER_CANCELLED")
+                    .set(BookingReservationEntity::getTimeoutState, "COMPLETED")
+                    .set(BookingReservationEntity::getTimeoutNextCheckAt, null)
                     .set(BookingReservationEntity::getUpdatedAt, now)
                     .setSql("version = version + 1"))
             == 1;
@@ -182,6 +258,13 @@ public class BookingRepository {
           reservationMapper.selectOne(
               new LambdaQueryWrapper<BookingReservationEntity>()
                   .eq(BookingReservationEntity::getBookingNo, bookingNo));
+      statusLogMapper.insertLog(
+          entity.getId(),
+          before.getStatus().name(),
+          BookingStatus.CANCELLED.name(),
+          "CANCEL",
+          "USER_CANCELLED",
+          now);
       outboxMapper.insert(OutboxEventEntity.from(outboxFactory.create(entity.toDomain())));
       if (!reconciliationIntents.resolveOpen(
           ReconciliationWorkflowType.RELEASE,
@@ -235,18 +318,29 @@ public class BookingRepository {
     if (entity.getStatus() == BookingStatus.CANCELLED) {
       outcome = ReconciliationOutcomeCode.ALREADY_CANCELLED;
     } else {
-      if (entity.getStatus() != BookingStatus.CONFIRMED) {
+      if (entity.getStatus() != BookingStatus.CONFIRMED
+          && entity.getStatus() != BookingStatus.PENDING_CONFIRMATION) {
         throw new IllegalStateException("Cancellation booking state conflicts");
       }
+      BookingStatus previousStatus = entity.getStatus();
       int updated =
           reservationMapper.update(
               null,
               new LambdaUpdateWrapper<BookingReservationEntity>()
                   .eq(BookingReservationEntity::getId, entity.getId())
-                  .eq(BookingReservationEntity::getStatus, BookingStatus.CONFIRMED)
+                  .eq(BookingReservationEntity::getStatus, previousStatus)
                   .eq(BookingReservationEntity::getVersion, entity.getVersion())
+                  .and(
+                      wrapper ->
+                          wrapper
+                              .isNull(BookingReservationEntity::getTimeoutLeaseOwner)
+                              .or()
+                              .le(BookingReservationEntity::getTimeoutLeaseExpiresAt, now))
                   .set(BookingReservationEntity::getStatus, BookingStatus.CANCELLED)
                   .set(BookingReservationEntity::getCancelledAt, now)
+                  .set(BookingReservationEntity::getTerminalReason, "USER_CANCELLED")
+                  .set(BookingReservationEntity::getTimeoutState, "COMPLETED")
+                  .set(BookingReservationEntity::getTimeoutNextCheckAt, null)
                   .set(BookingReservationEntity::getUpdatedAt, now)
                   .setSql("version = version + 1"));
       if (updated != 1) {
@@ -256,6 +350,13 @@ public class BookingRepository {
           reservationMapper.selectOne(
               new LambdaQueryWrapper<BookingReservationEntity>()
                   .eq(BookingReservationEntity::getId, entity.getId()));
+      statusLogMapper.insertLog(
+          entity.getId(),
+          previousStatus.name(),
+          BookingStatus.CANCELLED.name(),
+          "RECONCILIATION",
+          "USER_CANCELLED",
+          now);
       outboxMapper.insert(OutboxEventEntity.from(outboxFactory.create(entity.toDomain())));
       outcome = ReconciliationOutcomeCode.CANCELLATION_COMPLETED;
     }
@@ -265,12 +366,54 @@ public class BookingRepository {
     return outcome;
   }
 
+  @Transactional
+  public boolean completeExpiration(TimeoutReservation timeout) {
+    LocalDateTime now = LocalDateTime.now();
+    int updated =
+        reservationMapper.update(
+            null,
+            new LambdaUpdateWrapper<BookingReservationEntity>()
+                .eq(BookingReservationEntity::getId, timeout.id())
+                .eq(BookingReservationEntity::getVersion, timeout.version())
+                .eq(BookingReservationEntity::getStatus, BookingStatus.PENDING_CONFIRMATION)
+                .eq(BookingReservationEntity::getTimeoutState, "LEASED")
+                .eq(BookingReservationEntity::getTimeoutLeaseOwner, timeout.leaseOwner())
+                .gt(BookingReservationEntity::getTimeoutLeaseExpiresAt, now)
+                .set(BookingReservationEntity::getStatus, BookingStatus.EXPIRED)
+                .set(BookingReservationEntity::getExpiredAt, now)
+                .set(BookingReservationEntity::getTerminalReason, "CONFIRMATION_TIMEOUT")
+                .set(BookingReservationEntity::getTimeoutState, "COMPLETED")
+                .set(BookingReservationEntity::getTimeoutLeaseOwner, null)
+                .set(BookingReservationEntity::getTimeoutLeaseExpiresAt, null)
+                .set(BookingReservationEntity::getTimeoutNextCheckAt, null)
+                .set(BookingReservationEntity::getTimeoutLastErrorCode, null)
+                .set(BookingReservationEntity::getUpdatedAt, now)
+                .setSql("version = version + 1"));
+    if (updated != 1) return false;
+    BookingReservationEntity expired = reservationMapper.selectById(timeout.id());
+    statusLogMapper.insertLog(
+        expired.getId(),
+        BookingStatus.PENDING_CONFIRMATION.name(),
+        BookingStatus.EXPIRED.name(),
+        "TIMEOUT",
+        "CONFIRMATION_TIMEOUT",
+        now);
+    outboxMapper.insert(OutboxEventEntity.from(outboxFactory.create(expired.toDomain())));
+    return true;
+  }
+
   private BookingIdempotencyEntity findClaim(long userId, String key) {
     return idempotencyMapper.selectOne(
         new LambdaQueryWrapper<BookingIdempotencyEntity>()
             .eq(BookingIdempotencyEntity::getUserId, userId)
             .eq(BookingIdempotencyEntity::getOperation, CREATE)
             .eq(BookingIdempotencyEntity::getIdempotencyKey, key));
+  }
+
+  private BookingReservationEntity findEntity(String bookingNo) {
+    return reservationMapper.selectOne(
+        new LambdaQueryWrapper<BookingReservationEntity>()
+            .eq(BookingReservationEntity::getBookingNo, bookingNo));
   }
 
   private ClaimResult classify(BookingIdempotencyEntity claim, String hash) {

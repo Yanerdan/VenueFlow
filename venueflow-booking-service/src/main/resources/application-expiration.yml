@@ -1,0 +1,19 @@
+spring:
+  config:
+    activate:
+      on-profile: expiration
+
+venueflow:
+  booking:
+    expiration:
+      enabled: ${VENUEFLOW_EXPIRATION_ENABLED:false}
+      confirmation-window: ${VENUEFLOW_CONFIRMATION_WINDOW:PT15M}
+      batch-size: ${VENUEFLOW_EXPIRATION_BATCH_SIZE:20}
+      lease-duration: ${VENUEFLOW_EXPIRATION_LEASE_DURATION:PT30S}
+      scan-delay: ${VENUEFLOW_EXPIRATION_SCAN_DELAY:PT10S}
+      max-attempts: ${VENUEFLOW_EXPIRATION_MAX_ATTEMPTS:8}
+      initial-backoff: ${VENUEFLOW_EXPIRATION_INITIAL_BACKOFF:PT5S}
+      max-backoff: ${VENUEFLOW_EXPIRATION_MAX_BACKOFF:PT15M}
+      operation-lookup-timeout: ${VENUEFLOW_EXPIRATION_LOOKUP_TIMEOUT:PT3S}
+      connect-timeout: ${VENUEFLOW_EXPIRATION_CONNECT_TIMEOUT:PT2S}
+      request-timeout: ${VENUEFLOW_EXPIRATION_REQUEST_TIMEOUT:PT5S}

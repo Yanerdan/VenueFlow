@@ -14,6 +14,44 @@ public record BookingReservation(
     String releaseOperationId,
     long version,
     LocalDateTime createdAt,
+    LocalDateTime expireAt,
     LocalDateTime confirmedAt,
     LocalDateTime cancelledAt,
-    LocalDateTime updatedAt) {}
+    LocalDateTime expiredAt,
+    String terminalReason,
+    LocalDateTime updatedAt) {
+  public BookingReservation(
+      Long id,
+      String bookingNo,
+      String requestId,
+      long userId,
+      long slotId,
+      int quantity,
+      BookingStatus status,
+      String allocationOperationId,
+      String releaseOperationId,
+      long version,
+      LocalDateTime createdAt,
+      LocalDateTime confirmedAt,
+      LocalDateTime cancelledAt,
+      LocalDateTime updatedAt) {
+    this(
+        id,
+        bookingNo,
+        requestId,
+        userId,
+        slotId,
+        quantity,
+        status,
+        allocationOperationId,
+        releaseOperationId,
+        version,
+        createdAt,
+        null,
+        confirmedAt,
+        cancelledAt,
+        null,
+        null,
+        updatedAt);
+  }
+}

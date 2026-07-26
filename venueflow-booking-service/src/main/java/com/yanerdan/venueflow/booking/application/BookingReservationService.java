@@ -10,10 +10,14 @@ import com.yanerdan.venueflow.booking.reconciliation.domain.ReconciliationOutcom
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
@@ -24,14 +28,25 @@ public class BookingReservationService {
   private final BookingRepository repository;
   private final UserEligibilityClient userClient;
   private final ResourceCapacityClient resourceClient;
+  private final Duration confirmationWindow;
 
+  @Autowired
   public BookingReservationService(
       BookingRepository repository,
       UserEligibilityClient userClient,
-      ResourceCapacityClient resourceClient) {
+      ResourceCapacityClient resourceClient,
+      @Value("${venueflow.booking.confirmation-window:PT15M}") Duration confirmationWindow) {
     this.repository = repository;
     this.userClient = userClient;
     this.resourceClient = resourceClient;
+    this.confirmationWindow = confirmationWindow;
+  }
+
+  BookingReservationService(
+      BookingRepository repository,
+      UserEligibilityClient userClient,
+      ResourceCapacityClient resourceClient) {
+    this(repository, userClient, resourceClient, Duration.ofMinutes(15));
   }
 
   public CreateResult create(String key, long userId, long slotId, int quantity) {
@@ -76,7 +91,14 @@ public class BookingReservationService {
 
     try {
       return new CreateResult(
-          repository.complete(claim.requestId(), userId, slotId, quantity, allocationId, releaseId),
+          repository.complete(
+              claim.requestId(),
+              userId,
+              slotId,
+              quantity,
+              allocationId,
+              releaseId,
+              LocalDateTime.now().plus(confirmationWindow)),
           false);
     } catch (RuntimeException persistenceFailure) {
       try {
@@ -115,6 +137,12 @@ public class BookingReservationService {
   public BookingReservation cancel(String bookingNo) {
     BookingReservation reservation = get(bookingNo);
     if (reservation.status() == BookingStatus.CANCELLED) return reservation;
+    if (reservation.status() == BookingStatus.EXPIRED) {
+      throw error(BookingErrorCode.BOOKING_STATE_CONFLICT, "Expired booking is terminal");
+    }
+    if (repository.hasLiveTimeoutLease(bookingNo)) {
+      throw error(BookingErrorCode.BOOKING_TIMEOUT_IN_PROGRESS, "Timeout owns this reservation");
+    }
     repository.prepareCancellation(reservation);
     resourceClient.release(
         reservation.slotId(), reservation.releaseOperationId(), reservation.quantity());
@@ -124,6 +152,31 @@ public class BookingReservationService {
       throw error(BookingErrorCode.BOOKING_STATE_CONFLICT, "Booking state changed concurrently");
     }
     return get(bookingNo);
+  }
+
+  public BookingReservation confirm(String bookingNo) {
+    BookingReservation current = get(bookingNo);
+    if (current.status() == BookingStatus.CONFIRMED) return current;
+    if (current.status() != BookingStatus.PENDING_CONFIRMATION) {
+      throw error(BookingErrorCode.BOOKING_STATE_CONFLICT, "Booking cannot be confirmed");
+    }
+    if (current.expireAt() == null || !LocalDateTime.now().isBefore(current.expireAt())) {
+      throw error(
+          BookingErrorCode.BOOKING_CONFIRMATION_DEADLINE_EXPIRED,
+          "Booking confirmation deadline expired");
+    }
+    if (repository.hasLiveTimeoutLease(bookingNo)) {
+      throw error(BookingErrorCode.BOOKING_TIMEOUT_IN_PROGRESS, "Timeout owns this reservation");
+    }
+    try {
+      BookingReservation result = repository.confirm(bookingNo);
+      if (result != null && result.status() == BookingStatus.CONFIRMED) return result;
+    } catch (IllegalArgumentException exception) {
+      throw error(
+          BookingErrorCode.BOOKING_CONFIRMATION_DEADLINE_EXPIRED,
+          "Booking confirmation deadline expired");
+    }
+    throw error(BookingErrorCode.BOOKING_STATE_CONFLICT, "Booking state changed concurrently");
   }
 
   private static void validateKey(String key) {

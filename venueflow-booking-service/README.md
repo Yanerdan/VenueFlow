@@ -59,3 +59,11 @@ Operator `PREVIEW` is read-only; `RUN` requires a bounded reason and explicit co
 
 Configuration, issue handling, shutdown, and rollback are documented in the
 [Booking reconciliation runbook](../docs/runbook/booking-capacity-reconciliation.md).
+
+## C15 pending confirmation and expiration
+
+Creation now returns `PENDING_CONFIRMATION` with `expireAt`. Confirm with
+`POST /api/v1/bookings/{bookingNo}/confirmation`; cancellation accepts pending or confirmed
+reservations. The opt-in `persistence,expiration` runtime safely releases overdue holds before
+committing `EXPIRED`. Scheduling remains disabled unless `VENUEFLOW_EXPIRATION_ENABLED=true`.
+See the [expiration runbook](../docs/runbook/booking-timeout-expiration.md).

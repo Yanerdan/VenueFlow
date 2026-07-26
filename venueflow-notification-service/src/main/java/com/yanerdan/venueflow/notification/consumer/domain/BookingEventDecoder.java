@@ -14,9 +14,11 @@ import java.util.UUID;
 public final class BookingEventDecoder {
   public static final String CONFIRMED_ROUTE = "booking.reservation.confirmed.v1";
   public static final String CANCELLED_ROUTE = "booking.reservation.cancelled.v1";
+  public static final String EXPIRED_ROUTE = "booking.reservation.expired.v1";
   private static final String CONFIRMED_TYPE = "booking.reservation.confirmed";
   private static final String CANCELLED_TYPE = "booking.reservation.cancelled";
-  private static final Set<String> ROUTES = Set.of(CONFIRMED_ROUTE, CANCELLED_ROUTE);
+  private static final String EXPIRED_TYPE = "booking.reservation.expired";
+  private static final Set<String> ROUTES = Set.of(CONFIRMED_ROUTE, CANCELLED_ROUTE, EXPIRED_ROUTE);
   private static final String PRODUCER = "venueflow-booking-service";
   private final ObjectMapper objectMapper;
   private final int maximumBytes;
@@ -123,9 +125,18 @@ public final class BookingEventDecoder {
       String aggregateId,
       String bookingNo,
       String status) {
-    boolean confirmed = CONFIRMED_ROUTE.equals(routingKey);
-    String expectedType = confirmed ? CONFIRMED_TYPE : CANCELLED_TYPE;
-    String expectedStatus = confirmed ? "CONFIRMED" : "CANCELLED";
+    String expectedType;
+    String expectedStatus;
+    if (CONFIRMED_ROUTE.equals(routingKey)) {
+      expectedType = CONFIRMED_TYPE;
+      expectedStatus = "CONFIRMED";
+    } else if (CANCELLED_ROUTE.equals(routingKey)) {
+      expectedType = CANCELLED_TYPE;
+      expectedStatus = "CANCELLED";
+    } else {
+      expectedType = EXPIRED_TYPE;
+      expectedStatus = "EXPIRED";
+    }
     if (eventVersion != 1
         || !expectedType.equals(eventType)
         || !expectedStatus.equals(status)

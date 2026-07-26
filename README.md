@@ -191,3 +191,11 @@ Docker-free; real MySQL 8.4.10 and HTTP-stub evidence runs only with:
 ```
 
 See the [Booking reconciliation runbook](docs/runbook/booking-capacity-reconciliation.md).
+
+## C15 Booking timeout expiration
+
+Booking creation returns a pending reservation with a server-owned deadline. Explicit confirmation
+publishes the confirmation event; an opt-in leased expiration worker proves Resource release before
+committing `EXPIRED`. Notification consumes the additive expiration event through its existing
+inbox/retry/DLQ path. Operations and rollout are documented in the
+[expiration runbook](docs/runbook/booking-timeout-expiration.md).

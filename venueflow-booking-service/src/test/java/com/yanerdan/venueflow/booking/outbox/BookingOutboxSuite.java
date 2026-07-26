@@ -7,12 +7,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.yanerdan.venueflow.booking.collaboration.ResourceCapacityClient;
 import com.yanerdan.venueflow.booking.collaboration.UserEligibilityClient;
+import com.yanerdan.venueflow.booking.domain.BookingReservation;
+import com.yanerdan.venueflow.booking.domain.BookingStatus;
 import com.yanerdan.venueflow.booking.outbox.application.OutboxMessagePublisher;
 import com.yanerdan.venueflow.booking.outbox.application.OutboxPublishOutcome;
 import com.yanerdan.venueflow.booking.outbox.application.OutboxPublisherService;
 import com.yanerdan.venueflow.booking.outbox.domain.OutboxEvent;
+import com.yanerdan.venueflow.booking.outbox.domain.OutboxEventFactory;
+import com.yanerdan.venueflow.booking.outbox.persistence.OutboxEventEntity;
+import com.yanerdan.venueflow.booking.outbox.persistence.OutboxEventMapper;
 import com.yanerdan.venueflow.booking.outbox.persistence.OutboxRepository;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,6 +71,8 @@ class BookingOutboxSuite {
   @Autowired private RabbitTemplate rabbitTemplate;
   @Autowired private OutboxPublisherService scanner;
   @Autowired private OutboxRepository repository;
+  @Autowired private OutboxEventFactory eventFactory;
+  @Autowired private OutboxEventMapper eventMapper;
   @Autowired private OutboxMessagePublisher publisher;
   @MockitoBean private UserEligibilityClient userClient;
   @MockitoBean private ResourceCapacityClient resourceClient;
@@ -95,6 +103,7 @@ class BookingOutboxSuite {
     jdbcTemplate.update("DELETE FROM reconciliation_run");
     jdbcTemplate.update("DELETE FROM booking_reconciliation_intent");
     jdbcTemplate.update("DELETE FROM booking_outbox_event");
+    jdbcTemplate.update("DELETE FROM booking_status_log");
     jdbcTemplate.update("DELETE FROM booking_idempotency");
     jdbcTemplate.update("DELETE FROM booking_reservation");
     when(userClient.isBookingPermitted(1L)).thenReturn(true);
@@ -168,13 +177,52 @@ class BookingOutboxSuite {
         .isEqualTo(firstClaim.eventId());
   }
 
+  @Test
+  void publishesRoutedPersistentExpirationEvent() {
+    LocalDateTime now = LocalDateTime.now();
+    eventMapper.insert(
+        OutboxEventEntity.from(
+            eventFactory.create(
+                new BookingReservation(
+                    1L,
+                    "expired-booking",
+                    "expired-request",
+                    1L,
+                    2L,
+                    1,
+                    BookingStatus.EXPIRED,
+                    "allocate:expired-request",
+                    "release:expired-request",
+                    1L,
+                    now,
+                    now,
+                    null,
+                    now))));
+
+    assertThat(scanner.scanOnce()).isEqualTo(1);
+    Message message = rabbitTemplate.receive(QUEUE, Duration.ofSeconds(3).toMillis());
+    assertThat(message).isNotNull();
+    assertThat(message.getMessageProperties().getReceivedRoutingKey())
+        .isEqualTo("booking.reservation.expired.v1");
+    assertThat(new String(message.getBody(), java.nio.charset.StandardCharsets.UTF_8))
+        .contains("\"status\":\"EXPIRED\"");
+  }
+
   private void createBooking(String key) throws Exception {
+    String response =
+        mockMvc
+            .perform(
+                post("/api/v1/bookings")
+                    .header("Idempotency-Key", key)
+                    .contentType("application/json")
+                    .content("{\"userId\":1,\"slotId\":2,\"quantity\":1}"))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    String bookingNo = com.jayway.jsonpath.JsonPath.read(response, "$.data.bookingNo");
     mockMvc
-        .perform(
-            post("/api/v1/bookings")
-                .header("Idempotency-Key", key)
-                .contentType("application/json")
-                .content("{\"userId\":1,\"slotId\":2,\"quantity\":1}"))
-        .andExpect(status().isCreated());
+        .perform(post("/api/v1/bookings/{bookingNo}/confirmation", bookingNo))
+        .andExpect(status().isOk());
   }
 }

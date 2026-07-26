@@ -43,7 +43,10 @@ class BookingServiceConfigurationBoundaryTest {
     assertThat(applicationFiles)
         .extracting(path -> MAIN_RESOURCES.relativize(path).toString().replace('\\', '/'))
         .containsExactlyInAnyOrder(
-            "application.yml", "application-skeleton.yml", "application-reconciliation.yml");
+            "application.yml",
+            "application-skeleton.yml",
+            "application-reconciliation.yml",
+            "application-expiration.yml");
 
     String configuration = readConfiguration(applicationFiles).toLowerCase(Locale.ROOT);
 

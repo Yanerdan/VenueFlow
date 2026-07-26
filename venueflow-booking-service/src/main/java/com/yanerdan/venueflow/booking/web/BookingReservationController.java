@@ -50,6 +50,11 @@ public class BookingReservationController {
     return SuccessEnvelope.of(BookingResponse.from(service.cancel(bookingNo)));
   }
 
+  @PostMapping("/{bookingNo}/confirmation")
+  public SuccessEnvelope<BookingResponse> confirm(@PathVariable @NotBlank String bookingNo) {
+    return SuccessEnvelope.of(BookingResponse.from(service.confirm(bookingNo)));
+  }
+
   public record CreateBookingRequest(
       @Positive long userId, @Positive long slotId, @Positive int quantity) {}
 
@@ -61,8 +66,10 @@ public class BookingReservationController {
       String status,
       long version,
       LocalDateTime createdAt,
+      LocalDateTime expireAt,
       LocalDateTime confirmedAt,
       LocalDateTime cancelledAt,
+      LocalDateTime expiredAt,
       LocalDateTime updatedAt) {
     static BookingResponse from(BookingReservation reservation) {
       return new BookingResponse(
@@ -73,8 +80,10 @@ public class BookingReservationController {
           reservation.status().name(),
           reservation.version(),
           reservation.createdAt(),
+          reservation.expireAt(),
           reservation.confirmedAt(),
           reservation.cancelledAt(),
+          reservation.expiredAt(),
           reservation.updatedAt());
     }
   }

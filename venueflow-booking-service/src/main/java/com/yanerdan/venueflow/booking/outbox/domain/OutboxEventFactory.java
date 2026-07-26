@@ -3,7 +3,6 @@ package com.yanerdan.venueflow.booking.outbox.domain;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yanerdan.venueflow.booking.domain.BookingReservation;
-import com.yanerdan.venueflow.booking.domain.BookingStatus;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
@@ -32,10 +31,16 @@ public class OutboxEventFactory {
   }
 
   public OutboxEvent create(BookingReservation booking) {
-    boolean confirmed = booking.status() == BookingStatus.CONFIRMED;
-    String type = confirmed ? "BOOKING_RESERVATION_CONFIRMED" : "BOOKING_RESERVATION_CANCELLED";
-    String externalType =
-        confirmed ? "booking.reservation.confirmed" : "booking.reservation.cancelled";
+    String suffix =
+        switch (booking.status()) {
+          case CONFIRMED -> "confirmed";
+          case CANCELLED -> "cancelled";
+          case EXPIRED -> "expired";
+          case PENDING_CONFIRMATION ->
+              throw new IllegalArgumentException("Pending reservation has no outbox event");
+        };
+    String type = "BOOKING_RESERVATION_" + suffix.toUpperCase(java.util.Locale.ROOT);
+    String externalType = "booking.reservation." + suffix;
     String eventId = UUID.randomUUID().toString();
     Instant occurredAt = clock.instant();
     String payload =

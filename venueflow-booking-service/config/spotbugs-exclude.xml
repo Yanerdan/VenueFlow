@@ -13,4 +13,16 @@
     <Class name="com.yanerdan.venueflow.booking.reconciliation.persistence.ReconciliationAuditRepository"/>
     <Bug pattern="EI_EXPOSE_REP2,OBL_UNSATISFIED_OBLIGATION_EXCEPTION_EDGE"/>
   </Match>
+  <Match>
+    <Class name="com.yanerdan.venueflow.booking.expiration.application.ExpirationService"/>
+    <Bug pattern="EI_EXPOSE_REP2"/>
+  </Match>
+  <Match>
+    <Class name="com.yanerdan.venueflow.booking.expiration.persistence.ExpirationRepository$ClaimedTimeouts"/>
+    <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+  </Match>
+  <Match>
+    <Class name="com.yanerdan.venueflow.booking.persistence.BookingRepository"/>
+    <Bug pattern="EI_EXPOSE_REP2"/>
+  </Match>
 </FindBugsFilter>

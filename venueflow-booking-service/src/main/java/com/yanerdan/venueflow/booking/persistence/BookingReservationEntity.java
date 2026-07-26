@@ -22,8 +22,17 @@ public class BookingReservationEntity {
   private String releaseOperationId;
   private long version;
   private LocalDateTime createdAt;
+  private LocalDateTime expireAt;
   private LocalDateTime confirmedAt;
   private LocalDateTime cancelledAt;
+  private LocalDateTime expiredAt;
+  private String terminalReason;
+  private String timeoutState;
+  private String timeoutLeaseOwner;
+  private LocalDateTime timeoutLeaseExpiresAt;
+  private int timeoutAttemptCount;
+  private LocalDateTime timeoutNextCheckAt;
+  private String timeoutLastErrorCode;
   private LocalDateTime updatedAt;
 
   public BookingReservation toDomain() {
@@ -39,8 +48,11 @@ public class BookingReservationEntity {
         releaseOperationId,
         version,
         createdAt,
+        expireAt,
         confirmedAt,
         cancelledAt,
+        expiredAt,
+        terminalReason,
         updatedAt);
   }
 
@@ -136,6 +148,14 @@ public class BookingReservationEntity {
     return confirmedAt;
   }
 
+  public LocalDateTime getExpireAt() {
+    return expireAt;
+  }
+
+  public void setExpireAt(LocalDateTime expireAt) {
+    this.expireAt = expireAt;
+  }
+
   public void setConfirmedAt(LocalDateTime confirmedAt) {
     this.confirmedAt = confirmedAt;
   }
@@ -146,6 +166,70 @@ public class BookingReservationEntity {
 
   public void setCancelledAt(LocalDateTime cancelledAt) {
     this.cancelledAt = cancelledAt;
+  }
+
+  public LocalDateTime getExpiredAt() {
+    return expiredAt;
+  }
+
+  public void setExpiredAt(LocalDateTime expiredAt) {
+    this.expiredAt = expiredAt;
+  }
+
+  public String getTerminalReason() {
+    return terminalReason;
+  }
+
+  public void setTerminalReason(String terminalReason) {
+    this.terminalReason = terminalReason;
+  }
+
+  public String getTimeoutState() {
+    return timeoutState;
+  }
+
+  public void setTimeoutState(String timeoutState) {
+    this.timeoutState = timeoutState;
+  }
+
+  public String getTimeoutLeaseOwner() {
+    return timeoutLeaseOwner;
+  }
+
+  public void setTimeoutLeaseOwner(String timeoutLeaseOwner) {
+    this.timeoutLeaseOwner = timeoutLeaseOwner;
+  }
+
+  public LocalDateTime getTimeoutLeaseExpiresAt() {
+    return timeoutLeaseExpiresAt;
+  }
+
+  public void setTimeoutLeaseExpiresAt(LocalDateTime timeoutLeaseExpiresAt) {
+    this.timeoutLeaseExpiresAt = timeoutLeaseExpiresAt;
+  }
+
+  public int getTimeoutAttemptCount() {
+    return timeoutAttemptCount;
+  }
+
+  public void setTimeoutAttemptCount(int timeoutAttemptCount) {
+    this.timeoutAttemptCount = timeoutAttemptCount;
+  }
+
+  public LocalDateTime getTimeoutNextCheckAt() {
+    return timeoutNextCheckAt;
+  }
+
+  public void setTimeoutNextCheckAt(LocalDateTime timeoutNextCheckAt) {
+    this.timeoutNextCheckAt = timeoutNextCheckAt;
+  }
+
+  public String getTimeoutLastErrorCode() {
+    return timeoutLastErrorCode;
+  }
+
+  public void setTimeoutLastErrorCode(String timeoutLastErrorCode) {
+    this.timeoutLastErrorCode = timeoutLastErrorCode;
   }
 
   public LocalDateTime getUpdatedAt() {

@@ -126,7 +126,9 @@ public class ReconciliationService {
   private void reconcileAllocation(
       long runId, String owner, ReconciliationIntent intent, MutableSummary summary) {
     BookingReservation booking = bookings.findByRequestId(intent.requestId());
-    if (booking != null && booking.status() == BookingStatus.CONFIRMED) {
+    if (booking != null
+        && (booking.status() == BookingStatus.PENDING_CONFIRMATION
+            || booking.status() == BookingStatus.CONFIRMED)) {
       resolve(intent, owner, ReconciliationOutcomeCode.ALREADY_CONSISTENT, summary, false);
       return;
     }
@@ -155,7 +157,8 @@ public class ReconciliationService {
     BookingReservation booking =
         intent.bookingId() == null ? null : bookings.findById(intent.bookingId());
     if (booking == null
-        || (booking.status() != BookingStatus.CONFIRMED
+        || (booking.status() != BookingStatus.PENDING_CONFIRMATION
+            && booking.status() != BookingStatus.CONFIRMED
             && booking.status() != BookingStatus.CANCELLED)) {
       retry(intent, owner, ReconciliationIssueCode.BOOKING_STATE_CONFLICT, summary);
       return;

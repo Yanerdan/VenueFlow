@@ -2,6 +2,8 @@ package com.yanerdan.venueflow.booking.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -38,8 +40,15 @@ class BookingReservationServiceTest {
   void createsOnceAndReturnsSucceededReplayWithoutCollaboratorCalls() {
     when(repository.claim(1L, KEY, hash(), 2L, 1)).thenReturn(owner());
     when(userClient.isBookingPermitted(1L)).thenReturn(true);
-    when(repository.complete("request-1", 1L, 2L, 1, "allocate:request-1", "release:request-1"))
-        .thenReturn(reservation(BookingStatus.CONFIRMED));
+    when(repository.complete(
+            eq("request-1"),
+            eq(1L),
+            eq(2L),
+            eq(1),
+            eq("allocate:request-1"),
+            eq("release:request-1"),
+            any(LocalDateTime.class)))
+        .thenReturn(reservation(BookingStatus.PENDING_CONFIRMATION));
 
     assertThat(service.create(KEY, 1L, 2L, 1).replay()).isFalse();
     verify(resourceClient).allocate(2L, "allocate:request-1", 1);
@@ -49,7 +58,7 @@ class BookingReservationServiceTest {
             new ClaimResult(
                 ClaimResult.Kind.SUCCEEDED,
                 "request-1",
-                reservation(BookingStatus.CONFIRMED),
+                reservation(BookingStatus.PENDING_CONFIRMATION),
                 null));
     assertThat(service.create(KEY, 1L, 2L, 1).replay()).isTrue();
   }
@@ -72,7 +81,14 @@ class BookingReservationServiceTest {
   void compensatesWhenFinalPersistenceFails() {
     when(repository.claim(1L, KEY, hash(), 2L, 1)).thenReturn(owner());
     when(userClient.isBookingPermitted(1L)).thenReturn(true);
-    when(repository.complete("request-1", 1L, 2L, 1, "allocate:request-1", "release:request-1"))
+    when(repository.complete(
+            eq("request-1"),
+            eq(1L),
+            eq(2L),
+            eq(1),
+            eq("allocate:request-1"),
+            eq("release:request-1"),
+            any(LocalDateTime.class)))
         .thenThrow(new IllegalStateException("database unavailable"));
 
     assertThatThrownBy(() -> service.create(KEY, 1L, 2L, 1))
@@ -93,7 +109,14 @@ class BookingReservationServiceTest {
   void reportsCompensationRequiredWhenReleaseFails() {
     when(repository.claim(1L, KEY, hash(), 2L, 1)).thenReturn(owner());
     when(userClient.isBookingPermitted(1L)).thenReturn(true);
-    when(repository.complete("request-1", 1L, 2L, 1, "allocate:request-1", "release:request-1"))
+    when(repository.complete(
+            eq("request-1"),
+            eq(1L),
+            eq(2L),
+            eq(1),
+            eq("allocate:request-1"),
+            eq("release:request-1"),
+            any(LocalDateTime.class)))
         .thenThrow(new IllegalStateException("database unavailable"));
     doThrow(
             new BookingException(

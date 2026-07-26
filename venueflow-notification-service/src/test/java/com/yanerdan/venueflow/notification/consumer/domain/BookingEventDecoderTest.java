@@ -87,6 +87,19 @@ public class BookingEventDecoderTest {
         .isInstanceOf(EnvelopeException.class);
   }
 
+  @Test
+  void decodesExpirationAndDerivesTypedNotification() {
+    BookingEvent event =
+        decoder.decode(
+            expiration("1ad86725-dc3b-4565-b669-4e88e8fb6961").getBytes(StandardCharsets.UTF_8),
+            BookingEventDecoder.EXPIRED_ROUTE,
+            "application/json",
+            "UTF-8");
+
+    assertThat(event.status()).isEqualTo("EXPIRED");
+    assertThat(NotificationDraft.from(event).type()).isEqualTo("BOOKING_EXPIRED");
+  }
+
   public static String confirmation(String eventId) {
     return """
         {
@@ -99,6 +112,23 @@ public class BookingEventDecoderTest {
           "aggregateId":"B-1",
           "traceId":null,
           "payload":{"bookingNo":"B-1","userId":1,"slotId":2,"quantity":1,"status":"CONFIRMED"}
+        }
+        """
+        .formatted(eventId);
+  }
+
+  public static String expiration(String eventId) {
+    return """
+        {
+          "eventId":"%s",
+          "eventType":"booking.reservation.expired",
+          "eventVersion":1,
+          "occurredAt":"2026-07-26T10:00:00Z",
+          "producer":"venueflow-booking-service",
+          "aggregateType":"BOOKING",
+          "aggregateId":"B-1",
+          "traceId":null,
+          "payload":{"bookingNo":"B-1","userId":1,"slotId":2,"quantity":1,"status":"EXPIRED"}
         }
         """
         .formatted(eventId);

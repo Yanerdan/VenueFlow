@@ -2,6 +2,8 @@ package com.yanerdan.venueflow.booking;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.yanerdan.venueflow.booking.expiration.application.ExpirationScheduler;
+import com.yanerdan.venueflow.booking.expiration.application.ExpirationService;
 import com.yanerdan.venueflow.booking.reconciliation.application.ReconciliationScheduler;
 import com.yanerdan.venueflow.booking.reconciliation.application.ReconciliationService;
 import java.io.IOException;
@@ -41,6 +43,8 @@ class BookingServiceApplicationTest {
     assertThat(applicationContext.getBeansOfType(RabbitTemplate.class)).isEmpty();
     assertThat(applicationContext.getBeansOfType(ReconciliationService.class)).isEmpty();
     assertThat(applicationContext.getBeansOfType(ReconciliationScheduler.class)).isEmpty();
+    assertThat(applicationContext.getBeansOfType(ExpirationService.class)).isEmpty();
+    assertThat(applicationContext.getBeansOfType(ExpirationScheduler.class)).isEmpty();
   }
 
   @Test

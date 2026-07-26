@@ -68,6 +68,7 @@ class BookingReservationMysqlSuite {
     jdbcTemplate.update("DELETE FROM reconciliation_run");
     jdbcTemplate.update("DELETE FROM booking_reconciliation_intent");
     jdbcTemplate.update("DELETE FROM booking_outbox_event");
+    jdbcTemplate.update("DELETE FROM booking_status_log");
     jdbcTemplate.update("DELETE FROM booking_idempotency");
     jdbcTemplate.update("DELETE FROM booking_reservation");
     when(userClient.isBookingPermitted(1L)).thenReturn(true);
@@ -82,11 +83,12 @@ class BookingReservationMysqlSuite {
             WHERE script IN (
               'V001__init_booking_reservations.sql',
               'V002__add_booking_outbox.sql',
-              'V003__add_booking_reconciliation.sql'
+              'V003__add_booking_reconciliation.sql',
+              'V004__add_booking_timeout_expiration.sql'
             ) AND success = 1
             """,
             Integer.class);
-    assertThat(migrations).isEqualTo(3);
+    assertThat(migrations).isEqualTo(4);
 
     MvcResult created =
         mockMvc
@@ -95,7 +97,10 @@ class BookingReservationMysqlSuite {
                     .header("Idempotency-Key", KEY)
                     .contentType("application/json")
                     .content("{\"userId\":1,\"slotId\":2,\"quantity\":1}"))
-            .andExpectAll(status().isCreated(), jsonPath("$.data.status").value("CONFIRMED"))
+            .andExpectAll(
+                status().isCreated(),
+                jsonPath("$.data.status").value("PENDING_CONFIRMATION"),
+                jsonPath("$.data.expireAt").isNotEmpty())
             .andReturn();
     String bookingNo =
         JsonPath.read(
@@ -110,6 +115,12 @@ class BookingReservationMysqlSuite {
         .andExpectAll(status().isOk(), jsonPath("$.data.bookingNo").value(bookingNo));
     mockMvc
         .perform(get("/api/v1/bookings/{bookingNo}", bookingNo))
+        .andExpectAll(status().isOk(), jsonPath("$.data.status").value("PENDING_CONFIRMATION"));
+    assertThat(
+            jdbcTemplate.queryForObject("SELECT COUNT(*) FROM booking_outbox_event", Integer.class))
+        .isZero();
+    mockMvc
+        .perform(post("/api/v1/bookings/{bookingNo}/confirmation", bookingNo))
         .andExpectAll(status().isOk(), jsonPath("$.data.status").value("CONFIRMED"));
     mockMvc
         .perform(post("/api/v1/bookings/{bookingNo}/cancellation", bookingNo))
@@ -169,7 +180,7 @@ class BookingReservationMysqlSuite {
       assertThat(
               jdbcTemplate.queryForObject(
                   "SELECT COUNT(*) FROM booking_outbox_event", Integer.class))
-          .isEqualTo(1);
+          .isZero();
       assertThat(
               jdbcTemplate.queryForObject(
                   "SELECT COUNT(*) FROM booking_reconciliation_intent", Integer.class))

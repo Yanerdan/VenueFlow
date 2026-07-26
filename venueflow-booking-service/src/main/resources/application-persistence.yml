@@ -20,6 +20,8 @@ spring:
       ddl-auto: none
 
 venueflow:
+  booking:
+    confirmation-window: ${VENUEFLOW_CONFIRMATION_WINDOW:PT15M}
   collaborators:
     user-base-url: ${VENUEFLOW_USER_SERVICE_BASE_URL}
     resource-base-url: ${VENUEFLOW_RESOURCE_SERVICE_BASE_URL}

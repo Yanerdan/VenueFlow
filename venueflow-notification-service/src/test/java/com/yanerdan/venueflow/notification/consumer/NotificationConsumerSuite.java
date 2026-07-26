@@ -166,9 +166,39 @@ class NotificationConsumerSuite {
         .untilAsserted(() -> assertThat(count("notification_record")).isEqualTo(1));
   }
 
+  @Test
+  void expirationDeliveryIsIdempotent() {
+    String eventId = UUID.randomUUID().toString();
+    Message event = expiration(eventId);
+    rabbitTemplate.send(settings.sourceExchange(), BookingEventDecoder.EXPIRED_ROUTE, event);
+    rabbitTemplate.send(settings.sourceExchange(), BookingEventDecoder.EXPIRED_ROUTE, event);
+
+    await()
+        .atMost(Duration.ofSeconds(15))
+        .untilAsserted(
+            () -> {
+              assertThat(count("notification_consumed_event")).isEqualTo(1);
+              assertThat(count("notification_record")).isEqualTo(1);
+              assertThat(
+                      jdbcTemplate.queryForObject(
+                          "SELECT notification_type FROM notification_record", String.class))
+                  .isEqualTo("BOOKING_EXPIRED");
+            });
+  }
+
   private Message confirmation(String eventId) {
     return MessageBuilder.withBody(
             BookingEventDecoderTest.confirmation(eventId).getBytes(StandardCharsets.UTF_8))
+        .setMessageId(eventId)
+        .setContentType("application/json")
+        .setContentEncoding("UTF-8")
+        .setDeliveryMode(MessageDeliveryMode.PERSISTENT)
+        .build();
+  }
+
+  private Message expiration(String eventId) {
+    return MessageBuilder.withBody(
+            BookingEventDecoderTest.expiration(eventId).getBytes(StandardCharsets.UTF_8))
         .setMessageId(eventId)
         .setContentType("application/json")
         .setContentEncoding("UTF-8")

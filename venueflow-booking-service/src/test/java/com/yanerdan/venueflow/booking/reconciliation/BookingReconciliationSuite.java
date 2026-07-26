@@ -91,6 +91,7 @@ class BookingReconciliationSuite {
     jdbc.update("DELETE FROM reconciliation_run");
     jdbc.update("DELETE FROM booking_reconciliation_intent");
     jdbc.update("DELETE FROM booking_outbox_event");
+    jdbc.update("DELETE FROM booking_status_log");
     jdbc.update("DELETE FROM booking_idempotency");
     jdbc.update("DELETE FROM booking_reservation");
     ALLOCATION_VISIBLE.set(false);

@@ -33,9 +33,10 @@ effective state transition. V001 and every other service migration MUST remain u
 
 Every published event MUST use UTF-8 JSON containing event ID, event type, positive schema
 version, UTC occurrence time, producer, aggregate type and identifier, optional bounded trace
-ID, and a typed bounded payload. C11 SHALL publish
-`booking.reservation.confirmed.v1` and `booking.reservation.cancelled.v1` routing keys with
-payload status matching the effective Booking state.
+ID, and a typed bounded payload. Booking SHALL publish
+`booking.reservation.confirmed.v1`, `booking.reservation.cancelled.v1`, and
+`booking.reservation.expired.v1` routing keys with payload status matching the effective
+committed Booking state.
 
 Events MUST NOT contain credentials, connection strings, raw collaborator bodies, stack traces,
 large binary content, or internal database implementation details. Payload and header bytes MUST
@@ -43,10 +44,16 @@ be rejected before persistence when they exceed configured/schema limits.
 
 #### Scenario: A confirmed reservation event is serialized
 
-- **WHEN** Booking creates the Outbox event for a confirmed reservation
+- **WHEN** Booking confirms a pending reservation and creates its Outbox event
 - **THEN** its envelope has the stable event ID, versioned type, UTC time, booking number, user,
   slot, quantity, and `CONFIRMED` status
 - **AND** it contains no secret or infrastructure configuration
+
+#### Scenario: An expired reservation event is serialized
+
+- **WHEN** Booking commits a proven timeout expiration
+- **THEN** the envelope uses the expiration routing key and `EXPIRED` status
+- **AND** it contains only the existing bounded reservation identity and quantity facts
 
 #### Scenario: An event exceeds the size limit
 

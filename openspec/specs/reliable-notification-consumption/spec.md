@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define bounded, durable, and idempotent consumption of C11 Booking events by Notification
+Define bounded, durable, and idempotent consumption of Booking lifecycle events by Notification
 Service.
 
 ## Requirements
@@ -32,11 +32,11 @@ values. No other service migration or schema SHALL be changed or accessed.
 
 ### Requirement: Booking event envelopes are validated before side effects
 
-The consumer SHALL accept only UTF-8 JSON matching the C11 bounded envelope and the exact
-`booking.reservation.confirmed.v1` or `booking.reservation.cancelled.v1` routing contract. It
-MUST validate event ID, type/routing agreement, version, producer, aggregate identity, UTC
-occurrence time, typed payload, status, content type, and configured byte limits before creating
-a notification.
+The consumer SHALL accept only UTF-8 JSON matching the bounded Booking envelope and the exact
+`booking.reservation.confirmed.v1`, `booking.reservation.cancelled.v1`, or
+`booking.reservation.expired.v1` routing contract. It MUST validate event ID,
+type/routing agreement, version, producer, aggregate identity, UTC occurrence time, typed
+payload, status, content type, and configured byte limits before creating a notification.
 
 Unknown versions/types, malformed JSON, mismatched routing or payload status, missing required
 facts, oversized content, and event-ID reuse with a different canonical hash MUST be terminal
@@ -44,9 +44,15 @@ failures and MUST NOT create a notification.
 
 #### Scenario: A valid confirmation event arrives
 
-- **WHEN** a C11 confirmation envelope and routing key agree and pass all bounds
+- **WHEN** a confirmation envelope and routing key agree and pass all bounds
 - **THEN** the consumer derives a confirmation notification from typed fields
 - **AND** does not persist or log the raw envelope
+
+#### Scenario: A valid expiration event arrives
+
+- **WHEN** an expiration envelope has the exact routing key and `EXPIRED` payload status
+- **THEN** the consumer derives one expiration notification through the existing inbox transaction
+- **AND** duplicate delivery creates no second notification
 
 #### Scenario: An event identity is reused with different content
 
@@ -58,19 +64,20 @@ failures and MUST NOT create a notification.
 ### Requirement: Consumer topology is durable and consumer-owned
 
 Only the explicit `persistence,messaging` runtime SHALL create a Notification-owned durable work
-queue, fixed-backoff retry queue, dead-letter exchange and queue, and exact bindings for the two
-C11 Booking routing keys on the existing durable `venueflow.events.v1` topic exchange. Messages
-and republished retry/dead-letter messages MUST be persistent.
+queue, fixed-backoff retry queue, dead-letter exchange and queue, and exact bindings for the three
+Booking routing keys on the existing durable `venueflow.events.v1` topic exchange. Messages and
+republished retry/dead-letter messages MUST be persistent.
 
 Queue names, prefetch, concurrency, retry delay, maximum attempts, message byte limit, and
 publish-confirm timeout MUST be validated and bounded. Booking Service MUST NOT own or declare
-Notification queues, and Notification MUST NOT modify the C11 exchange or event contract.
+Notification queues, and Notification MUST NOT modify the exchange ownership or event payload
+contract.
 
 #### Scenario: Messaging is explicitly enabled
 
 - **WHEN** Notification starts with valid `persistence,messaging` database and RabbitMQ settings
 - **THEN** its durable work, retry, and dead-letter topology is declared idempotently
-- **AND** C11 confirmation and cancellation routing keys are routable
+- **AND** confirmation, cancellation, and expiration routing keys are routable
 
 #### Scenario: Default skeleton starts
 
