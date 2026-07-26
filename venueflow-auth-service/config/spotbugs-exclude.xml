@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+  <!-- Bound configuration and key parsing intentionally fail startup from constructors. -->
+  <Match>
+    <Class name="com.yanerdan.venueflow.auth.application.AuthService"/>
+    <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+  </Match>
+  <Match>
+    <Class name="com.yanerdan.venueflow.auth.security.RsaJwtIssuer"/>
+    <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+  </Match>
+
+  <!-- Spring owns these injected framework objects for the application lifetime. -->
+  <Match>
+    <Class name="com.yanerdan.venueflow.auth.persistence.JdbcAuthRepository"/>
+    <Bug pattern="EI_EXPOSE_REP2"/>
+  </Match>
+  <Match>
+    <Class name="com.yanerdan.venueflow.auth.security.AuthSecurityConfiguration"/>
+    <Bug pattern="THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION"/>
+  </Match>
+
+  <!-- Error details are created as immutable List.of() values by the exception handler. -->
+  <Match>
+    <Class name="com.yanerdan.venueflow.auth.web.AuthDtos$ErrorResponse"/>
+    <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+  </Match>
+</FindBugsFilter>

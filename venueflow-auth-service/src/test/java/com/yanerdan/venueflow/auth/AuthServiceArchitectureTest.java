@@ -12,7 +12,7 @@ import org.springframework.util.ClassUtils;
 class AuthServiceArchitectureTest {
 
   @Test
-  void mainSourceContainsOnlyTheSkeletonEntryPoint() throws IOException {
+  void mainSourceStaysInsideTheAuthBoundary() throws IOException {
     Path sourceRoot = Path.of("src", "main", "java");
 
     List<String> sourceFiles;
@@ -28,8 +28,8 @@ class AuthServiceArchitectureTest {
               .toList();
     }
 
-    assertThat(sourceFiles)
-        .containsExactly("com/yanerdan/venueflow/auth/AuthServiceApplication.java");
+    assertThat(sourceFiles).isNotEmpty();
+    assertThat(sourceFiles).allMatch(path -> path.startsWith("com/yanerdan/venueflow/auth/"));
   }
 
   @Test
@@ -38,14 +38,11 @@ class AuthServiceArchitectureTest {
 
     List<String> forbiddenClasses =
         List.of(
-            "org.springframework.security.core.Authentication",
-            "org.springframework.jdbc.core.JdbcTemplate",
-            "org.flywaydb.core.Flyway",
             "com.baomidou.mybatisplus.core.mapper.BaseMapper",
             "org.springframework.amqp.rabbit.connection.ConnectionFactory",
             "org.springframework.data.redis.core.RedisTemplate",
             "org.springframework.cloud.client.discovery.DiscoveryClient",
-            "org.testcontainers.containers.GenericContainer");
+            "jakarta.persistence.Entity");
 
     assertThat(forbiddenClasses)
         .allSatisfy(

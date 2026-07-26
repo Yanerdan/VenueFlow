@@ -33,5 +33,31 @@ GET http://127.0.0.1:8081/actuator/health/readiness
 
 ## 当前边界
 
-C17 不包含凭据表、Migration、密码哈希、登录/退出 API、Access/Refresh Token、JWT
-密钥、角色、锁定、撤销、Gateway、User 调用、Nacos、Redis、消息或应用容器。
+C17 只建立了骨架。C18 在显式 `persistence` profile 下增加 Auth 自有 MySQL V001、
+BCrypt 凭据、失败锁定、RS256 Access JWT、单次轮换 Refresh Token，以及注册、登录、
+刷新和退出 API；默认 `skeleton` 行为不变。
+
+## C18 persistence 启动
+
+在未提交的环境中设置 `VENUEFLOW_AUTH_DB_URL/USERNAME/PASSWORD`、PKCS#8
+`JWT_PRIVATE_KEY` 和 X.509 `JWT_PUBLIC_KEY`，然后：
+
+```powershell
+$env:SPRING_PROFILES_ACTIVE = "persistence"
+java -jar target\venueflow-auth-service-0.1.0-SNAPSHOT.jar
+```
+
+API：
+
+```text
+POST /api/v1/auth/register
+POST /api/v1/auth/login
+POST /api/v1/auth/refresh
+POST /api/v1/auth/logout
+```
+
+真实 MySQL 验证：`.\mvnw.cmd -pl venueflow-auth-service verify -Pauth-it`。操作与密钥说明
+见 [Auth runbook](../docs/runbook/auth-credential-token-lifecycle.md)。
+
+C18 不包含角色、跨服务授权、Gateway、下游 JWT Filter、找回密码、MFA、邮件、Redis、
+Nacos/Feign、消息或应用容器。

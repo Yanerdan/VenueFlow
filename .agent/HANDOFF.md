@@ -164,3 +164,14 @@ Compose，未加入邮件、通知 HTTP API、超时取消或跨服务数据库�
   collaborator, broker, cache, discovery, or key connection.
 - C17 intentionally adds no credentials, login API, token/JWT behavior, Gateway, or User call.
 - Module/root verification and dependency, scope, secret, diff, and strict OpenSpec gates passed.
+
+## C18 implementation status
+
+- Archived change:
+  `openspec/changes/archive/2026-07-26-add-auth-credential-token-lifecycle`.
+- Auth V001 owns BCrypt credential and hashed rotating refresh-session facts.
+- Explicit `persistence` provides bounded registration, login lockout, RS256 access JWT,
+  refresh rotation/replay rejection, and idempotent logout.
+- Default `skeleton` remains datasource-, key-, and security-filter-free.
+- Module/root verification, MySQL 8.4.10 lifecycle, dependency, scope, secret, diff, and strict
+  OpenSpec gates passed.

@@ -222,3 +222,10 @@ java -jar venueflow-auth-service\target\venueflow-auth-service-0.1.0-SNAPSHOT.ja
 C17 仅建立可执行服务边界；登录、密码、Access/Refresh Token、JWT、Gateway 和 User
 协作将在后续独立 Change 中实现。详见
 [Auth Service README](venueflow-auth-service/README.md)。
+
+## C18 Auth credential and token lifecycle
+
+显式 `persistence` profile 使用 Auth 自有 MySQL V001，提供 BCrypt 凭据、失败锁定、
+短期 RS256 Access JWT、单次轮换 Refresh Token，以及注册/登录/刷新/退出 API。默认
+`skeleton` 仍不读取数据库或密钥。详见
+[Auth runbook](docs/runbook/auth-credential-token-lifecycle.md)。

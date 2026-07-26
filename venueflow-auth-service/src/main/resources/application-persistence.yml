@@ -1,0 +1,27 @@
+spring:
+  config:
+    activate:
+      on-profile: persistence
+  datasource:
+    url: ${VENUEFLOW_AUTH_DB_URL}
+    username: ${VENUEFLOW_AUTH_DB_USERNAME}
+    password: ${VENUEFLOW_AUTH_DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
+    clean-disabled: true
+  sql:
+    init:
+      mode: never
+
+venueflow:
+  auth:
+    issuer: ${VENUEFLOW_AUTH_ISSUER:venueflow-auth-service}
+    access-token-ttl: ${VENUEFLOW_AUTH_ACCESS_TOKEN_TTL:PT15M}
+    refresh-token-ttl: ${VENUEFLOW_AUTH_REFRESH_TOKEN_TTL:P7D}
+    max-login-attempts: ${VENUEFLOW_AUTH_MAX_LOGIN_ATTEMPTS:5}
+    lockout-duration: ${VENUEFLOW_AUTH_LOCKOUT_DURATION:PT15M}
+    jwt-private-key: ${JWT_PRIVATE_KEY}
+    jwt-public-key: ${JWT_PUBLIC_KEY}

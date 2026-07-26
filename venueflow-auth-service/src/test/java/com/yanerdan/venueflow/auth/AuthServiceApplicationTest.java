@@ -8,7 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.env.Environment;
-import org.springframework.util.ClassUtils;
+import org.springframework.security.web.SecurityFilterChain;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 class AuthServiceApplicationTest {
@@ -29,13 +29,6 @@ class AuthServiceApplicationTest {
   void createsNoInfrastructureSecurityOrCollaboratorBeans() {
     assertThat(applicationContext.getBeansOfType(DataSource.class)).isEmpty();
 
-    ClassLoader classLoader = getClass().getClassLoader();
-    assertThat(
-            ClassUtils.isPresent("org.springframework.security.core.Authentication", classLoader))
-        .isFalse();
-    assertThat(ClassUtils.isPresent("org.springframework.jdbc.core.JdbcTemplate", classLoader))
-        .isFalse();
-    assertThat(ClassUtils.isPresent("org.springframework.cloud.openfeign.FeignClient", classLoader))
-        .isFalse();
+    assertThat(applicationContext.getBeansOfType(SecurityFilterChain.class)).isEmpty();
   }
 }
