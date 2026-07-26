@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Profile;
 public class GatewayRouteConfiguration {
 
   @Bean
+  @Profile("!governance")
   RouteLocator venueFlowRoutes(
       RouteLocatorBuilder builder,
       @Value("${venueflow.gateway.auth-uri}") String authUri,
@@ -28,6 +29,26 @@ public class GatewayRouteConfiguration {
         .build();
   }
 
+  @Bean
+  @Profile("governance")
+  RouteLocator governedVenueFlowRoutes(
+      RouteLocatorBuilder builder,
+      @Value("${venueflow.gateway.auth-service-id}") String authService,
+      @Value("${venueflow.gateway.user-service-id}") String userService,
+      @Value("${venueflow.gateway.resource-service-id}") String resourceService,
+      @Value("${venueflow.gateway.booking-service-id}") String bookingService) {
+    return builder
+        .routes()
+        .route("auth", route -> route.path("/api/v1/auth/**").uri(serviceUri(authService)))
+        .route("users", route -> route.path("/api/v1/users/**").uri(serviceUri(userService)))
+        .route(
+            "resources",
+            route -> route.path("/api/v1/resources/**").uri(serviceUri(resourceService)))
+        .route(
+            "bookings", route -> route.path("/api/v1/bookings/**").uri(serviceUri(bookingService)))
+        .build();
+  }
+
   private static URI baseUri(String value) {
     URI uri = URI.create(value);
     if (!("http".equals(uri.getScheme()) || "https".equals(uri.getScheme()))
@@ -37,5 +58,12 @@ public class GatewayRouteConfiguration {
       throw new IllegalArgumentException("Gateway route URI must be a plain HTTP(S) origin");
     }
     return uri;
+  }
+
+  private static URI serviceUri(String serviceId) {
+    if (serviceId == null || !serviceId.matches("[a-z][a-z0-9-]{2,62}")) {
+      throw new IllegalArgumentException("Gateway service identity is invalid");
+    }
+    return URI.create("lb://" + serviceId);
   }
 }

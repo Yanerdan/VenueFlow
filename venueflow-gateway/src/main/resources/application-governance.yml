@@ -1,0 +1,33 @@
+spring:
+  config:
+    activate:
+      on-profile: governance
+    import:
+      - optional:nacos:venueflow-common.yml?group=${VENUEFLOW_NACOS_GROUP:VENUEFLOW_GROUP}
+      - optional:nacos:venueflow-gateway.yml?group=${VENUEFLOW_NACOS_GROUP:VENUEFLOW_GROUP}
+  cloud:
+    discovery:
+      enabled: true
+    service-registry:
+      auto-registration:
+        enabled: true
+    nacos:
+      server-addr: ${NACOS_SERVER_ADDR}
+      username: ${NACOS_USERNAME:}
+      password: ${NACOS_PASSWORD:}
+      discovery:
+        enabled: true
+        namespace: ${NACOS_NAMESPACE}
+        group: ${VENUEFLOW_NACOS_GROUP:VENUEFLOW_GROUP}
+        instance-id: ${VENUEFLOW_INSTANCE_ID:${spring.application.name}-${server.port}}
+      config:
+        enabled: true
+        namespace: ${NACOS_NAMESPACE}
+        group: ${VENUEFLOW_NACOS_GROUP:VENUEFLOW_GROUP}
+
+venueflow:
+  gateway:
+    auth-service-id: venueflow-auth-service
+    user-service-id: venueflow-user-service
+    resource-service-id: venueflow-resource-service
+    booking-service-id: venueflow-booking-service

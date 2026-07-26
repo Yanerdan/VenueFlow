@@ -18,7 +18,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile("persistence")
+@Profile("persistence & !governance")
 public class HttpResourceCapacityClient implements ResourceCapacityClient {
   private final HttpClient client;
   private final ObjectMapper objectMapper;

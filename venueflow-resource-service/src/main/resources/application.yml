@@ -3,6 +3,17 @@ spring:
     name: venueflow-resource-service
   profiles:
     default: skeleton
+  cloud:
+    discovery:
+      enabled: false
+    service-registry:
+      auto-registration:
+        enabled: false
+    nacos:
+      discovery:
+        enabled: false
+      config:
+        enabled: false
 #    active: persistence
 
 server:

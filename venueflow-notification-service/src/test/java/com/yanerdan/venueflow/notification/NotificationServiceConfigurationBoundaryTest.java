@@ -33,9 +33,10 @@ class NotificationServiceConfigurationBoundaryTest {
             "spring.mail",
             "redis",
             "kafka",
-            "nacos",
             "http://",
             "https://");
+    assertThat(configuration)
+        .contains("discovery:\n      enabled: false", "config:\n        enabled: false");
   }
 
   @Test

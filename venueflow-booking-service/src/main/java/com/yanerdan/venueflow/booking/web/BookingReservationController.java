@@ -6,7 +6,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import java.time.LocalDateTime;
-import java.util.UUID;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -97,7 +96,7 @@ public class BookingReservationController {
 
   public record SuccessEnvelope<T>(String code, String message, T data, String traceId) {
     static <T> SuccessEnvelope<T> of(T data) {
-      return new SuccessEnvelope<>("OK", "success", data, UUID.randomUUID().toString());
+      return new SuccessEnvelope<>("OK", "success", data, BookingTraceIdFilter.currentTraceId());
     }
   }
 }

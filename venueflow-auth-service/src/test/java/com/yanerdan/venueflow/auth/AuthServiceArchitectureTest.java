@@ -41,7 +41,6 @@ class AuthServiceArchitectureTest {
             "com.baomidou.mybatisplus.core.mapper.BaseMapper",
             "org.springframework.amqp.rabbit.connection.ConnectionFactory",
             "org.springframework.data.redis.core.RedisTemplate",
-            "org.springframework.cloud.client.discovery.DiscoveryClient",
             "jakarta.persistence.Entity");
 
     assertThat(forbiddenClasses)

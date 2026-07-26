@@ -186,3 +186,16 @@ Compose，未加入邮件、通知 HTTP API、超时取消或跨服务数据库�
   request-size bound.
 - Verification uses only generated in-memory RSA keys and a local isolated HTTP stub.
 - Module/root verification, 21/21 strict OpenSpec, dependency, scope, secret, and diff gates passed.
+
+## C20 implementation status
+
+- Archived change:
+  `openspec/changes/archive/2026-07-26-add-microservice-governance`.
+- Opt-in governance configuration covers Gateway, Auth, User, Resource, Booking, and Notification;
+  default profiles explicitly disable Nacos discovery/config and registration.
+- Gateway has explicit `lb://` routes, while Booking governance mode uses bounded, non-retrying
+  OpenFeign clients and retains operation lookup/reconciliation for ambiguous Resource writes.
+- Canonical UUID traces now flow from Gateway into Booking Feign calls and downstream responses.
+- Deterministic tests cover Feign retry boundaries and two Resource instances with one removed.
+- Affected-module and root verification, dependency, scope, credential, diff, and strict OpenSpec
+  gates passed.

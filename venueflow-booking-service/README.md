@@ -1,5 +1,10 @@
 # VenueFlow Booking Service
 
+With profiles `persistence,governance`, Booking resolves User and Resource through bounded
+OpenFeign clients and Spring Cloud LoadBalancer. Writes are not automatically retried; ambiguous
+capacity results retain the existing operation lookup and reconciliation flow. Without
+`governance`, the existing static HTTP adapters remain active.
+
 默认 `skeleton` profile 仅提供端口 8084 和受限健康探针，不连接外部服务。显式
 `persistence` profile 使用 Booking 自有 MySQL schema，并通过有界 Java HTTP 客户端读取
 User 预约资格、调用 Resource 容量台账。

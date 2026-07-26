@@ -42,6 +42,18 @@
       <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
     <dependency>
+      <groupId>com.alibaba.cloud</groupId>
+      <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.alibaba.cloud</groupId>
+      <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.cloud</groupId>
+      <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
       <scope>test</scope>
@@ -96,6 +108,9 @@
                     <include>org.springframework.cloud:spring-cloud-starter-gateway-server-webflux</include>
                     <include>org.springframework.boot:spring-boot-starter-oauth2-resource-server</include>
                     <include>org.springframework.boot:spring-boot-starter-actuator</include>
+                    <include>com.alibaba.cloud:spring-cloud-starter-alibaba-nacos-discovery</include>
+                    <include>com.alibaba.cloud:spring-cloud-starter-alibaba-nacos-config</include>
+                    <include>org.springframework.cloud:spring-cloud-starter-loadbalancer</include>
                     <include>org.springframework.boot:spring-boot-starter-test</include>
                     <include>org.springframework.boot:spring-boot-starter-webflux-test</include>
                     <include>org.springframework.security:spring-security-test</include>
@@ -125,16 +140,11 @@
                     <exclude>com.mysql:*</exclude>
                     <exclude>org.hibernate.orm:*</exclude>
                     <exclude>jakarta.persistence:*</exclude>
-                    <exclude>com.alibaba.cloud:*</exclude>
-                    <exclude>com.alibaba.nacos:*</exclude>
                     <exclude>com.alibaba.csp:*</exclude>
-                    <exclude>org.springframework.cloud:spring-cloud-starter-loadbalancer</exclude>
                     <exclude>org.springframework.amqp:*</exclude>
                     <exclude>org.springframework.kafka:*</exclude>
                     <exclude>io.lettuce:*</exclude>
                     <exclude>redis.clients:*</exclude>
-                    <exclude>io.micrometer:micrometer-tracing*</exclude>
-                    <exclude>io.opentelemetry:*</exclude>
                     <exclude>org.elasticsearch:*</exclude>
                   </excludes>
                 </bannedDependencies>

@@ -231,6 +231,14 @@ route prefixes, validates Auth-issued RS256 JWTs for business routes, replaces u
 headers, propagates UUID traces, and applies bounded CORS and request limits. See
 [the Gateway runbook](docs/runbook/secure-api-gateway.md).
 
+## C20 Microservice governance
+
+The opt-in `governance` profile adds Nacos registration/configuration to Gateway and all
+application services. Gateway keeps explicit load-balanced routes; Booking uses non-retrying,
+bounded OpenFeign clients for User and Resource, and synchronous calls propagate `X-Trace-Id`.
+Static profiles remain available for isolated work. See the
+[governance runbook](docs/runbook/microservice-governance.md).
+
 ## C18 Auth credential and token lifecycle
 
 显式 `persistence` profile 使用 Auth 自有 MySQL V001，提供 BCrypt 凭据、失败锁定、

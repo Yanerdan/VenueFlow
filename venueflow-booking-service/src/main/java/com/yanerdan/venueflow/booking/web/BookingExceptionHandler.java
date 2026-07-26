@@ -5,7 +5,6 @@ import com.yanerdan.venueflow.booking.application.BookingException;
 import jakarta.validation.ConstraintViolationException;
 import java.time.Instant;
 import java.util.Map;
-import java.util.UUID;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -50,7 +49,11 @@ public class BookingExceptionHandler {
     return ResponseEntity.status(status)
         .body(
             new BookingErrorResponse(
-                code.name(), message, Map.of(), UUID.randomUUID().toString(), Instant.now()));
+                code.name(),
+                message,
+                Map.of(),
+                BookingTraceIdFilter.currentTraceId(),
+                Instant.now()));
   }
 
   private static HttpStatus status(BookingErrorCode code) {

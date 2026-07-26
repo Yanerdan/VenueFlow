@@ -38,6 +38,14 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.alibaba.cloud</groupId>
+      <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.alibaba.cloud</groupId>
+      <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
+    </dependency>
 
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -120,6 +128,8 @@
                   <includes>
                     <include>org.springframework.boot:spring-boot-starter-webmvc</include>
                     <include>org.springframework.boot:spring-boot-starter-actuator</include>
+                    <include>com.alibaba.cloud:spring-cloud-starter-alibaba-nacos-discovery</include>
+                    <include>com.alibaba.cloud:spring-cloud-starter-alibaba-nacos-config</include>
                     <include>org.springframework.boot:spring-boot-starter-test</include>
                     <include>org.springframework.boot:spring-boot-starter-webmvc-test</include>
                     <include>org.springframework.boot:spring-boot-starter-validation</include>
@@ -169,14 +179,10 @@
                     <!-- Security and tokens -->
                     <exclude>org.springframework.boot:spring-boot-starter-security</exclude>
                     <exclude>org.springframework.boot:spring-boot-starter-oauth2-*</exclude>
-                    <exclude>org.springframework.security:*</exclude>
                     <exclude>io.jsonwebtoken:*</exclude>
                     <exclude>com.auth0:java-jwt</exclude>
 
                     <!-- Spring Cloud, Nacos, Sentinel and Feign -->
-                    <exclude>org.springframework.cloud:*</exclude>
-                    <exclude>com.alibaba.cloud:*</exclude>
-                    <exclude>com.alibaba.nacos:*</exclude>
                     <exclude>com.alibaba.csp:*</exclude>
                     <exclude>io.github.openfeign:*</exclude>
 
@@ -192,11 +198,8 @@
                     <exclude>org.apache.kafka:*</exclude>
 
                     <!-- Tracing and metrics exporters -->
-                    <exclude>io.micrometer:micrometer-tracing*</exclude>
                     <exclude>io.micrometer:micrometer-registry-prometheus*</exclude>
-                    <exclude>io.opentelemetry:*</exclude>
                     <exclude>io.zipkin.brave:*</exclude>
-                    <exclude>io.prometheus:*</exclude>
 
                     <!-- Search -->
                     <exclude>org.elasticsearch:*</exclude>

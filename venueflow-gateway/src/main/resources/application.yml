@@ -3,6 +3,17 @@ spring:
     name: venueflow-gateway
   profiles:
     default: skeleton
+  cloud:
+    discovery:
+      enabled: false
+    service-registry:
+      auto-registration:
+        enabled: false
+    nacos:
+      discovery:
+        enabled: false
+      config:
+        enabled: false
 
 server:
   port: ${SERVER_PORT:8080}

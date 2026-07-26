@@ -17,3 +17,6 @@ valid JWT. Gateway replaces client identity headers, propagates a UUID trace, li
 request bodies to one MiB by default, and permits only configured CORS origins.
 
 See [the secure Gateway runbook](../docs/runbook/secure-api-gateway.md).
+
+With profiles `gateway,governance`, the same explicit allowlist uses `lb://` service identities
+from Nacos; discovery locator remains disabled.

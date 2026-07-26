@@ -1,0 +1,4 @@
+venueflow:
+  auth:
+    access-token-ttl: PT15M
+    refresh-token-ttl: P7D

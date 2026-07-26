@@ -17,6 +17,18 @@
 
   <description>Infrastructure-independent Notification Service skeleton.</description>
 
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.yanerdan.venueflow</groupId>
+        <artifactId>venueflow-dependencies</artifactId>
+        <version>${project.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
   <dependencies>
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -26,6 +38,14 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.alibaba.cloud</groupId>
+      <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.alibaba.cloud</groupId>
+      <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
     </dependency>
 
     <dependency>
@@ -141,6 +161,8 @@
                   <includes>
                     <include>org.springframework.boot:spring-boot-starter-webmvc</include>
                     <include>org.springframework.boot:spring-boot-starter-actuator</include>
+                    <include>com.alibaba.cloud:spring-cloud-starter-alibaba-nacos-discovery</include>
+                    <include>com.alibaba.cloud:spring-cloud-starter-alibaba-nacos-config</include>
                     <include>org.springframework.boot:spring-boot-starter-validation</include>
                     <include>org.springframework.boot:spring-boot-starter-jdbc</include>
                     <include>org.springframework.boot:spring-boot-starter-flyway</include>
@@ -176,17 +198,12 @@
                     <exclude>com.yanerdan.venueflow:venueflow-*</exclude>
                     <exclude>org.springframework.boot:spring-boot-starter-mail</exclude>
                     <exclude>jakarta.mail:*</exclude>
-                    <exclude>org.springframework.security:*</exclude>
-                    <exclude>org.springframework.cloud:*</exclude>
-                    <exclude>com.alibaba.cloud:*</exclude>
                     <exclude>org.springframework.data:spring-data-redis</exclude>
                     <exclude>io.lettuce:*</exclude>
                     <exclude>redis.clients:*</exclude>
                     <exclude>org.springframework.kafka:*</exclude>
                     <exclude>org.apache.kafka:*</exclude>
                     <exclude>org.elasticsearch:*</exclude>
-                    <exclude>io.micrometer:micrometer-tracing*</exclude>
-                    <exclude>io.opentelemetry:*</exclude>
                   </excludes>
                 </bannedDependencies>
               </rules>

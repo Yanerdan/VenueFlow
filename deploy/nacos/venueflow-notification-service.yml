@@ -1,0 +1,4 @@
+venueflow:
+  notification:
+    prefetch: 10
+    concurrency: 1

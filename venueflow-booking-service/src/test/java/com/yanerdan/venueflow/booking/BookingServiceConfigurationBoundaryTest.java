@@ -28,7 +28,6 @@ class BookingServiceConfigurationBoundaryTest {
           "secret:",
           "token:",
           "import:",
-          "nacos",
           "redis",
           "rabbitmq",
           "kafka",
@@ -51,7 +50,8 @@ class BookingServiceConfigurationBoundaryTest {
     String configuration = readConfiguration(applicationFiles).toLowerCase(Locale.ROOT);
 
     assertThat(configuration)
-        .doesNotContain(FORBIDDEN_CONFIGURATION_FRAGMENTS.toArray(String[]::new));
+        .doesNotContain(FORBIDDEN_CONFIGURATION_FRAGMENTS.toArray(String[]::new))
+        .contains("discovery:\n      enabled: false", "config:\n        enabled: false");
   }
 
   @Test
@@ -70,6 +70,7 @@ class BookingServiceConfigurationBoundaryTest {
           .filter(path -> path.getFileName().toString().startsWith("application"))
           .filter(path -> !path.getFileName().toString().contains("persistence"))
           .filter(path -> !path.getFileName().toString().contains("messaging"))
+          .filter(path -> !path.getFileName().toString().contains("governance"))
           .toList();
     }
   }

@@ -28,7 +28,6 @@ class UserServiceConfigurationBoundaryTest {
           "secret:",
           "token:",
           "import:",
-          "nacos",
           "redis",
           "rabbitmq",
           "kafka",
@@ -47,7 +46,8 @@ class UserServiceConfigurationBoundaryTest {
     String configuration = readConfiguration(applicationFiles).toLowerCase(Locale.ROOT);
 
     assertThat(configuration)
-        .doesNotContain(FORBIDDEN_CONFIGURATION_FRAGMENTS.toArray(String[]::new));
+        .doesNotContain(FORBIDDEN_CONFIGURATION_FRAGMENTS.toArray(String[]::new))
+        .contains("discovery:\n      enabled: false", "config:\n        enabled: false");
   }
 
   @Test
@@ -86,6 +86,7 @@ class UserServiceConfigurationBoundaryTest {
           .filter(Files::isRegularFile)
           .filter(path -> path.getFileName().toString().startsWith("application"))
           .filter(path -> !path.getFileName().toString().contains("persistence"))
+          .filter(path -> !path.getFileName().toString().contains("governance"))
           .toList();
     }
   }

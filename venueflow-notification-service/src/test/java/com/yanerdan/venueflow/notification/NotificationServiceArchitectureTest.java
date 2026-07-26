@@ -48,8 +48,7 @@ class NotificationServiceArchitectureTest {
             "org.springframework.mail.javamail.JavaMailSender",
             "org.springframework.security.core.Authentication",
             "org.springframework.data.redis.core.RedisTemplate",
-            "org.springframework.kafka.core.KafkaTemplate",
-            "org.springframework.cloud.client.discovery.DiscoveryClient");
+            "org.springframework.kafka.core.KafkaTemplate");
 
     assertThat(forbiddenClasses)
         .allSatisfy(

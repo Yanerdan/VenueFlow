@@ -22,7 +22,7 @@ public final class CatalogTraceIdFilter extends OncePerRequestFilter {
   protected void doFilterInternal(
       HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
       throws ServletException, IOException {
-    String traceId = UUID.randomUUID().toString();
+    String traceId = canonicalOrNew(request.getHeader(RESPONSE_HEADER));
 
     MDC.put(MDC_KEY, traceId);
     response.setHeader(RESPONSE_HEADER, traceId);
@@ -32,5 +32,19 @@ public final class CatalogTraceIdFilter extends OncePerRequestFilter {
     } finally {
       MDC.remove(MDC_KEY);
     }
+  }
+
+  private static String canonicalOrNew(String value) {
+    if (value != null && value.length() == 36) {
+      try {
+        String canonical = UUID.fromString(value).toString();
+        if (canonical.equals(value)) {
+          return canonical;
+        }
+      } catch (IllegalArgumentException ignored) {
+        // Replace malformed client trace identifiers.
+      }
+    }
+    return UUID.randomUUID().toString();
   }
 }

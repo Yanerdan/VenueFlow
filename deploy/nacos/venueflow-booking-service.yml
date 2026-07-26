@@ -1,0 +1,5 @@
+venueflow:
+  collaborators:
+    connect-timeout-ms: 1000
+    request-timeout-ms: 2000
+    lookup-attempts: 2

@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile("persistence")
+@Profile("persistence & !governance")
 public class HttpUserEligibilityClient implements UserEligibilityClient {
   private final HttpClient client;
   private final ObjectMapper objectMapper;

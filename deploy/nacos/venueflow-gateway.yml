@@ -1,0 +1,3 @@
+venueflow:
+  gateway:
+    max-request-bytes: 1048576
