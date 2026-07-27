@@ -254,3 +254,12 @@ Outbox. The new Search Service consumes versioned events into a rebuildable Elas
 projection, exposes bounded resource search, returns explicit `SEARCH_UNAVAILABLE` degradation,
 and supports validated atomic Alias rebuilds. Gateway adds only the explicit search route.
 See the [cache/search runbook](docs/runbook/resource-cache-search.md).
+
+## C22 stability and observability
+
+Gateway, Booking, and Search can opt into Sentinel with the `stability` profile; committed rule
+templates are disabled until backed by measured load evidence. Every executable module can opt
+into Prometheus and OTLP tracing with `observe`, while defaults remain health-only and make no
+collector connection. The local Prometheus, Grafana, OTel Collector, and Jaeger stack is selected
+with the Compose `observe` profile. See the
+[stability and observability runbook](docs/runbook/stability-observability.md).

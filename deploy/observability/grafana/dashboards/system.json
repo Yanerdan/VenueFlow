@@ -1,0 +1,16 @@
+{
+  "uid": "venueflow-system",
+  "title": "VenueFlow System",
+  "schemaVersion": 41,
+  "refresh": "15s",
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Service uptime",
+      "datasource": {"uid": "prometheus"},
+      "targets": [{"expr": "process_uptime_seconds", "legendFormat": "{{instance}}"}],
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0}
+    }
+  ]
+}

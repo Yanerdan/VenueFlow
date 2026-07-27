@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "service": "venueflow-gateway",
+  "enabled": false,
+  "evidenceRequired": true,
+  "rules": [
+    {
+      "resource": "gateway-api",
+      "type": "flow",
+      "threshold": null,
+      "blockedOutcome": "HTTP_429"
+    }
+  ]
+}

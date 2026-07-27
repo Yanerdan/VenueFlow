@@ -214,3 +214,18 @@ Compose，未加入邮件、通知 HTTP API、超时取消或跨服务数据库�
   dependency/scope/credential/diff gates, and 24/24 strict OpenSpec validation passed.
 - The optional full ES container smoke remains unclaimed: Elastic registry pull produced no
   progress before its bounded timeout and created no container or volume.
+
+## C22 implementation status
+
+- Archived change:
+  `openspec/changes/archive/2026-07-27-add-stability-and-observability`.
+- Sentinel is opt-in and limited to Gateway, Booking, and Search; disabled rule templates contain
+  no invented thresholds.
+- The timeout budget is tracked as Gateway 5 s > Booking 4 s > collaborator read 2 s > connect
+  1 s and guarded by deterministic tests.
+- All executable modules have connection-free telemetry defaults and an explicit `observe`
+  profile for Prometheus plus OTLP traces.
+- Compose has an opt-in, resource-bounded Prometheus/Grafana/OTel Collector/Jaeger stack with four
+  provisioned dashboards.
+- Root `clean verify` produced 69 passing test reports; Compose, strict OpenSpec, dependency scope,
+  credentials, and diff gates passed.

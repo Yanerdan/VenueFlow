@@ -1,0 +1,28 @@
+spring:
+  config:
+    activate:
+      on-profile: observe
+
+management:
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  opentelemetry:
+    enabled: true
+    tracing:
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:http://127.0.0.1:4318/v1/traces}
+  tracing:
+    sampling:
+      probability: ${VENUEFLOW_TRACE_SAMPLING_PROBABILITY:0.1}
+    export:
+      otlp:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    prometheus:
+      access: read-only

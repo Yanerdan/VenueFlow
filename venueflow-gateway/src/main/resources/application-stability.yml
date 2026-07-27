@@ -1,0 +1,14 @@
+spring:
+  config:
+    activate:
+      on-profile: stability
+  cloud:
+    sentinel:
+      enabled: true
+      eager: false
+      transport:
+        dashboard: ${SENTINEL_DASHBOARD:}
+
+venueflow:
+  stability:
+    gateway-response-timeout-ms: ${VENUEFLOW_GATEWAY_RESPONSE_TIMEOUT_MS:5000}

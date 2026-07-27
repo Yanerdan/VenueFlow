@@ -38,6 +38,24 @@
     </dependency>
     <dependency>
       <groupId>com.alibaba.cloud</groupId>
+      <artifactId>spring-cloud-starter-alibaba-sentinel</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>aopalliance</groupId>
+          <artifactId>aopalliance</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-registry-prometheus</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-opentelemetry</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.alibaba.cloud</groupId>
       <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
     </dependency>
     <dependency>
@@ -133,6 +151,9 @@
                   <includes>
                     <include>org.springframework.boot:spring-boot-starter-webmvc</include>
                     <include>org.springframework.boot:spring-boot-starter-actuator</include>
+                    <include>com.alibaba.cloud:spring-cloud-starter-alibaba-sentinel</include>
+                    <include>io.micrometer:micrometer-registry-prometheus</include>
+                    <include>org.springframework.boot:spring-boot-starter-opentelemetry</include>
                     <include>com.alibaba.cloud:spring-cloud-starter-alibaba-nacos-discovery</include>
                     <include>com.alibaba.cloud:spring-cloud-starter-alibaba-nacos-config</include>
                     <include>org.springframework.cloud:spring-cloud-starter-openfeign</include>
@@ -178,13 +199,11 @@
                     <exclude>org.springframework.boot:spring-boot-starter-oauth2-*</exclude>
                     <exclude>io.jsonwebtoken:*</exclude>
                     <exclude>com.auth0:java-jwt</exclude>
-                    <exclude>com.alibaba.csp:*</exclude>
                     <exclude>redis.clients:*</exclude>
                     <exclude>io.lettuce:*</exclude>
                     <exclude>org.redisson:*</exclude>
                     <exclude>org.springframework.kafka:*</exclude>
                     <exclude>org.apache.kafka:*</exclude>
-                    <exclude>io.micrometer:micrometer-registry-prometheus*</exclude>
                     <exclude>io.zipkin.brave:*</exclude>
                     <exclude>org.elasticsearch:*</exclude>
                     <exclude>co.elastic.clients:*</exclude>

@@ -1,0 +1,16 @@
+{
+  "uid": "venueflow-booking",
+  "title": "VenueFlow Booking",
+  "schemaVersion": 41,
+  "refresh": "15s",
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Booking and Outbox counters",
+      "datasource": {"uid": "prometheus"},
+      "targets": [{"expr": "sum by (__name__) ({__name__=~\"venueflow_booking_.*|venueflow_outbox_.*\"})"}],
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0}
+    }
+  ]
+}

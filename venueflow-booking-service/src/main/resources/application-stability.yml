@@ -1,0 +1,14 @@
+spring:
+  config:
+    activate:
+      on-profile: stability
+  cloud:
+    sentinel:
+      enabled: true
+      eager: false
+      transport:
+        dashboard: ${SENTINEL_DASHBOARD:}
+
+venueflow:
+  stability:
+    booking-request-timeout-ms: ${VENUEFLOW_BOOKING_REQUEST_TIMEOUT_MS:4000}

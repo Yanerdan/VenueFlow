@@ -19,6 +19,8 @@ server:
   port: ${SERVER_PORT:8085}
 
 management:
+  opentelemetry:
+    enabled: false
   endpoints:
     access:
       default: none

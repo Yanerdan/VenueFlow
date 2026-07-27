@@ -1,0 +1,16 @@
+{
+  "uid": "venueflow-search",
+  "title": "VenueFlow Search",
+  "schemaVersion": 41,
+  "refresh": "15s",
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Search HTTP latency",
+      "datasource": {"uid": "prometheus"},
+      "targets": [{"expr": "rate(http_server_requests_seconds_sum{application=\"venueflow-search-service\"}[5m]) / rate(http_server_requests_seconds_count{application=\"venueflow-search-service\"}[5m])"}],
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0}
+    }
+  ]
+}

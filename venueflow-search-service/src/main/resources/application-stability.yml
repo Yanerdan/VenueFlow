@@ -1,0 +1,10 @@
+spring:
+  config:
+    activate:
+      on-profile: stability
+  cloud:
+    sentinel:
+      enabled: true
+      eager: false
+      transport:
+        dashboard: ${SENTINEL_DASHBOARD:}

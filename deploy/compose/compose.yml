@@ -140,6 +140,85 @@ services:
       timeout: 5s
       retries: 18
 
+  prometheus:
+    image: ${PROMETHEUS_IMAGE:?PROMETHEUS_IMAGE must be set by deploy/versions.env}
+    profiles: [observe]
+    restart: unless-stopped
+    command: [--config.file=/etc/prometheus/prometheus.yml, --storage.tsdb.retention.time=7d]
+    ports:
+      - ${INFRA_BIND_ADDRESS:?INFRA_BIND_ADDRESS must be set}:${PROMETHEUS_PORT:-9090}:9090
+    volumes:
+      - ../observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks: [base-network]
+    mem_limit: 512m
+    cpus: 0.5
+    healthcheck:
+      test: [CMD, wget, -qO-, http://127.0.0.1:9090/-/healthy]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  grafana:
+    image: ${GRAFANA_IMAGE:?GRAFANA_IMAGE must be set by deploy/versions.env}
+    profiles: [observe]
+    restart: unless-stopped
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - ${INFRA_BIND_ADDRESS:?INFRA_BIND_ADDRESS must be set}:${GRAFANA_PORT:-3000}:3000
+    volumes:
+      - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    networks: [base-network]
+    mem_limit: 384m
+    cpus: 0.5
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD-SHELL, wget -qO- http://127.0.0.1:3000/api/health >/dev/null]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+
+  otel-collector:
+    image: ${OTEL_COLLECTOR_IMAGE:?OTEL_COLLECTOR_IMAGE must be set by deploy/versions.env}
+    profiles: [observe]
+    restart: unless-stopped
+    command: [--config=/etc/otelcol-contrib/config.yml]
+    ports:
+      - ${INFRA_BIND_ADDRESS:?INFRA_BIND_ADDRESS must be set}:${OTEL_GRPC_PORT:-4317}:4317
+      - ${INFRA_BIND_ADDRESS:?INFRA_BIND_ADDRESS must be set}:${OTEL_HTTP_PORT:-4318}:4318
+    volumes:
+      - ../observability/otel-collector.yml:/etc/otelcol-contrib/config.yml:ro
+    networks: [base-network]
+    mem_limit: 256m
+    cpus: 0.5
+    healthcheck:
+      test: [CMD, /otelcol-contrib, components]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+
+  jaeger:
+    image: ${JAEGER_IMAGE:?JAEGER_IMAGE must be set by deploy/versions.env}
+    profiles: [observe]
+    restart: unless-stopped
+    ports:
+      - ${INFRA_BIND_ADDRESS:?INFRA_BIND_ADDRESS must be set}:${JAEGER_UI_PORT:-16686}:16686
+    networks: [base-network]
+    mem_limit: 512m
+    cpus: 0.5
+    healthcheck:
+      test: [CMD, /cmd/jaeger/jaeger-v2, version]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+
 networks:
   base-network:
     driver: bridge
@@ -150,3 +229,5 @@ volumes:
   rabbitmq-data:
   nacos-data:
   elasticsearch-data:
+  prometheus-data:
+  grafana-data:

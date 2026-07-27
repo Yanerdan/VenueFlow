@@ -71,6 +71,8 @@ class BookingServiceConfigurationBoundaryTest {
           .filter(path -> !path.getFileName().toString().contains("persistence"))
           .filter(path -> !path.getFileName().toString().contains("messaging"))
           .filter(path -> !path.getFileName().toString().contains("governance"))
+          .filter(path -> !path.getFileName().toString().contains("observe"))
+          .filter(path -> !path.getFileName().toString().contains("stability"))
           .toList();
     }
   }

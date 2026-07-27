@@ -1,0 +1,16 @@
+{
+  "uid": "venueflow-gateway",
+  "title": "VenueFlow Gateway",
+  "schemaVersion": 41,
+  "refresh": "15s",
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "HTTP request rate",
+      "datasource": {"uid": "prometheus"},
+      "targets": [{"expr": "sum(rate(http_server_requests_seconds_count{application=\"venueflow-gateway\"}[5m]))"}],
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0}
+    }
+  ]
+}

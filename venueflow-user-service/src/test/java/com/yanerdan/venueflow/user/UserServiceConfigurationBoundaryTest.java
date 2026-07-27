@@ -87,6 +87,7 @@ class UserServiceConfigurationBoundaryTest {
           .filter(path -> path.getFileName().toString().startsWith("application"))
           .filter(path -> !path.getFileName().toString().contains("persistence"))
           .filter(path -> !path.getFileName().toString().contains("governance"))
+          .filter(path -> !path.getFileName().toString().contains("observe"))
           .toList();
     }
   }

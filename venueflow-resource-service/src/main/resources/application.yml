@@ -24,6 +24,8 @@ server:
   port: ${SERVER_PORT:8083}
 
 management:
+  opentelemetry:
+    enabled: false
   endpoints:
     web:
       exposure:

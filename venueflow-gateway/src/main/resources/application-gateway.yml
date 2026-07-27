@@ -6,6 +6,9 @@ spring:
     max-in-memory-size: 1MB
   cloud:
     gateway:
+      httpclient:
+        connect-timeout: ${VENUEFLOW_GATEWAY_CONNECT_TIMEOUT_MS:1000}
+        response-timeout: ${VENUEFLOW_GATEWAY_RESPONSE_TIMEOUT:5s}
       discovery:
         locator:
           enabled: false

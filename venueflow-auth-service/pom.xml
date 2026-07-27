@@ -39,6 +39,14 @@
       <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
     <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-registry-prometheus</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-opentelemetry</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.alibaba.cloud</groupId>
       <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
     </dependency>
@@ -144,6 +152,8 @@
                   <includes>
                     <include>org.springframework.boot:spring-boot-starter-webmvc</include>
                     <include>org.springframework.boot:spring-boot-starter-actuator</include>
+                    <include>io.micrometer:micrometer-registry-prometheus</include>
+                    <include>org.springframework.boot:spring-boot-starter-opentelemetry</include>
                     <include>com.alibaba.cloud:spring-cloud-starter-alibaba-nacos-discovery</include>
                     <include>com.alibaba.cloud:spring-cloud-starter-alibaba-nacos-config</include>
                     <include>org.springframework.boot:spring-boot-starter-validation</include>
