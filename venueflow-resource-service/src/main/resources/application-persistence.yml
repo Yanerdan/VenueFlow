@@ -1,6 +1,10 @@
 spring:
   config:
-    import: optional:file:./.env[.properties]
+    import:
+      - optional:file:./.env[.properties]
+      - optional:file:../.env[.properties]
+      - optional:file:./secrets/local-dev/local-dev.env[.properties]
+      - optional:file:../secrets/local-dev/local-dev.env[.properties]
 
   datasource:
     url: ${VENUEFLOW_RESOURCE_DB_URL}
