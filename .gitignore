@@ -38,3 +38,4 @@ Desktop.ini
 # Test and analysis output
 .scannerwork/
 dependency-reduced-pom.xml
+artifacts/fault-evidence/

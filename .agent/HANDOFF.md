@@ -229,3 +229,15 @@ Compose，未加入邮件、通知 HTTP API、超时取消或跨服务数据库�
   provisioned dashboards.
 - Root `clean verify` produced 69 passing test reports; Compose, strict OpenSpec, dependency scope,
   credentials, and diff gates passed.
+
+## C23 implementation status
+
+- Archived change:
+  `openspec/changes/archive/2026-07-27-add-quality-and-fault-automation`.
+- The portable repository policy gate checks immutable images, secret signatures, migration
+  naming/modification, Compose profile boundaries, OpenSpec structure, and diff formatting.
+- Seven required fault scenarios have exact targets, bounded timeouts, observations, and recovery
+  actions. The PowerShell driver defaults to `PLANNED` evidence and only automates allowlisted
+  Elasticsearch/Redis Compose stops when explicitly enabled.
+- No live fault, load result, real-user result, or release material is claimed.
+- Portable policy, seven dry-run manifests, Compose, diff, and strict OpenSpec gates passed.

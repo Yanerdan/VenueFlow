@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "scenarios": [
+    {
+      "id": "notification-consumer-outage",
+      "target": "venueflow-notification-service",
+      "mode": "plan-only",
+      "profile": "messaging",
+      "timeoutSeconds": 60,
+      "precondition": "Notification consumer is processing an isolated test queue.",
+      "observation": "Queue depth grows; replay remains inbox-idempotent after restart.",
+      "recovery": "Restart the exact Notification process and verify its readiness endpoint."
+    },
+    {
+      "id": "elasticsearch-outage",
+      "target": "elasticsearch",
+      "mode": "compose-stop",
+      "profile": "search",
+      "timeoutSeconds": 30,
+      "holdSeconds": 5,
+      "precondition": "Search profile is healthy and test events are identifiable.",
+      "observation": "Resource writes remain available and Search reports explicit unavailability.",
+      "recovery": "docker compose --profile search start elasticsearch; verify cluster health."
+    },
+    {
+      "id": "resource-instance-outage",
+      "target": "venueflow-resource-service-instance-2",
+      "mode": "plan-only",
+      "profile": "governance",
+      "timeoutSeconds": 60,
+      "precondition": "Two isolated Resource instances are registered in Nacos.",
+      "observation": "The stopped instance is removed and bounded reads use the remaining instance.",
+      "recovery": "Restart only Resource instance 2 and verify readiness plus Nacos registration."
+    },
+    {
+      "id": "downstream-latency",
+      "target": "resource-http-fixture",
+      "mode": "plan-only",
+      "profile": "governance,stability",
+      "timeoutSeconds": 30,
+      "precondition": "The isolated Resource HTTP fixture supports a bounded delay.",
+      "observation": "Feign times out inside Booking and no write is reported as successful.",
+      "recovery": "Remove fixture delay and verify one bounded Booking request."
+    },
+    {
+      "id": "duplicate-event",
+      "target": "notification-test-queue",
+      "mode": "plan-only",
+      "profile": "messaging",
+      "timeoutSeconds": 30,
+      "precondition": "A synthetic eventId is reserved for the isolated test.",
+      "observation": "Two deliveries create one inbox-owned business effect.",
+      "recovery": "Purge only the synthetic fixture message and retain the inbox evidence."
+    },
+    {
+      "id": "outbox-publisher-outage",
+      "target": "booking-outbox-publisher",
+      "mode": "plan-only",
+      "profile": "messaging",
+      "timeoutSeconds": 60,
+      "precondition": "Booking and its publisher run as separately controllable test processes.",
+      "observation": "Committed Outbox rows remain pending and publish after restart.",
+      "recovery": "Restart only the Outbox publisher and verify bounded backlog convergence."
+    },
+    {
+      "id": "redis-failure",
+      "target": "redis",
+      "mode": "compose-stop",
+      "profile": "base",
+      "timeoutSeconds": 30,
+      "holdSeconds": 5,
+      "precondition": "Resource cache profile is healthy with disposable test keys.",
+      "observation": "Resource detail falls through to MySQL without false not-found.",
+      "recovery": "docker compose --profile base start redis; verify PONG and cache refill."
+    }
+  ]
+}

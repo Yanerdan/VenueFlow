@@ -263,3 +263,11 @@ into Prometheus and OTLP tracing with `observe`, while defaults remain health-on
 collector connection. The local Prometheus, Grafana, OTel Collector, and Jaeger stack is selected
 with the Compose `observe` profile. See the
 [stability and observability runbook](docs/runbook/stability-observability.md).
+
+## C23 quality and fault automation
+
+The connection-free repository policy gate checks image locks, credential signatures, migration
+conventions, Compose profile boundaries, OpenSpec structure, and patch formatting. Seven required
+fault scenarios are versioned and the PowerShell driver is dry-run by default; no live fault or
+success result is claimed. See the
+[quality and fault runbook](docs/runbook/quality-fault-automation.md).
