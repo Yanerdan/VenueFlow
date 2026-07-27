@@ -3,89 +3,151 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>VenueFlow</title>
+    <meta name="theme-color" content="#004545">
+    <title>VenueFlow · 场馆预订</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
-    <header>
-      <a class="brand" href="#">VenueFlow</a>
-      <div class="gateway">
-        <label for="gateway">网关</label>
-        <input id="gateway" value="http://127.0.0.1:8080">
+    <header class="site-header">
+      <a class="brand" href="#" aria-label="VenueFlow 首页">
+        <span class="brand-mark">V</span>
+        <span>VenueFlow</span>
+      </a>
+
+      <nav id="desktop-nav" class="desktop-nav hidden" aria-label="主导航">
+        <button data-view="discover" class="active"><span>⌕</span> 发现</button>
+        <button data-view="bookings"><span>□</span> 我的预订</button>
+        <button data-view="notifications"><span>○</span> 通知</button>
+      </nav>
+
+      <div class="header-actions">
+        <details class="gateway">
+          <summary title="开发设置">网关</summary>
+          <label for="gateway">API Gateway</label>
+          <input id="gateway" value="http://127.0.0.1:8080" inputmode="url">
+        </details>
+        <div id="profile-chip" class="profile-chip hidden">
+          <span id="profile-initial">V</span>
+          <strong id="profile-name">VenueFlow 用户</strong>
+        </div>
+        <button id="logout" class="text-button hidden">退出</button>
       </div>
-      <button id="logout" class="ghost hidden">退出</button>
     </header>
 
     <main>
       <section id="auth-view" class="auth-grid">
-        <div class="hero">
-          <p class="eyebrow">场馆预订，一站完成</p>
-          <h1>找到场地，选择时段，立即预订。</h1>
-          <p>这是 VenueFlow 的完整用户入口。所有请求统一经过 API Gateway。</p>
+        <div class="auth-story">
+          <p class="eyebrow">Venue concierge</p>
+          <h1>为重要时刻，找到恰好的空间。</h1>
+          <p class="lede">发现可用场馆、选择开放时段，并在同一个流程中完成预订。</p>
+          <div class="story-art" aria-hidden="true">
+            <span class="arch arch-one"></span>
+            <span class="arch arch-two"></span>
+            <div class="story-caption">
+              <span>CURATED SPACES</span>
+              <strong>一处空间，一场好体验</strong>
+            </div>
+          </div>
         </div>
-        <div class="panel">
-          <div class="tabs">
-            <button data-auth-tab="login" class="active">登录</button>
-            <button data-auth-tab="register">注册</button>
+
+        <div class="auth-panel">
+          <div class="panel-heading">
+            <p class="eyebrow">欢迎使用</p>
+            <h2>进入 VenueFlow</h2>
+            <p>登录或创建账户，开始安排你的下一次活动。</p>
+          </div>
+          <div class="tabs" role="tablist">
+            <button data-auth-tab="login" class="active" role="tab">登录</button>
+            <button data-auth-tab="register" role="tab">注册</button>
           </div>
           <form id="login-form">
-            <label>用户名<input name="username" minlength="3" required></label>
-            <label>密码<input name="password" type="password" required></label>
-            <button type="submit">进入 VenueFlow</button>
+            <label>用户名<input name="username" minlength="3" autocomplete="username" required placeholder="输入用户名"></label>
+            <label>密码<input name="password" type="password" autocomplete="current-password" required placeholder="输入密码"></label>
+            <button type="submit" class="primary-button">进入 VenueFlow <span>→</span></button>
           </form>
           <form id="register-form" class="hidden">
-            <label>显示名称<input name="displayName" maxlength="80" required></label>
-            <label>用户名<input name="username" minlength="3" maxlength="64" required></label>
-            <label>密码<input name="password" type="password" minlength="12" maxlength="72" required></label>
-            <button type="submit">创建账户</button>
+            <label>显示名称<input name="displayName" maxlength="80" autocomplete="name" required placeholder="你的称呼"></label>
+            <label>用户名<input name="username" minlength="3" maxlength="64" autocomplete="username" required placeholder="3–64 个字符"></label>
+            <label>密码<input name="password" type="password" minlength="12" maxlength="72" autocomplete="new-password" required placeholder="至少 12 个字符"></label>
+            <button type="submit" class="primary-button">创建账户 <span>→</span></button>
           </form>
+          <p class="auth-note">登录即表示你将通过当前配置的 VenueFlow API Gateway 使用服务。</p>
         </div>
       </section>
 
       <section id="app-view" class="hidden">
         <div class="welcome">
-          <div><p class="eyebrow">用户工作台</p><h1 id="welcome-name">欢迎</h1></div>
-          <button id="refresh-all" class="ghost">刷新数据</button>
+          <div>
+            <p class="eyebrow">Curated venue collection</p>
+            <h1 id="welcome-name">寻找下一处空间</h1>
+            <p id="welcome-copy">浏览场馆并查看未来 90 天的开放时段。</p>
+          </div>
+          <button id="refresh-all" class="outline-button"><span>↻</span> 刷新</button>
         </div>
-
-        <nav>
-          <button data-view="discover" class="active">发现</button>
-          <button data-view="bookings">我的预订</button>
-          <button data-view="notifications">通知</button>
-        </nav>
 
         <section id="discover" class="view">
           <form id="search-form" class="search">
-            <input name="text" maxlength="100" placeholder="搜索场馆名称、位置或描述">
+            <span aria-hidden="true">⌕</span>
+            <input name="text" maxlength="100" placeholder="搜索场馆名称、位置或描述" aria-label="搜索场馆">
             <button type="submit">搜索</button>
           </form>
+          <div class="filter-row" aria-label="场馆分类">
+            <span class="filter-label">精选</span>
+            <span>会议与协作</span>
+            <span>发布与展览</span>
+            <span>聚会与活动</span>
+          </div>
           <div class="split">
-            <div><h2>可用场馆</h2><div id="resource-list" class="cards"></div></div>
-            <aside>
+            <div>
+              <div class="section-title">
+                <div><p class="eyebrow">Available now</p><h2>可用场馆</h2></div>
+                <span id="resource-count" class="result-count"></span>
+              </div>
+              <div id="resource-list" class="venue-grid"></div>
+            </div>
+            <aside id="slot-panel" class="slot-panel">
+              <button id="close-slots" class="close-button" aria-label="关闭时段面板">×</button>
+              <p class="eyebrow">Reservation</p>
               <h2 id="slot-title">选择一个场馆</h2>
+              <p id="slot-hint">从左侧场馆开始，查看可预订时段。</p>
               <div id="slot-list" class="slots"></div>
-              <form id="booking-form" class="hidden">
+              <form id="booking-form" class="booking-form hidden">
                 <input name="slotId" type="hidden">
-                <label>人数<input name="quantity" type="number" min="1" value="1" required></label>
-                <button type="submit">确认预订</button>
+                <label>参与人数<input name="quantity" type="number" min="1" value="1" required></label>
+                <button type="submit" class="primary-button">提交预订请求 <span>→</span></button>
               </form>
             </aside>
           </div>
         </section>
 
         <section id="bookings" class="view hidden">
-          <div class="section-title"><h2>我的预订</h2><button id="refresh-bookings" class="ghost">刷新</button></div>
-          <div id="booking-list" class="cards"></div>
+          <div class="section-title page-section-title">
+            <div><p class="eyebrow">Your itinerary</p><h2>我的预订</h2><p>管理待确认、已确认与已完成的场馆安排。</p></div>
+            <button id="refresh-bookings" class="outline-button">刷新</button>
+          </div>
+          <div id="booking-list" class="booking-list"></div>
         </section>
 
         <section id="notifications" class="view hidden">
-          <div class="section-title"><h2>通知中心</h2><button id="refresh-notifications" class="ghost">刷新</button></div>
-          <div id="notification-list" class="cards"></div>
+          <div class="section-title page-section-title">
+            <div><p class="eyebrow">Quiet inbox</p><h2>通知中心</h2><p>预订状态变化会按时间集中呈现。</p></div>
+            <button id="refresh-notifications" class="outline-button">刷新</button>
+          </div>
+          <div id="notification-list" class="notification-list"></div>
         </section>
       </section>
 
       <div id="message" role="status" aria-live="polite" class="message hidden"></div>
     </main>
+
+    <nav id="mobile-nav" class="mobile-nav hidden" aria-label="移动端主导航">
+      <button data-view="discover" class="active"><span>⌕</span>发现</button>
+      <button data-view="bookings"><span>□</span>预订</button>
+      <button data-view="notifications"><span>○</span>通知</button>
+    </nav>
     <script type="module" src="./src/app.js"></script>
   </body>
 </html>

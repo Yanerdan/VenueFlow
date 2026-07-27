@@ -28,6 +28,7 @@ export function createApi({
       const error = new Error(payload?.message || `请求失败 (${response.status})`);
       error.status = response.status;
       error.code = payload?.code;
+      error.traceId = payload?.traceId;
       throw error;
     }
     return payload?.data ?? payload;

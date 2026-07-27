@@ -64,15 +64,16 @@ test("booking creation sends a generated idempotency key", async () => {
   assert.deepEqual(JSON.parse(captured.body), { userId: 1, slotId: 2, quantity: 3 });
 });
 
-test("API errors retain status and server message", async () => {
+test("API errors retain status, server message and trace id", async () => {
   const api = createApi({
     baseUrl: "http://gateway",
     storage: storage(),
-    fetchImpl: async () => response(404, { message: "profile missing" })
+    fetchImpl: async () => response(404, { message: "profile missing", traceId: "trace-42" })
   });
   await assert.rejects(api.currentProfile(), error => {
     assert.equal(error.status, 404);
     assert.equal(error.message, "profile missing");
+    assert.equal(error.traceId, "trace-42");
     return true;
   });
 });
