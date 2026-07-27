@@ -12,6 +12,7 @@ import com.yanerdan.venueflow.search.application.ResourceSearchPage;
 import com.yanerdan.venueflow.search.application.ResourceSearchQuery;
 import com.yanerdan.venueflow.search.application.SearchIndex;
 import com.yanerdan.venueflow.search.application.SearchUnavailableException;
+import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -49,6 +50,13 @@ public final class ElasticsearchSearchIndex implements SearchIndex {
     this.readAlias = safeName(readAlias);
     this.writeAlias = safeName(writeAlias);
     this.inboxIndex = safeName(inboxIndex);
+  }
+
+  @PostConstruct
+  void initializeAliases() {
+    if (!aliasExists(readAlias) || !aliasExists(writeAlias)) {
+      switchAliases(createRebuildIndex());
+    }
   }
 
   @Override
@@ -179,7 +187,9 @@ public final class ElasticsearchSearchIndex implements SearchIndex {
 
   @Override
   public long count(String index) {
-    return perform("GET", "/" + safeName(index) + "/_count", null).path("count").asLong();
+    String safeIndex = safeName(index);
+    perform("POST", "/" + safeIndex + "/_refresh", null);
+    return perform("GET", "/" + safeIndex + "/_count", null).path("count").asLong();
   }
 
   @Override
@@ -209,6 +219,20 @@ public final class ElasticsearchSearchIndex implements SearchIndex {
           .get()
           .readTree(EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8));
     } catch (IOException | ParseException exception) {
+      throw unavailable(exception);
+    }
+  }
+
+  private boolean aliasExists(String alias) {
+    try {
+      return client.get().performRequest(new Request("HEAD", "/_alias/" + alias)).getStatusCode()
+          == 200;
+    } catch (ResponseException exception) {
+      if (exception.getResponse().getStatusCode() == 404) {
+        return false;
+      }
+      throw unavailable(exception);
+    } catch (IOException exception) {
       throw unavailable(exception);
     }
   }

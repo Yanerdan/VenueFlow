@@ -1,5 +1,6 @@
 package com.yanerdan.venueflow.booking.collaboration;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yanerdan.venueflow.booking.application.BookingErrorCode;
 import com.yanerdan.venueflow.booking.application.BookingException;
@@ -25,7 +26,8 @@ public class HttpUserEligibilityClient implements UserEligibilityClient {
       @Value("${venueflow.collaborators.user-base-url}") String baseUrl,
       @Value("${venueflow.collaborators.connect-timeout-ms:1000}") long connectTimeoutMs,
       @Value("${venueflow.collaborators.request-timeout-ms:2000}") long requestTimeoutMs) {
-    this.objectMapper = objectMapper.copy();
+    this.objectMapper =
+        objectMapper.copy().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     this.baseUrl = baseUrl;
     this.client =
         HttpClient.newBuilder().connectTimeout(Duration.ofMillis(connectTimeoutMs)).build();

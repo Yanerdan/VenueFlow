@@ -5,6 +5,8 @@ import jakarta.validation.ConstraintViolationException;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
@@ -17,8 +19,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Profile("search")
 public final class SearchExceptionHandler {
 
+  private static final Logger LOG = LoggerFactory.getLogger(SearchExceptionHandler.class);
+
   @ExceptionHandler(SearchUnavailableException.class)
-  ResponseEntity<Map<String, Object>> unavailable() {
+  ResponseEntity<Map<String, Object>> unavailable(SearchUnavailableException exception) {
+    LOG.warn("Search operation is unavailable", exception);
     return error(HttpStatus.SERVICE_UNAVAILABLE, "SEARCH_UNAVAILABLE", "Search is unavailable");
   }
 

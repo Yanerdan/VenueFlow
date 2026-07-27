@@ -27,7 +27,14 @@ class HttpCollaboratorClientTest {
     start();
     server.createContext(
         "/api/v1/users/1/booking-eligibility",
-        exchange -> respond(exchange, 200, "{\"bookingPermitted\":true}"));
+        exchange ->
+            respond(
+                exchange,
+                200,
+                """
+                {"userId":1,"accountStatus":"ACTIVE","bookingEligibility":"ELIGIBLE",
+                 "bookingPermitted":true,"version":0,"updatedAt":"2026-07-27T04:03:56Z"}
+                """));
     server.start();
 
     HttpUserEligibilityClient client =
@@ -60,7 +67,8 @@ class HttpCollaboratorClientTest {
                 "{\"operationId\":\"allocate-request-1\",\"operationType\":\"ALLOCATE\",\"quantity\":1}"));
     server.start();
 
-    HttpResourceCapacityClient client = new HttpResourceCapacityClient(baseUrl(), 200, 50, 1);
+    HttpResourceCapacityClient client =
+        new HttpResourceCapacityClient(new ObjectMapper(), baseUrl(), 200, 50, 1);
     client.allocate(2L, "allocate-request-1", 1);
 
     assertThat(allocations).hasValue(1);

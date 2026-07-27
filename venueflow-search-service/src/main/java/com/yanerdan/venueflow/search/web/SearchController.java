@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 @Profile("search")
 @RequestMapping("/api/v1/search")
-public final class SearchController {
+public class SearchController {
 
   private final SearchApplicationService service;
 

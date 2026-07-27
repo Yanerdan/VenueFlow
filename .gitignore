@@ -39,3 +39,4 @@ Desktop.ini
 .scannerwork/
 dependency-reduced-pom.xml
 artifacts/fault-evidence/
+.local/

@@ -16,11 +16,31 @@ idempotency keys.
 
 ## Local application
 
-Start the persistence-capable Auth, User, Resource, Booking, Notification and Search services with
-their documented local database/broker/search settings. Start Gateway with the `gateway` profile,
-matching JWT public key, and the six `VENUEFLOW_GATEWAY_*_URI` values from `.env.example`.
-Notification needs `persistence,messaging` to receive new Booking events; Search needs its `search`
-profile. The default ports are:
+On Windows with Docker Desktop and JDK 21, the repository-owned local launcher prepares untracked
+local credentials and RSA keys, starts MySQL/Redis/RabbitMQ/Elasticsearch, provisions five
+service-owned schemas, starts all seven applications with their functional profiles, and adds
+three demo venues with open slots:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/local-dev/start.ps1
+```
+
+Check or stop the stack without deleting data:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/local-dev/status.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/local-dev/stop.ps1
+```
+
+Run a disposable end-to-end acceptance journey through Gateway:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/local-dev/smoke.ps1
+```
+
+Pass `-Infrastructure` to `stop.ps1` only when the local infrastructure containers should also
+stop. Volumes are retained. Generated files stay under ignored `secrets/local-dev` and `.local`.
+The default ports are:
 
 | Component | Port |
 | --- | ---: |
