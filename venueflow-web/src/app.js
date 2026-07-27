@@ -210,9 +210,10 @@ $("#login-form").addEventListener("submit", event => {
 $("#register-form").addEventListener("submit", event => {
   event.preventDefault();
   const data = new FormData(event.currentTarget);
+  const username = String(data.get("username")).trim();
   run(async () => {
-    await api.register(data.get("username"), data.get("password"));
-    await api.login(data.get("username"), data.get("password"));
+    await api.register(username, data.get("password"));
+    await api.login(username, data.get("password"));
     await enterApp(data.get("displayName"));
   }, "账户已创建");
 });
