@@ -10,7 +10,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.reactive.CorsWebFilter;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 
 @Configuration(proxyBeanMethods = false)
@@ -18,7 +17,7 @@ import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 public class GatewayCorsConfiguration {
 
   @Bean
-  CorsWebFilter gatewayCorsWebFilter(
+  UrlBasedCorsConfigurationSource gatewayCorsConfigurationSource(
       @Value("${venueflow.gateway.allowed-origins}") String configuredOrigins) {
     List<String> origins =
         Arrays.stream(configuredOrigins.split(","))
@@ -45,7 +44,7 @@ public class GatewayCorsConfiguration {
 
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", cors);
-    return new CorsWebFilter(source);
+    return source;
   }
 
   private static String explicitOrigin(String value) {

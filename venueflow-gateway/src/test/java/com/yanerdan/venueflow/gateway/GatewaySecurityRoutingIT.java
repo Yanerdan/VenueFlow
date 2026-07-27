@@ -160,9 +160,10 @@ class GatewaySecurityRoutingIT {
   void corsAllowsOnlyExplicitOrigin() {
     client()
         .options()
-        .uri("/api/v1/auth/login")
+        .uri("/api/v1/users/me")
         .header(HttpHeaders.ORIGIN, "https://app.example.test")
-        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST")
+        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET")
+        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "authorization,content-type")
         .exchange()
         .expectStatus()
         .isOk()
@@ -171,9 +172,9 @@ class GatewaySecurityRoutingIT {
 
     client()
         .options()
-        .uri("/api/v1/auth/login")
+        .uri("/api/v1/users/me")
         .header(HttpHeaders.ORIGIN, "https://evil.example.test")
-        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST")
+        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET")
         .exchange()
         .expectHeader()
         .doesNotExist(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN);

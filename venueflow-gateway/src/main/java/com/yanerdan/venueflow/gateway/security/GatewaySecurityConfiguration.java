@@ -20,6 +20,7 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.web.cors.reactive.CorsConfigurationSource;
 
 @Configuration(proxyBeanMethods = false)
 @Profile("gateway")
@@ -45,8 +46,11 @@ public class GatewaySecurityConfiguration {
 
   @Bean
   SecurityWebFilterChain gatewaySecurity(
-      ServerHttpSecurity http, GatewayAuthenticationEntryPoint errors) {
+      ServerHttpSecurity http,
+      GatewayAuthenticationEntryPoint errors,
+      CorsConfigurationSource corsConfigurationSource) {
     return http.csrf(ServerHttpSecurity.CsrfSpec::disable)
+        .cors(cors -> cors.configurationSource(corsConfigurationSource))
         .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
         .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
         .authorizeExchange(
