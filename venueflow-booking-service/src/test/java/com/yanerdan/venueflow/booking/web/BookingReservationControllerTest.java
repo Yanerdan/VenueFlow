@@ -3,6 +3,7 @@ package com.yanerdan.venueflow.booking.web;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -10,7 +11,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.yanerdan.venueflow.booking.application.BookingReservationService;
 import com.yanerdan.venueflow.booking.domain.BookingReservation;
 import com.yanerdan.venueflow.booking.domain.BookingStatus;
+import com.yanerdan.venueflow.booking.persistence.BookingRepository;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -71,6 +74,34 @@ class BookingReservationControllerTest {
             status().isOk(),
             jsonPath("$.data.bookingNo").value("booking-1"),
             jsonPath("$.data.status").value("COMPLETED"));
+  }
+
+  @Test
+  void listsBoundedBookingHistory() throws Exception {
+    when(service.history(1L, 0, 20))
+        .thenReturn(new BookingRepository.BookingHistoryPage(List.of(reservation()), 1L, 0, 20));
+
+    mockMvc
+        .perform(get("/api/v1/bookings").param("userId", "1"))
+        .andExpectAll(
+            status().isOk(),
+            jsonPath("$.data.items", hasSize(1)),
+            jsonPath("$.data.items[0].bookingNo").value("booking-1"),
+            jsonPath("$.data.totalElements").value(1),
+            jsonPath("$.data.pageNumber").value(0),
+            jsonPath("$.data.pageSize").value(20));
+  }
+
+  @Test
+  void rejectsOversizedHistoryPage() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/v1/bookings")
+                .param("userId", "1")
+                .param("pageNumber", "0")
+                .param("pageSize", "101"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("BOOKING_VALIDATION_FAILED"));
   }
 
   private static BookingReservation reservation() {

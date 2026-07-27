@@ -5,6 +5,7 @@ import com.yanerdan.venueflow.booking.collaboration.UserEligibilityClient;
 import com.yanerdan.venueflow.booking.domain.BookingReservation;
 import com.yanerdan.venueflow.booking.domain.BookingStatus;
 import com.yanerdan.venueflow.booking.persistence.BookingRepository;
+import com.yanerdan.venueflow.booking.persistence.BookingRepository.BookingHistoryPage;
 import com.yanerdan.venueflow.booking.persistence.ClaimResult;
 import com.yanerdan.venueflow.booking.reconciliation.domain.ReconciliationOutcomeCode;
 import java.nio.charset.StandardCharsets;
@@ -168,6 +169,13 @@ public class BookingReservationService {
     BookingReservation reservation = repository.find(bookingNo);
     if (reservation == null) throw error(BookingErrorCode.BOOKING_NOT_FOUND, "Booking not found");
     return reservation;
+  }
+
+  public BookingHistoryPage history(long userId, int pageNumber, int pageSize) {
+    if (userId <= 0 || pageNumber < 0 || pageSize < 1 || pageSize > 100) {
+      throw error(BookingErrorCode.BOOKING_VALIDATION_FAILED, "Invalid history page");
+    }
+    return repository.history(userId, pageNumber, pageSize);
   }
 
   public BookingReservation cancel(String bookingNo) {

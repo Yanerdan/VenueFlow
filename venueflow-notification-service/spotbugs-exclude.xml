@@ -5,4 +5,8 @@
     <Package name="~com\.yanerdan\.venueflow\.notification\.consumer\..*" />
     <Bug pattern="EI_EXPOSE_REP2" />
   </Match>
+  <Match>
+    <Class name="com.yanerdan.venueflow.notification.inbox.NotificationInboxRepository" />
+    <Bug pattern="EI_EXPOSE_REP2" />
+  </Match>
 </FindBugsFilter>

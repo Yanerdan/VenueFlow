@@ -54,6 +54,7 @@ class GatewaySecurityRoutingIT {
     registry.add("venueflow.gateway.resource-uri", () -> uri);
     registry.add("venueflow.gateway.booking-uri", () -> uri);
     registry.add("venueflow.gateway.search-uri", () -> uri);
+    registry.add("venueflow.gateway.notification-uri", () -> uri);
     registry.add("venueflow.gateway.issuer", () -> ISSUER);
     registry.add("venueflow.gateway.jwt-public-key", GatewaySecurityRoutingIT::publicKeyPem);
     registry.add("venueflow.gateway.allowed-origins", () -> "https://app.example.test");
@@ -104,6 +105,18 @@ class GatewaySecurityRoutingIT {
         .exchange()
         .expectStatus()
         .isUnauthorized();
+    assertThat(CALLS).hasValue(0);
+  }
+
+  @Test
+  void searchAndNotificationRoutesRequireAuthentication() {
+    client()
+        .get()
+        .uri("/api/v1/search/resources?q=hall")
+        .exchange()
+        .expectStatus()
+        .isUnauthorized();
+    client().get().uri("/api/v1/notifications?userId=1").exchange().expectStatus().isUnauthorized();
     assertThat(CALLS).hasValue(0);
   }
 

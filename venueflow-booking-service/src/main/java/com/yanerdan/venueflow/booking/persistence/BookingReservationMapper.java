@@ -91,4 +91,18 @@ public interface BookingReservationMapper extends BaseMapper<BookingReservationE
         AND timeout_state IN ('IDLE', 'RETRY', 'LEASED')
       """)
   long oldestTimeoutAgeSeconds(@Param("now") LocalDateTime now);
+
+  @Select(
+      """
+      SELECT *
+      FROM booking_reservation
+      WHERE user_id = #{userId}
+      ORDER BY created_at DESC, id DESC
+      LIMIT #{limit} OFFSET #{offset}
+      """)
+  List<BookingReservationEntity> selectHistory(
+      @Param("userId") long userId, @Param("offset") long offset, @Param("limit") int limit);
+
+  @Select("SELECT COUNT(*) FROM booking_reservation WHERE user_id = #{userId}")
+  long countHistory(@Param("userId") long userId);
 }

@@ -25,6 +25,8 @@ class GovernedRouteConfigurationTest {
             "\"/api/v1/users/**\"",
             "\"/api/v1/resources/**\"",
             "\"/api/v1/bookings/**\"",
+            "\"/api/v1/search/**\"",
+            "\"/api/v1/notifications/**\"",
             "URI.create(\"lb://\" + serviceId)")
         .doesNotContain("DiscoveryClientRouteDefinitionLocator");
     assertThat(configuration).contains("locator:\n          enabled: false");

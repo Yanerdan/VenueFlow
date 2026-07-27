@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>VenueFlow</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="#">VenueFlow</a>
+      <div class="gateway">
+        <label for="gateway">网关</label>
+        <input id="gateway" value="http://127.0.0.1:8080">
+      </div>
+      <button id="logout" class="ghost hidden">退出</button>
+    </header>
+
+    <main>
+      <section id="auth-view" class="auth-grid">
+        <div class="hero">
+          <p class="eyebrow">场馆预订，一站完成</p>
+          <h1>找到场地，选择时段，立即预订。</h1>
+          <p>这是 VenueFlow 的完整用户入口。所有请求统一经过 API Gateway。</p>
+        </div>
+        <div class="panel">
+          <div class="tabs">
+            <button data-auth-tab="login" class="active">登录</button>
+            <button data-auth-tab="register">注册</button>
+          </div>
+          <form id="login-form">
+            <label>用户名<input name="username" minlength="3" required></label>
+            <label>密码<input name="password" type="password" required></label>
+            <button type="submit">进入 VenueFlow</button>
+          </form>
+          <form id="register-form" class="hidden">
+            <label>显示名称<input name="displayName" maxlength="80" required></label>
+            <label>用户名<input name="username" minlength="3" maxlength="64" required></label>
+            <label>密码<input name="password" type="password" minlength="12" maxlength="72" required></label>
+            <button type="submit">创建账户</button>
+          </form>
+        </div>
+      </section>
+
+      <section id="app-view" class="hidden">
+        <div class="welcome">
+          <div><p class="eyebrow">用户工作台</p><h1 id="welcome-name">欢迎</h1></div>
+          <button id="refresh-all" class="ghost">刷新数据</button>
+        </div>
+
+        <nav>
+          <button data-view="discover" class="active">发现</button>
+          <button data-view="bookings">我的预订</button>
+          <button data-view="notifications">通知</button>
+        </nav>
+
+        <section id="discover" class="view">
+          <form id="search-form" class="search">
+            <input name="text" maxlength="100" placeholder="搜索场馆名称、位置或描述">
+            <button type="submit">搜索</button>
+          </form>
+          <div class="split">
+            <div><h2>可用场馆</h2><div id="resource-list" class="cards"></div></div>
+            <aside>
+              <h2 id="slot-title">选择一个场馆</h2>
+              <div id="slot-list" class="slots"></div>
+              <form id="booking-form" class="hidden">
+                <input name="slotId" type="hidden">
+                <label>人数<input name="quantity" type="number" min="1" value="1" required></label>
+                <button type="submit">确认预订</button>
+              </form>
+            </aside>
+          </div>
+        </section>
+
+        <section id="bookings" class="view hidden">
+          <div class="section-title"><h2>我的预订</h2><button id="refresh-bookings" class="ghost">刷新</button></div>
+          <div id="booking-list" class="cards"></div>
+        </section>
+
+        <section id="notifications" class="view hidden">
+          <div class="section-title"><h2>通知中心</h2><button id="refresh-notifications" class="ghost">刷新</button></div>
+          <div id="notification-list" class="cards"></div>
+        </section>
+      </section>
+
+      <div id="message" role="status" aria-live="polite" class="message hidden"></div>
+    </main>
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>

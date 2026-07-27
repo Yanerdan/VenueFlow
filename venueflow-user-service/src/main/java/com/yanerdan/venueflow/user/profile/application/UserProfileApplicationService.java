@@ -42,6 +42,13 @@ public class UserProfileApplicationService {
     return findRequired(id);
   }
 
+  @Transactional(readOnly = true)
+  public UserProfile getByExternalUserId(String externalUserId) {
+    return repository
+        .findByExternalUserId(new ExternalUserId(externalUserId))
+        .orElseThrow(() -> new UserProfileNotFoundException(0L));
+  }
+
   public UserProfile updateDisplayName(
       long userProfileId, String displayName, long expectedVersion) {
     UserProfileId id = new UserProfileId(userProfileId);

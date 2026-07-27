@@ -20,7 +20,8 @@ public class GatewayRouteConfiguration {
       @Value("${venueflow.gateway.user-uri}") String userUri,
       @Value("${venueflow.gateway.resource-uri}") String resourceUri,
       @Value("${venueflow.gateway.booking-uri}") String bookingUri,
-      @Value("${venueflow.gateway.search-uri}") String searchUri) {
+      @Value("${venueflow.gateway.search-uri}") String searchUri,
+      @Value("${venueflow.gateway.notification-uri}") String notificationUri) {
     return builder
         .routes()
         .route("auth", route -> route.path("/api/v1/auth/**").uri(baseUri(authUri)))
@@ -28,6 +29,9 @@ public class GatewayRouteConfiguration {
         .route("resources", route -> route.path("/api/v1/resources/**").uri(baseUri(resourceUri)))
         .route("bookings", route -> route.path("/api/v1/bookings/**").uri(baseUri(bookingUri)))
         .route("search", route -> route.path("/api/v1/search/**").uri(baseUri(searchUri)))
+        .route(
+            "notifications",
+            route -> route.path("/api/v1/notifications/**").uri(baseUri(notificationUri)))
         .build();
   }
 
@@ -39,7 +43,8 @@ public class GatewayRouteConfiguration {
       @Value("${venueflow.gateway.user-service-id}") String userService,
       @Value("${venueflow.gateway.resource-service-id}") String resourceService,
       @Value("${venueflow.gateway.booking-service-id}") String bookingService,
-      @Value("${venueflow.gateway.search-service-id}") String searchService) {
+      @Value("${venueflow.gateway.search-service-id}") String searchService,
+      @Value("${venueflow.gateway.notification-service-id}") String notificationService) {
     return builder
         .routes()
         .route("auth", route -> route.path("/api/v1/auth/**").uri(serviceUri(authService)))
@@ -50,6 +55,9 @@ public class GatewayRouteConfiguration {
         .route(
             "bookings", route -> route.path("/api/v1/bookings/**").uri(serviceUri(bookingService)))
         .route("search", route -> route.path("/api/v1/search/**").uri(serviceUri(searchService)))
+        .route(
+            "notifications",
+            route -> route.path("/api/v1/notifications/**").uri(serviceUri(notificationService)))
         .build();
   }
 

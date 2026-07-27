@@ -32,3 +32,4 @@ venueflow:
     resource-service-id: venueflow-resource-service
     booking-service-id: venueflow-booking-service
     search-service-id: venueflow-search-service
+    notification-service-id: venueflow-notification-service

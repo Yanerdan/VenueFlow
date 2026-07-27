@@ -34,6 +34,9 @@ jobs:
           QUALITY_BASE_REF: HEAD^
         run: sh scripts/quality/test-verify-repository.sh
 
+      - name: Verify Web application
+        run: node --test venueflow-web/test/*.test.js
+
       - name: Run engineering quality gates
         run: ./mvnw --batch-mode --no-transfer-progress clean verify
 

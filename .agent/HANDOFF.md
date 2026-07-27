@@ -241,3 +241,15 @@ Compose，未加入邮件、通知 HTTP API、超时取消或跨服务数据库�
   Elasticsearch/Redis Compose stops when explicitly enabled.
 - No live fault, load result, real-user result, or release material is claimed.
 - Portable policy, seven dry-run manifests, Compose, diff, and strict OpenSpec gates passed.
+
+## C24 implementation status
+
+- Archived change: `openspec/changes/archive/2026-07-27-complete-application-user-journey`.
+- User current-profile, bounded Booking history, and bounded Notification inbox reads are present.
+- Gateway has explicit static/governed Notification routes and protects Search and Notification.
+- `venueflow-web` provides the complete browser journey with no dependency installation or bundle
+  step; Node built-in tests cover its API/session adapter and CI runs them before Maven.
+- C24 intentionally defers pressure testing, security hardening, real-user trials, production
+  deployment, and release material.
+- Frontend, affected modules, root Reactor, SpotBugs, Compose, repository policy, strict OpenSpec,
+  and diff gates passed; delta specifications were synchronized to the main specifications.

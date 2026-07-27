@@ -92,6 +92,11 @@
       <artifactId>spring-boot-starter-test</artifactId>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-webmvc-test</artifactId>
+      <scope>test</scope>
+    </dependency>
 
     <dependency>
       <groupId>org.testcontainers</groupId>
@@ -180,6 +185,7 @@
                     <include>com.mysql:mysql-connector-j</include>
                     <include>org.springframework.boot:spring-boot-starter-amqp</include>
                     <include>org.springframework.boot:spring-boot-starter-test</include>
+                    <include>org.springframework.boot:spring-boot-starter-webmvc-test</include>
                     <include>org.testcontainers:testcontainers-junit-jupiter</include>
                     <include>org.testcontainers:testcontainers-mysql</include>
                     <include>org.testcontainers:testcontainers-rabbitmq</include>

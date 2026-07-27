@@ -91,6 +91,19 @@ class UserProfileControllerTest {
   }
 
   @Test
+  void retrievesCurrentUserProfileFromTrustedIdentity() throws Exception {
+    when(service.getByExternalUserId("customer-123")).thenReturn(profile());
+
+    mockMvc
+        .perform(get("/api/v1/users/me").header("X-User-Id", "customer-123"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(PROFILE_ID))
+        .andExpect(jsonPath("$.externalUserId").value("customer-123"));
+
+    verify(service).getByExternalUserId("customer-123");
+  }
+
+  @Test
   void retrievesBookingEligibility() throws Exception {
     UserBookingEligibilityView view =
         new UserBookingEligibilityView(

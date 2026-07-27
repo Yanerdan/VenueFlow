@@ -2,10 +2,14 @@ package com.yanerdan.venueflow.booking.web;
 
 import com.yanerdan.venueflow.booking.application.BookingReservationService;
 import com.yanerdan.venueflow.booking.domain.BookingReservation;
+import com.yanerdan.venueflow.booking.persistence.BookingRepository;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +20,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -42,6 +47,20 @@ public class BookingReservationController {
   @GetMapping("/{bookingNo}")
   public SuccessEnvelope<BookingResponse> get(@PathVariable @NotBlank String bookingNo) {
     return SuccessEnvelope.of(BookingResponse.from(service.get(bookingNo)));
+  }
+
+  @GetMapping
+  public SuccessEnvelope<BookingPageResponse> history(
+      @RequestParam @Positive long userId,
+      @RequestParam(defaultValue = "0") @Min(0) int pageNumber,
+      @RequestParam(defaultValue = "20") @Min(1) @Max(100) int pageSize) {
+    BookingRepository.BookingHistoryPage page = service.history(userId, pageNumber, pageSize);
+    return SuccessEnvelope.of(
+        new BookingPageResponse(
+            page.items().stream().map(BookingResponse::from).toList(),
+            page.totalElements(),
+            page.pageNumber(),
+            page.pageSize()));
   }
 
   @PostMapping("/{bookingNo}/cancellation")
@@ -91,6 +110,13 @@ public class BookingReservationController {
           reservation.expiredAt(),
           reservation.completedAt(),
           reservation.updatedAt());
+    }
+  }
+
+  public record BookingPageResponse(
+      List<BookingResponse> items, long totalElements, int pageNumber, int pageSize) {
+    public BookingPageResponse {
+      items = List.copyOf(items);
     }
   }
 

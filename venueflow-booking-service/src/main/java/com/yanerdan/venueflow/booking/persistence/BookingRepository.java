@@ -15,6 +15,7 @@ import com.yanerdan.venueflow.booking.reconciliation.domain.ReconciliationIntent
 import com.yanerdan.venueflow.booking.reconciliation.domain.ReconciliationOutcomeCode;
 import com.yanerdan.venueflow.booking.reconciliation.domain.ReconciliationWorkflowType;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
@@ -155,6 +156,17 @@ public class BookingRepository {
             new LambdaQueryWrapper<BookingReservationEntity>()
                 .eq(BookingReservationEntity::getBookingNo, bookingNo));
     return entity == null ? null : entity.toDomain();
+  }
+
+  @Transactional(readOnly = true)
+  public BookingHistoryPage history(long userId, int pageNumber, int pageSize) {
+    long offset = Math.multiplyExact((long) pageNumber, pageSize);
+    List<BookingReservation> items =
+        reservationMapper.selectHistory(userId, offset, pageSize).stream()
+            .map(BookingReservationEntity::toDomain)
+            .toList();
+    return new BookingHistoryPage(
+        items, reservationMapper.countHistory(userId), pageNumber, pageSize);
   }
 
   @Transactional
@@ -459,5 +471,12 @@ public class BookingRepository {
         claim.getRequestId(),
         null,
         claim.getFailureCode());
+  }
+
+  public record BookingHistoryPage(
+      List<BookingReservation> items, long totalElements, int pageNumber, int pageSize) {
+    public BookingHistoryPage {
+      items = List.copyOf(items);
+    }
   }
 }

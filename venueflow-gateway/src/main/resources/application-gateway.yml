@@ -22,5 +22,6 @@ venueflow:
     resource-uri: ${VENUEFLOW_GATEWAY_RESOURCE_URI:http://127.0.0.1:8083}
     booking-uri: ${VENUEFLOW_GATEWAY_BOOKING_URI:http://127.0.0.1:8084}
     search-uri: ${VENUEFLOW_GATEWAY_SEARCH_URI:http://127.0.0.1:8086}
+    notification-uri: ${VENUEFLOW_GATEWAY_NOTIFICATION_URI:http://127.0.0.1:8085}
     allowed-origins: ${VENUEFLOW_GATEWAY_ALLOWED_ORIGINS:http://127.0.0.1:3000}
     max-request-bytes: ${VENUEFLOW_GATEWAY_MAX_REQUEST_BYTES:1048576}

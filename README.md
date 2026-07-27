@@ -271,3 +271,12 @@ conventions, Compose profile boundaries, OpenSpec structure, and patch formattin
 fault scenarios are versioned and the PowerShell driver is dry-run by default; no live fault or
 success result is claimed. See the
 [quality and fault runbook](docs/runbook/quality-fault-automation.md).
+
+## C24 complete application user journey
+
+`venueflow-web` is a zero-install responsive browser application for registration/login, profile
+bootstrap, resource discovery, slot selection, booking creation and lifecycle actions, booking
+history, notifications, and logout. Gateway now explicitly routes and authenticates Search and
+Notification, while User, Booking, and Notification expose the minimal reads needed by the UI.
+Run `node --test venueflow-web/test/*.test.js` and see the
+[application runbook](docs/runbook/application-user-journey.md).
