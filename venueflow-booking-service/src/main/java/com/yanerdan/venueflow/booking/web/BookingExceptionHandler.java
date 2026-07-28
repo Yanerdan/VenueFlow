@@ -59,6 +59,7 @@ public class BookingExceptionHandler {
   private static HttpStatus status(BookingErrorCode code) {
     return switch (code) {
       case BOOKING_VALIDATION_FAILED -> HttpStatus.BAD_REQUEST;
+      case BOOKING_FORBIDDEN -> HttpStatus.FORBIDDEN;
       case BOOKING_NOT_FOUND -> HttpStatus.NOT_FOUND;
       case BOOKING_IDEMPOTENCY_CONFLICT,
           BOOKING_REQUEST_IN_PROGRESS,

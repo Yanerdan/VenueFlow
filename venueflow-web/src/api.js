@@ -63,6 +63,7 @@ export function createApi({
   return {
     hasSession: () => Boolean(storage.getItem(ACCESS)),
     subject: () => jwtSubject(storage.getItem(ACCESS)),
+    role: () => jwtClaims(storage.getItem(ACCESS))?.role || "APPLICANT",
     register: (username, password) => request("/api/v1/auth/register", {
       method: "POST", auth: false, body: JSON.stringify({ username, password })
     }),
@@ -89,6 +90,18 @@ export function createApi({
       method: "POST", body: JSON.stringify({ externalUserId, displayName })
     }),
     resources: () => request("/api/v1/resources?page=0&size=50"),
+    categories: () => request("/api/v1/resource-categories"),
+    createCategory: payload => request("/api/v1/resource-categories", {
+      method: "POST", body: JSON.stringify(payload)
+    }),
+    createResource: payload => request("/api/v1/resources", {
+      method: "POST", body: JSON.stringify(payload)
+    }),
+    changeResourceStatus: (resourceId, targetStatus, expectedVersion) => request(
+      `/api/v1/resources/${resourceId}/status`, {
+        method: "PATCH", body: JSON.stringify({ targetStatus, expectedVersion })
+      }
+    ),
     async search(text) {
       const page = await request(
         `/api/v1/search/resources?text=${encodeURIComponent(text)}&page=0&size=50`
@@ -114,8 +127,21 @@ export function createApi({
       body: JSON.stringify({ userId, slotId, quantity })
     }),
     bookings: userId => request(`/api/v1/bookings?userId=${userId}&pageNumber=0&pageSize=50`),
+    managementBookings: status => request(
+      `/api/v1/bookings/management?pageNumber=0&pageSize=100${status ? `&status=${status}` : ""}`
+    ),
     bookingAction: (bookingNo, action) => request(
       `/api/v1/bookings/${encodeURIComponent(bookingNo)}/${action}`, { method: "POST" }
+    ),
+    createSlot: (resourceId, startAt, endAt) => request(
+      `/api/v1/resources/${resourceId}/slots`, {
+        method: "POST", body: JSON.stringify({ startAt, endAt })
+      }
+    ),
+    changeSlotStatus: (slotId, targetStatus, expectedVersion) => request(
+      `/api/v1/resource-slots/${slotId}/status`, {
+        method: "PATCH", body: JSON.stringify({ targetStatus, expectedVersion })
+      }
     ),
     notifications: userId => request(
       `/api/v1/notifications?userId=${userId}&pageNumber=0&pageSize=50`
@@ -124,10 +150,14 @@ export function createApi({
 }
 
 export function jwtSubject(token) {
+  return jwtClaims(token)?.sub || null;
+}
+
+export function jwtClaims(token) {
   if (!token) return null;
   try {
     const part = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-    return JSON.parse(globalThis.atob(part)).sub || null;
+    return JSON.parse(globalThis.atob(part));
   } catch {
     return null;
   }

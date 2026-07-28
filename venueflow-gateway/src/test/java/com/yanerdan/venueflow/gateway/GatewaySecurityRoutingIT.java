@@ -121,6 +121,19 @@ class GatewaySecurityRoutingIT {
   }
 
   @Test
+  void resourceManagementRoutesRequireAndAcceptAuthentication() throws Exception {
+    client().get().uri("/api/v1/resource-categories").exchange().expectStatus().isUnauthorized();
+    client()
+        .get()
+        .uri("/api/v1/resource-categories")
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token(ISSUER))
+        .exchange()
+        .expectStatus()
+        .isOk();
+    assertThat(CALLS).hasValue(1);
+  }
+
+  @Test
   void verifiedSubjectReplacesForgedIdentityAndTraceIsPropagated() throws Exception {
     client()
         .get()
@@ -137,7 +150,7 @@ class GatewaySecurityRoutingIT {
 
     assertThat(CALLS).hasValue(1);
     assertThat(USER_ID).hasValue(SUBJECT);
-    assertThat(ROLE).hasValue(null);
+    assertThat(ROLE).hasValue("APPROVER");
     assertThat(TRACE_ID.get()).matches("[0-9a-f-]{36}");
   }
 
@@ -196,6 +209,7 @@ class GatewaySecurityRoutingIT {
             new JWTClaimsSet.Builder()
                 .issuer(issuer)
                 .subject(SUBJECT)
+                .claim("role", "APPROVER")
                 .issueTime(Date.from(now))
                 .notBeforeTime(Date.from(now.minusSeconds(1)))
                 .expirationTime(Date.from(now.plusSeconds(300)))

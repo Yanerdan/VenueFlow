@@ -8,6 +8,7 @@ public record AuthCredential(
     UUID userId,
     String username,
     String passwordHash,
+    CampusRole role,
     int failedAttempts,
     LocalDateTime lockedUntil,
     long tokenVersion,

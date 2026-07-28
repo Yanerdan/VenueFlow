@@ -69,11 +69,40 @@ class BookingReservationControllerTest {
     when(service.checkIn("booking-1")).thenReturn(reservation(BookingStatus.COMPLETED));
 
     mockMvc
-        .perform(post("/api/v1/bookings/{bookingNo}/check-in", "booking-1"))
+        .perform(
+            post("/api/v1/bookings/{bookingNo}/check-in", "booking-1")
+                .header("X-Role", "SYSTEM_ADMIN"))
         .andExpectAll(
             status().isOk(),
             jsonPath("$.data.bookingNo").value("booking-1"),
             jsonPath("$.data.status").value("COMPLETED"));
+  }
+
+  @Test
+  void rejectsApplicantManagementAction() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/bookings/{bookingNo}/confirmation", "booking-1")
+                .header("X-Role", "APPLICANT"))
+        .andExpectAll(status().isForbidden(), jsonPath("$.code").value("BOOKING_FORBIDDEN"));
+  }
+
+  @Test
+  void listsBoundedManagementHistory() throws Exception {
+    when(service.managementHistory(BookingStatus.PENDING_CONFIRMATION, 0, 20))
+        .thenReturn(
+            new BookingRepository.BookingHistoryPage(
+                List.of(reservation(BookingStatus.PENDING_CONFIRMATION)), 1L, 0, 20));
+
+    mockMvc
+        .perform(
+            get("/api/v1/bookings/management")
+                .header("X-Role", "APPROVER")
+                .param("status", "PENDING_CONFIRMATION"))
+        .andExpectAll(
+            status().isOk(),
+            jsonPath("$.data.items", hasSize(1)),
+            jsonPath("$.data.totalElements").value(1));
   }
 
   @Test

@@ -120,7 +120,8 @@ public class AuthService {
     if (credential.failedAttempts() != 0 || credential.lockedUntil() != null) {
       repository.resetFailures(credential.id(), credential.version(), now);
     }
-    return issuePair(credential.userId(), credential.username(), credential.tokenVersion());
+    return issuePair(
+        credential.userId(), credential.username(), credential.role(), credential.tokenVersion());
   }
 
   @Transactional
@@ -150,7 +151,11 @@ public class AuthService {
         now);
     TokenIssuer.IssuedAccessToken access =
         tokenIssuer.issue(
-            session.userId(), session.username(), session.tokenVersion(), clock.instant());
+            session.userId(),
+            session.username(),
+            credential.role(),
+            session.tokenVersion(),
+            clock.instant());
     return new Tokens(access.value(), replacement, "Bearer", access.expiresInSeconds());
   }
 
@@ -159,7 +164,11 @@ public class AuthService {
     repository.revokeRefresh(hash(refreshToken), nowLocal());
   }
 
-  private Tokens issuePair(UUID userId, String username, long tokenVersion) {
+  private Tokens issuePair(
+      UUID userId,
+      String username,
+      com.yanerdan.venueflow.auth.domain.CampusRole role,
+      long tokenVersion) {
     Instant now = clock.instant();
     String refresh = randomToken();
     repository.createRefresh(
@@ -169,7 +178,8 @@ public class AuthService {
         tokenVersion,
         LocalDateTime.ofInstant(now.plus(refreshTtl), ZoneOffset.UTC),
         LocalDateTime.ofInstant(now, ZoneOffset.UTC));
-    TokenIssuer.IssuedAccessToken access = tokenIssuer.issue(userId, username, tokenVersion, now);
+    TokenIssuer.IssuedAccessToken access =
+        tokenIssuer.issue(userId, username, role, tokenVersion, now);
     return new Tokens(access.value(), refresh, "Bearer", access.expiresInSeconds());
   }
 

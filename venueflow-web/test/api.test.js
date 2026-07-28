@@ -88,3 +88,23 @@ test("API errors retain status, server message and trace id", async () => {
     return true;
   });
 });
+
+test("campus role and management query come from the authenticated session", async () => {
+  const claims = Buffer.from(JSON.stringify({ sub: "user-1", role: "SYSTEM_ADMIN" }))
+    .toString("base64url");
+  let requestedUrl;
+  const api = createApi({
+    baseUrl: "http://gateway",
+    storage: storage({ "venueflow.access": `header.${claims}.signature` }),
+    fetchImpl: async url => {
+      requestedUrl = url;
+      return response(200, { data: { items: [] } });
+    }
+  });
+  assert.equal(api.role(), "SYSTEM_ADMIN");
+  await api.managementBookings("PENDING_CONFIRMATION");
+  assert.equal(
+    requestedUrl,
+    "http://gateway/api/v1/bookings/management?pageNumber=0&pageSize=100&status=PENDING_CONFIRMATION"
+  );
+});

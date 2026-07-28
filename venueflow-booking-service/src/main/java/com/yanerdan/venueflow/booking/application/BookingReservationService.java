@@ -178,6 +178,13 @@ public class BookingReservationService {
     return repository.history(userId, pageNumber, pageSize);
   }
 
+  public BookingHistoryPage managementHistory(BookingStatus status, int pageNumber, int pageSize) {
+    if (pageNumber < 0 || pageSize < 1 || pageSize > 100) {
+      throw error(BookingErrorCode.BOOKING_VALIDATION_FAILED, "Invalid management page");
+    }
+    return repository.managementHistory(status, pageNumber, pageSize);
+  }
+
   public BookingReservation cancel(String bookingNo) {
     BookingReservation reservation = get(bookingNo);
     if (reservation.status() == BookingStatus.CANCELLED) return reservation;

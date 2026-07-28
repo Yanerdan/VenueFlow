@@ -93,7 +93,9 @@ class BookingExpirationSuite {
     String bookingNo = createPending();
 
     mockMvc
-        .perform(post("/api/v1/bookings/{bookingNo}/confirmation", bookingNo))
+        .perform(
+            post("/api/v1/bookings/{bookingNo}/confirmation", bookingNo)
+                .header("X-Role", "SYSTEM_ADMIN"))
         .andExpectAll(status().isOk(), jsonPath("$.data.status").value("CONFIRMED"));
 
     assertThat(eventTypes()).containsExactly("BOOKING_RESERVATION_CONFIRMED");

@@ -172,18 +172,18 @@ process termination after release MUST be able to complete through reconciliatio
 
 ### Requirement: Booking APIs use bounded DTOs and stable envelopes
 
-Booking Service SHALL provide DTO-only create, booking-number retrieval, confirmation,
-cancellation, and check-in APIs. Controllers MUST NOT accept or return persistence Entities or
-invoke Mappers.
-Successful responses MUST use `code`, `message`, `data`, and `traceId`; failures MUST use only
-`code`, `message`, `details`, `traceId`, and `timestamp`. DTO status MUST support
-`PENDING_CONFIRMATION`, `CONFIRMED`, `CANCELLED`, `EXPIRED`, and `COMPLETED`; pending responses
-MUST expose the bounded server-owned expiration time and completed responses MUST expose the UTC
-completion time.
+Booking Service SHALL provide DTO-only create, booking-number retrieval, management confirmation,
+cancellation, management check-in, user history, and management history APIs. Confirmation and
+check-in MUST require an `APPROVER` or `SYSTEM_ADMIN` trusted role header. Controllers MUST NOT
+accept or return persistence Entities or invoke Mappers. Successful responses MUST use `code`,
+`message`, `data`, and `traceId`; failures MUST use only `code`, `message`, `details`, `traceId`,
+and `timestamp`. DTO status MUST support `PENDING_CONFIRMATION`, `CONFIRMED`, `CANCELLED`,
+`EXPIRED`, and `COMPLETED`; pending responses MUST expose the bounded server-owned expiration
+time and completed responses MUST expose the UTC completion time.
 
-Validation, idempotency conflict, in-progress, not found, eligibility, capacity, downstream,
-unknown outcome, persistence, compensation, deadline, timeout ownership, check-in window, and
-state failures MUST have distinct stable codes and appropriate non-200 HTTP statuses.
+Validation, forbidden, idempotency conflict, in-progress, not found, eligibility, capacity,
+downstream, unknown outcome, persistence, compensation, deadline, timeout ownership, check-in
+window, and state failures MUST have distinct stable codes and appropriate non-200 HTTP statuses.
 
 #### Scenario: A caller retrieves a reservation safely
 
@@ -202,6 +202,12 @@ state failures MUST have distinct stable codes and appropriate non-200 HTTP stat
 - **WHEN** check-in or retrieval returns `COMPLETED`
 - **THEN** the DTO includes its exact UTC completion time
 - **AND** it exposes no collaborator response or internal audit fact
+
+#### Scenario: An applicant attempts an approval action
+
+- **WHEN** an applicant calls confirmation or check-in
+- **THEN** Booking returns a stable forbidden response
+- **AND** the reservation state is unchanged
 
 ### Requirement: Reservation verification remains Docker-free by default
 
@@ -293,3 +299,19 @@ DTOs without internal reconciliation, lease, SQL, or collaborator facts.
 
 - **WHEN** page size exceeds 100 or page number is negative
 - **THEN** Booking returns a validation failure without querying an unbounded result
+
+### Requirement: Management booking history is bounded and role-protected
+
+Booking Service SHALL expose a newest-first global booking query with optional status filtering.
+The query MUST use zero-based pages, default page size 20, maximum page size 100, bounded DTOs,
+and MUST reject callers without `APPROVER` or `SYSTEM_ADMIN` role context.
+
+#### Scenario: An approver requests pending applications
+
+- **WHEN** an approver requests the global booking page filtered by `PENDING_CONFIRMATION`
+- **THEN** Booking returns a bounded newest-first page containing matching reservations
+
+#### Scenario: An applicant requests global history
+
+- **WHEN** an applicant calls the management booking query
+- **THEN** Booking returns a stable forbidden response without executing an unbounded query

@@ -88,7 +88,9 @@ class BookingCheckInSuite {
 
     String first =
         mockMvc
-            .perform(post("/api/v1/bookings/{bookingNo}/check-in", bookingNo))
+            .perform(
+                post("/api/v1/bookings/{bookingNo}/check-in", bookingNo)
+                    .header("X-Role", "SYSTEM_ADMIN"))
             .andExpectAll(
                 status().isOk(),
                 jsonPath("$.data.status").value("COMPLETED"),
@@ -99,7 +101,9 @@ class BookingCheckInSuite {
     String completedAt = JsonPath.read(first, "$.data.completedAt");
 
     mockMvc
-        .perform(post("/api/v1/bookings/{bookingNo}/check-in", bookingNo))
+        .perform(
+            post("/api/v1/bookings/{bookingNo}/check-in", bookingNo)
+                .header("X-Role", "SYSTEM_ADMIN"))
         .andExpectAll(
             status().isOk(),
             jsonPath("$.data.status").value("COMPLETED"),
@@ -123,7 +127,9 @@ class BookingCheckInSuite {
     FUTURE_SLOT.set(true);
 
     mockMvc
-        .perform(post("/api/v1/bookings/{bookingNo}/check-in", bookingNo))
+        .perform(
+            post("/api/v1/bookings/{bookingNo}/check-in", bookingNo)
+                .header("X-Role", "SYSTEM_ADMIN"))
         .andExpectAll(
             status().isConflict(), jsonPath("$.code").value("BOOKING_CHECK_IN_WINDOW_INVALID"));
 
@@ -153,7 +159,9 @@ class BookingCheckInSuite {
             .getContentAsString(StandardCharsets.UTF_8);
     String bookingNo = JsonPath.read(response, "$.data.bookingNo");
     mockMvc
-        .perform(post("/api/v1/bookings/{bookingNo}/confirmation", bookingNo))
+        .perform(
+            post("/api/v1/bookings/{bookingNo}/confirmation", bookingNo)
+                .header("X-Role", "SYSTEM_ADMIN"))
         .andExpect(status().isOk());
     return bookingNo;
   }

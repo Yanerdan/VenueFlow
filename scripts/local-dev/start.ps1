@@ -95,6 +95,8 @@ VENUEFLOW_GATEWAY_NOTIFICATION_URI=http://127.0.0.1:8085
 VENUEFLOW_GATEWAY_SEARCH_URI=http://127.0.0.1:8086
 VENUEFLOW_GATEWAY_ALLOWED_ORIGINS=http://127.0.0.1:3000
 VENUEFLOW_AUTH_ISSUER=venueflow-auth-service
+VENUEFLOW_BOOTSTRAP_ADMIN_USERNAME=campus.admin
+VENUEFLOW_BOOTSTRAP_ADMIN_PASSWORD=Campus-Admin-2026!
 VENUEFLOW_OUTBOX_ENABLED=true
 "@
         [IO.File]::WriteAllText($envFile, $content, [Text.UTF8Encoding]::new($false))
@@ -288,6 +290,8 @@ function Wait-ServiceHealthy($Service, [int]$TimeoutSeconds = 90) {
 Set-Location $repoRoot
 Initialize-LocalSecrets
 Import-EnvironmentFile
+Set-LocalEnvironmentValue "VENUEFLOW_BOOTSTRAP_ADMIN_USERNAME" "campus.admin"
+Set-LocalEnvironmentValue "VENUEFLOW_BOOTSTRAP_ADMIN_PASSWORD" "Campus-Admin-2026!"
 Resolve-MySqlPort
 Stop-StaleVenueFlowProcesses
 
@@ -331,3 +335,4 @@ Write-Host ""
 Write-Host "VenueFlow local stack is ready."
 Write-Host "Gateway:  http://127.0.0.1:8080"
 Write-Host "Frontend: python -m http.server 3000 --directory venueflow-web"
+Write-Host "Admin:    campus.admin / Campus-Admin-2026! (local demo only)"

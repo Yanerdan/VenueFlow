@@ -61,6 +61,8 @@ public class GatewaySecurityConfiguration {
                     .pathMatchers(
                         "/api/v1/users/**",
                         "/api/v1/resources/**",
+                        "/api/v1/resource-categories/**",
+                        "/api/v1/resource-slots/**",
                         "/api/v1/bookings/**",
                         "/api/v1/search/**",
                         "/api/v1/notifications/**")

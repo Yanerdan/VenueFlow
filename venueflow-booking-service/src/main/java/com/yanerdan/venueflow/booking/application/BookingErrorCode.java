@@ -2,6 +2,7 @@ package com.yanerdan.venueflow.booking.application;
 
 public enum BookingErrorCode {
   BOOKING_VALIDATION_FAILED,
+  BOOKING_FORBIDDEN,
   BOOKING_IDEMPOTENCY_CONFLICT,
   BOOKING_REQUEST_IN_PROGRESS,
   BOOKING_NOT_FOUND,

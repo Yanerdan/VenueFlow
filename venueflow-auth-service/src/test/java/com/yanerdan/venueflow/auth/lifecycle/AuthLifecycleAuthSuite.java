@@ -163,6 +163,7 @@ class AuthLifecycleAuthSuite {
     assertThat(claims.path("iss").asText()).isEqualTo("venueflow-auth-service");
     assertThat(claims.path("sub").asText()).isEqualTo(expectedSubject);
     assertThat(claims.path("username").asText()).isEqualTo(expectedUsername);
+    assertThat(claims.path("role").asText()).isEqualTo("APPLICANT");
     assertThat(claims.path("exp").asLong() - claims.path("iat").asLong()).isEqualTo(900);
     assertThat(claims.has("password")).isFalse();
 

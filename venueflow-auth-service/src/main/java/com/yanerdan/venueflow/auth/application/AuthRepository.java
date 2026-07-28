@@ -1,6 +1,7 @@
 package com.yanerdan.venueflow.auth.application;
 
 import com.yanerdan.venueflow.auth.domain.AuthCredential;
+import com.yanerdan.venueflow.auth.domain.CampusRole;
 import com.yanerdan.venueflow.auth.domain.RefreshSession;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -13,6 +14,8 @@ public interface AuthRepository {
   Optional<AuthCredential> findCredential(String username);
 
   Optional<AuthCredential> findCredential(UUID userId);
+
+  void setRole(String username, CampusRole role, LocalDateTime now);
 
   void recordFailure(
       long id, long version, int attempts, LocalDateTime lockedUntil, LocalDateTime now);

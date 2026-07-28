@@ -12,6 +12,8 @@ import reactor.core.publisher.Mono;
 @Component
 @Profile("gateway")
 public class GatewayIdentityFilter implements GlobalFilter, Ordered {
+  private static final java.util.Set<String> CAMPUS_ROLES =
+      java.util.Set.of("APPLICANT", "APPROVER", "RESOURCE_MANAGER", "SYSTEM_ADMIN");
 
   @Override
   public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
@@ -37,9 +39,14 @@ public class GatewayIdentityFilter implements GlobalFilter, Ordered {
                     .request(
                         request ->
                             request.headers(
-                                headers ->
-                                    headers.set(
-                                        "X-User-Id", authentication.getToken().getSubject())))
+                                headers -> {
+                                  String role = authentication.getToken().getClaimAsString("role");
+                                  if (!CAMPUS_ROLES.contains(role)) {
+                                    role = "APPLICANT";
+                                  }
+                                  headers.set("X-User-Id", authentication.getToken().getSubject());
+                                  headers.set("X-Role", role);
+                                }))
                     .build())
         .defaultIfEmpty(cleaned)
         .flatMap(chain::filter);

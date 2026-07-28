@@ -3,6 +3,7 @@ package com.yanerdan.venueflow.auth.security;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yanerdan.venueflow.auth.application.TokenIssuer;
+import com.yanerdan.venueflow.auth.domain.CampusRole;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
@@ -47,13 +48,15 @@ public class RsaJwtIssuer implements TokenIssuer {
   }
 
   @Override
-  public IssuedAccessToken issue(UUID userId, String username, long tokenVersion, Instant now) {
+  public IssuedAccessToken issue(
+      UUID userId, String username, CampusRole role, long tokenVersion, Instant now) {
     Instant expiresAt = now.plus(ttl);
     Map<String, Object> header = Map.of("alg", "RS256", "typ", "JWT");
     Map<String, Object> claims = new LinkedHashMap<>();
     claims.put("iss", issuer);
     claims.put("sub", userId.toString());
     claims.put("username", username);
+    claims.put("role", role.name());
     claims.put("ver", tokenVersion);
     claims.put("jti", UUID.randomUUID().toString());
     claims.put("iat", now.getEpochSecond());

@@ -120,7 +120,9 @@ class BookingReservationMysqlSuite {
             jdbcTemplate.queryForObject("SELECT COUNT(*) FROM booking_outbox_event", Integer.class))
         .isZero();
     mockMvc
-        .perform(post("/api/v1/bookings/{bookingNo}/confirmation", bookingNo))
+        .perform(
+            post("/api/v1/bookings/{bookingNo}/confirmation", bookingNo)
+                .header("X-Role", "SYSTEM_ADMIN"))
         .andExpectAll(status().isOk(), jsonPath("$.data.status").value("CONFIRMED"));
     mockMvc
         .perform(post("/api/v1/bookings/{bookingNo}/cancellation", bookingNo))

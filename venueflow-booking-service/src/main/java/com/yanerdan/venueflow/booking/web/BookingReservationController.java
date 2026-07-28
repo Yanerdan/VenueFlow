@@ -2,6 +2,7 @@ package com.yanerdan.venueflow.booking.web;
 
 import com.yanerdan.venueflow.booking.application.BookingReservationService;
 import com.yanerdan.venueflow.booking.domain.BookingReservation;
+import com.yanerdan.venueflow.booking.domain.BookingStatus;
 import com.yanerdan.venueflow.booking.persistence.BookingRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -69,13 +70,36 @@ public class BookingReservationController {
   }
 
   @PostMapping("/{bookingNo}/confirmation")
-  public SuccessEnvelope<BookingResponse> confirm(@PathVariable @NotBlank String bookingNo) {
+  public SuccessEnvelope<BookingResponse> confirm(
+      @PathVariable @NotBlank String bookingNo,
+      @RequestHeader(value = "X-Role", defaultValue = "APPLICANT") String role) {
+    BookingRoleGuard.requireApprover(role);
     return SuccessEnvelope.of(BookingResponse.from(service.confirm(bookingNo)));
   }
 
   @PostMapping("/{bookingNo}/check-in")
-  public SuccessEnvelope<BookingResponse> checkIn(@PathVariable @NotBlank String bookingNo) {
+  public SuccessEnvelope<BookingResponse> checkIn(
+      @PathVariable @NotBlank String bookingNo,
+      @RequestHeader(value = "X-Role", defaultValue = "APPLICANT") String role) {
+    BookingRoleGuard.requireApprover(role);
     return SuccessEnvelope.of(BookingResponse.from(service.checkIn(bookingNo)));
+  }
+
+  @GetMapping("/management")
+  public SuccessEnvelope<BookingPageResponse> managementHistory(
+      @RequestHeader(value = "X-Role", defaultValue = "APPLICANT") String role,
+      @RequestParam(required = false) BookingStatus status,
+      @RequestParam(defaultValue = "0") @Min(0) int pageNumber,
+      @RequestParam(defaultValue = "20") @Min(1) @Max(100) int pageSize) {
+    BookingRoleGuard.requireApprover(role);
+    BookingRepository.BookingHistoryPage page =
+        service.managementHistory(status, pageNumber, pageSize);
+    return SuccessEnvelope.of(
+        new BookingPageResponse(
+            page.items().stream().map(BookingResponse::from).toList(),
+            page.totalElements(),
+            page.pageNumber(),
+            page.pageSize()));
   }
 
   public record CreateBookingRequest(

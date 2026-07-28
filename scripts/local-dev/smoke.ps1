@@ -47,6 +47,11 @@ $login = Invoke-Json "Post" "$gateway/api/v1/auth/login" @{
 }
 $token = $login.data.accessToken
 $headers = @{ Authorization = "Bearer $token" }
+$adminLogin = Invoke-Json "Post" "$gateway/api/v1/auth/login" @{
+    username = "campus.admin"
+    password = "Campus-Admin-2026!"
+}
+$adminHeaders = @{ Authorization = "Bearer $($adminLogin.data.accessToken)" }
 
 $profile = Invoke-Json "Post" "$gateway/api/v1/users" @{
     externalUserId = [string]$registration.data.userId
@@ -79,7 +84,13 @@ $created = Invoke-Json "Post" "$gateway/api/v1/bookings" @{
 $bookingNo = $created.data.bookingNo
 if (-not $bookingNo) { throw "Booking creation returned no booking number" }
 
-$confirmed = Invoke-Json "Post" "$gateway/api/v1/bookings/$bookingNo/confirmation" $null $headers
+$managementPage = Invoke-Json "Get" `
+    "$gateway/api/v1/bookings/management?status=PENDING_CONFIRMATION&pageNumber=0&pageSize=20" `
+    $null $adminHeaders
+if (-not (@($managementPage.data.items) | Where-Object { $_.bookingNo -eq $bookingNo })) {
+    throw "Booking did not appear in the management approval queue"
+}
+$confirmed = Invoke-Json "Post" "$gateway/api/v1/bookings/$bookingNo/confirmation" $null $adminHeaders
 if ($confirmed.data.status -ne "CONFIRMED") { throw "Booking was not confirmed" }
 
 $search = Invoke-RestMethod `

@@ -169,6 +169,18 @@ public class BookingRepository {
         items, reservationMapper.countHistory(userId), pageNumber, pageSize);
   }
 
+  @Transactional(readOnly = true)
+  public BookingHistoryPage managementHistory(BookingStatus status, int pageNumber, int pageSize) {
+    long offset = Math.multiplyExact((long) pageNumber, pageSize);
+    String statusValue = status == null ? null : status.name();
+    List<BookingReservation> items =
+        reservationMapper.selectManagementHistory(statusValue, offset, pageSize).stream()
+            .map(BookingReservationEntity::toDomain)
+            .toList();
+    return new BookingHistoryPage(
+        items, reservationMapper.countManagementHistory(statusValue), pageNumber, pageSize);
+  }
+
   @Transactional
   public BookingReservation confirm(String bookingNo) {
     BookingReservationEntity current = findEntity(bookingNo);

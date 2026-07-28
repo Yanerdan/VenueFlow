@@ -253,7 +253,9 @@ class BookingOutboxSuite {
             .getContentAsString();
     String bookingNo = com.jayway.jsonpath.JsonPath.read(response, "$.data.bookingNo");
     mockMvc
-        .perform(post("/api/v1/bookings/{bookingNo}/confirmation", bookingNo))
+        .perform(
+            post("/api/v1/bookings/{bookingNo}/confirmation", bookingNo)
+                .header("X-Role", "SYSTEM_ADMIN"))
         .andExpect(status().isOk());
   }
 }

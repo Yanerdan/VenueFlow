@@ -2,6 +2,7 @@ package com.yanerdan.venueflow.auth.persistence;
 
 import com.yanerdan.venueflow.auth.application.AuthRepository;
 import com.yanerdan.venueflow.auth.domain.AuthCredential;
+import com.yanerdan.venueflow.auth.domain.CampusRole;
 import com.yanerdan.venueflow.auth.domain.RefreshSession;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -58,6 +59,20 @@ public class JdbcAuthRepository implements AuthRepository {
             "SELECT * FROM auth_credentials WHERE user_id = ?",
             JdbcAuthRepository::credential,
             userId.toString()));
+  }
+
+  @Override
+  public void setRole(String username, CampusRole role, LocalDateTime now) {
+    jdbc.update(
+        """
+        UPDATE auth_credentials
+        SET role = ?, token_version = token_version + 1, version = version + 1, updated_at = ?
+        WHERE username = ? AND role <> ?
+        """,
+        role.name(),
+        now,
+        username,
+        role.name());
   }
 
   @Override
@@ -150,6 +165,7 @@ public class JdbcAuthRepository implements AuthRepository {
         UUID.fromString(result.getString("user_id")),
         result.getString("username"),
         result.getString("password_hash"),
+        CampusRole.valueOf(result.getString("role")),
         result.getInt("failed_attempts"),
         result.getObject("locked_until", LocalDateTime.class),
         result.getLong("token_version"),

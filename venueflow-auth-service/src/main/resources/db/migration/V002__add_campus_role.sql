@@ -1,0 +1,4 @@
+ALTER TABLE auth_credentials
+  ADD COLUMN role VARCHAR(32) NOT NULL DEFAULT 'APPLICANT' AFTER password_hash,
+  ADD CONSTRAINT chk_auth_credentials_role
+    CHECK (role IN ('APPLICANT', 'APPROVER', 'RESOURCE_MANAGER', 'SYSTEM_ADMIN'));

@@ -27,6 +27,12 @@ public class GatewayRouteConfiguration {
         .route("auth", route -> route.path("/api/v1/auth/**").uri(baseUri(authUri)))
         .route("users", route -> route.path("/api/v1/users/**").uri(baseUri(userUri)))
         .route("resources", route -> route.path("/api/v1/resources/**").uri(baseUri(resourceUri)))
+        .route(
+            "resource-management",
+            route ->
+                route
+                    .path("/api/v1/resource-categories/**", "/api/v1/resource-slots/**")
+                    .uri(baseUri(resourceUri)))
         .route("bookings", route -> route.path("/api/v1/bookings/**").uri(baseUri(bookingUri)))
         .route("search", route -> route.path("/api/v1/search/**").uri(baseUri(searchUri)))
         .route(
@@ -52,6 +58,12 @@ public class GatewayRouteConfiguration {
         .route(
             "resources",
             route -> route.path("/api/v1/resources/**").uri(serviceUri(resourceService)))
+        .route(
+            "resource-management",
+            route ->
+                route
+                    .path("/api/v1/resource-categories/**", "/api/v1/resource-slots/**")
+                    .uri(serviceUri(resourceService)))
         .route(
             "bookings", route -> route.path("/api/v1/bookings/**").uri(serviceUri(bookingService)))
         .route("search", route -> route.path("/api/v1/search/**").uri(serviceUri(searchService)))

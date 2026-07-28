@@ -25,3 +25,5 @@ venueflow:
     lockout-duration: ${VENUEFLOW_AUTH_LOCKOUT_DURATION:PT15M}
     jwt-private-key: ${JWT_PRIVATE_KEY}
     jwt-public-key: ${JWT_PUBLIC_KEY}
+    bootstrap-admin-username: ${VENUEFLOW_BOOTSTRAP_ADMIN_USERNAME:}
+    bootstrap-admin-password: ${VENUEFLOW_BOOTSTRAP_ADMIN_PASSWORD:}
