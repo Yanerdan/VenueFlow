@@ -107,12 +107,33 @@ public class BookingRepository {
       String releaseId,
       LocalDateTime expireAt,
       BookingApplicationDetails details) {
+    return complete(
+        requestId, userId, slotId, quantity, allocationId, releaseId, expireAt, details,
+        null, null, null);
+  }
+
+  @Transactional
+  public BookingReservation complete(
+      String requestId,
+      long userId,
+      long slotId,
+      int quantity,
+      String allocationId,
+      String releaseId,
+      LocalDateTime expireAt,
+      BookingApplicationDetails details,
+      Long resourceId,
+      String ownerDepartment,
+      String assignedApproverExternalUserId) {
     LocalDateTime now = LocalDateTime.now();
     BookingReservationEntity entity = new BookingReservationEntity();
     entity.setBookingNo(UUID.randomUUID().toString());
     entity.setRequestId(requestId);
     entity.setUserId(userId);
     entity.setSlotId(slotId);
+    entity.setResourceId(resourceId);
+    entity.setOwnerDepartment(ownerDepartment);
+    entity.setAssignedApproverExternalUserId(assignedApproverExternalUserId);
     entity.setQuantity(quantity);
     entity.setActivityTitle(details.activityTitle());
     entity.setApplicationPurpose(details.purpose());
@@ -206,6 +227,25 @@ public class BookingRepository {
             .toList();
     return new BookingHistoryPage(
         items, reservationMapper.countManagementHistory(statusValue), pageNumber, pageSize);
+  }
+
+  @Transactional(readOnly = true)
+  public BookingHistoryPage managementHistory(
+      BookingStatus status, String approverExternalUserId, int pageNumber, int pageSize) {
+    long offset = Math.multiplyExact((long) pageNumber, pageSize);
+    String statusValue = status == null ? null : status.name();
+    List<BookingReservation> items =
+        reservationMapper
+            .selectAssignedManagementHistory(
+                statusValue, approverExternalUserId, offset, pageSize)
+            .stream()
+            .map(BookingReservationEntity::toDomain)
+            .toList();
+    return new BookingHistoryPage(
+        items,
+        reservationMapper.countAssignedManagementHistory(statusValue, approverExternalUserId),
+        pageNumber,
+        pageSize);
   }
 
   @Transactional

@@ -278,6 +278,31 @@ public class CatalogApplicationService {
     return result;
   }
 
+  @Transactional
+  public ResourceResult changeResourceOwnership(ChangeResourceOwnershipCommand command) {
+    ResourceEntity current = findResourceForStatusChange(command.resourceId());
+    validateExpectedVersion(current, command.expectedVersion());
+    int updated;
+    try {
+      updated = resourceMapper.updateOwnershipIfVersionMatches(
+          command.resourceId(), command.ownerDepartment(), command.approverExternalUserId(),
+          command.expectedVersion());
+    } catch (DataAccessException exception) {
+      throw persistenceFailure("Resource ownership could not be updated", exception);
+    }
+    if (updated != 1) {
+      throw resolveFailedConditionalUpdate(command.resourceId(), command.expectedVersion());
+    }
+    ResourceEntity persisted = resourceMapper.selectById(command.resourceId());
+    if (persisted == null) {
+      throw resourceNotFound(command.resourceId());
+    }
+    ResourceResult result = ResourceResult.from(persisted);
+    changeRecorder.record(result);
+    resourceCache.evictAfterCommit(result.id());
+    return result;
+  }
+
   private ResourceEntity findResourceForStatusChange(Long resourceId) {
     ResourceEntity entity;
 

@@ -8,6 +8,8 @@ import java.time.LocalDateTime;
 public record ResourceSlotResponse(
     Long id,
     Long resourceId,
+    String ownerDepartment,
+    String approverExternalUserId,
     Instant startAt,
     Instant endAt,
     ResourceSlotStatus status,
@@ -19,6 +21,8 @@ public record ResourceSlotResponse(
     return new ResourceSlotResponse(
         result.id(),
         result.resourceId(),
+        result.ownerDepartment(),
+        result.approverExternalUserId(),
         result.startAt(),
         result.endAt(),
         result.status(),

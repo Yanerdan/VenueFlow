@@ -2,6 +2,7 @@ package com.yanerdan.venueflow.resource.catalog.http.controller;
 
 import com.yanerdan.venueflow.resource.catalog.application.CatalogApplicationService;
 import com.yanerdan.venueflow.resource.catalog.http.request.ChangeResourceStatusRequest;
+import com.yanerdan.venueflow.resource.catalog.http.request.ChangeResourceOwnershipRequest;
 import com.yanerdan.venueflow.resource.catalog.http.request.CreateResourceRequest;
 import com.yanerdan.venueflow.resource.catalog.http.request.ResourcePageRequest;
 import com.yanerdan.venueflow.resource.catalog.http.response.ResourcePageResponse;
@@ -57,5 +58,13 @@ public class ResourceController {
       @Valid @RequestBody ChangeResourceStatusRequest request) {
     return ResourceResponse.from(
         catalogApplicationService.changeResourceStatus(request.toCommand(resourceId)));
+  }
+
+  @PatchMapping("/{resourceId}/ownership")
+  public ResourceResponse changeResourceOwnership(
+      @PathVariable @Positive(message = "resourceId must be positive") Long resourceId,
+      @Valid @RequestBody ChangeResourceOwnershipRequest request) {
+    return ResourceResponse.from(
+        catalogApplicationService.changeResourceOwnership(request.toCommand(resourceId)));
   }
 }

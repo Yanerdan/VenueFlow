@@ -87,7 +87,12 @@ public class ResourceSlotApplicationService {
       if (entity == null) {
         throw slotNotFound(slotId);
       }
-      return ResourceSlotResult.from(entity);
+      ResourceEntity resource = resourceMapper.selectById(entity.getResourceId());
+      if (resource == null) {
+        throw resourceNotFound(entity.getResourceId());
+      }
+      return ResourceSlotResult.from(entity)
+          .withOwnership(resource.getOwnerDepartment(), resource.getApproverExternalUserId());
     } catch (CatalogException exception) {
       throw exception;
     } catch (DataAccessException exception) {

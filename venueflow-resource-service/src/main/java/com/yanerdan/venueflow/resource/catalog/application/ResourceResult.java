@@ -12,6 +12,8 @@ public record ResourceResult(
     String description,
     String location,
     Integer capacity,
+    String ownerDepartment,
+    String approverExternalUserId,
     ResourceStatus status,
     Long version,
     LocalDateTime createdAt,
@@ -26,9 +28,19 @@ public record ResourceResult(
         entity.getDescription(),
         entity.getLocation(),
         entity.getCapacity(),
+        entity.getOwnerDepartment(),
+        entity.getApproverExternalUserId(),
         entity.getStatus(),
         entity.getVersion(),
         entity.getCreatedAt(),
         entity.getUpdatedAt());
+  }
+
+  public ResourceResult(
+      Long id, String resourceNo, Long categoryId, String name, String description, String location,
+      Integer capacity, ResourceStatus status, Long version, LocalDateTime createdAt,
+      LocalDateTime updatedAt) {
+    this(id, resourceNo, categoryId, name, description, location, capacity, null, null, status,
+        version, createdAt, updatedAt);
   }
 }

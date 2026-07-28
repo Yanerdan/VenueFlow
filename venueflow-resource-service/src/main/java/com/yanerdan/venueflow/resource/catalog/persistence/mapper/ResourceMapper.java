@@ -22,5 +22,11 @@ public interface ResourceMapper extends BaseMapper<ResourceEntity> {
       @Param("targetStatus") ResourceStatus targetStatus,
       @Param("expectedVersion") Long expectedVersion);
 
+  int updateOwnershipIfVersionMatches(
+      @Param("resourceId") Long resourceId,
+      @Param("ownerDepartment") String ownerDepartment,
+      @Param("approverExternalUserId") String approverExternalUserId,
+      @Param("expectedVersion") Long expectedVersion);
+
   ResourceEntity selectByIdForUpdate(@Param("resourceId") Long resourceId);
 }

@@ -98,8 +98,10 @@ public class BookingReservationController {
   public SuccessEnvelope<BookingResponse> confirm(
       @PathVariable @NotBlank String bookingNo,
       @RequestHeader(value = "X-Role", defaultValue = "APPLICANT") String role,
+      @RequestHeader(value = "X-User-Id", required = false) String trustedUserId,
       @Valid @RequestBody(required = false) ReviewActionRequest request) {
     BookingRoleGuard.requireApprover(role);
+    service.requireApprovalScope(bookingNo, trustedUserId, role);
     BookingReservation result =
         request == null || request.reviewNote() == null
             ? service.confirm(bookingNo)
@@ -111,8 +113,10 @@ public class BookingReservationController {
   public SuccessEnvelope<BookingResponse> reject(
       @PathVariable @NotBlank String bookingNo,
       @RequestHeader(value = "X-Role", defaultValue = "APPLICANT") String role,
+      @RequestHeader(value = "X-User-Id", required = false) String trustedUserId,
       @Valid @RequestBody RejectionRequest request) {
     BookingRoleGuard.requireApprover(role);
+    service.requireApprovalScope(bookingNo, trustedUserId, role);
     return SuccessEnvelope.of(
         BookingResponse.from(service.reject(bookingNo, request.reason(), role)));
   }
@@ -120,20 +124,25 @@ public class BookingReservationController {
   @PostMapping("/{bookingNo}/check-in")
   public SuccessEnvelope<BookingResponse> checkIn(
       @PathVariable @NotBlank String bookingNo,
-      @RequestHeader(value = "X-Role", defaultValue = "APPLICANT") String role) {
+      @RequestHeader(value = "X-Role", defaultValue = "APPLICANT") String role,
+      @RequestHeader(value = "X-User-Id", required = false) String trustedUserId) {
     BookingRoleGuard.requireApprover(role);
+    service.requireApprovalScope(bookingNo, trustedUserId, role);
     return SuccessEnvelope.of(BookingResponse.from(service.checkIn(bookingNo)));
   }
 
   @GetMapping("/management")
   public SuccessEnvelope<BookingPageResponse> managementHistory(
       @RequestHeader(value = "X-Role", defaultValue = "APPLICANT") String role,
+      @RequestHeader(value = "X-User-Id", required = false) String trustedUserId,
       @RequestParam(required = false) BookingStatus status,
       @RequestParam(defaultValue = "0") @Min(0) int pageNumber,
       @RequestParam(defaultValue = "20") @Min(1) @Max(100) int pageSize) {
     BookingRoleGuard.requireApprover(role);
     BookingRepository.BookingHistoryPage page =
-        service.managementHistory(status, pageNumber, pageSize);
+        trustedUserId == null
+            ? service.managementHistory(status, pageNumber, pageSize)
+            : service.managementHistory(status, trustedUserId, role, pageNumber, pageSize);
     return SuccessEnvelope.of(
         new BookingPageResponse(
             page.items().stream().map(BookingResponse::from).toList(),
@@ -183,7 +192,10 @@ public class BookingReservationController {
       String reviewDecision,
       String reviewNote,
       String reviewerRole,
-      LocalDateTime reviewedAt) {
+      LocalDateTime reviewedAt,
+      Long resourceId,
+      String ownerDepartment,
+      String assignedApproverExternalUserId) {
     static BookingResponse from(BookingReservation reservation) {
       return new BookingResponse(
           reservation.bookingNo(),
@@ -207,7 +219,10 @@ public class BookingReservationController {
           reservation.reviewDecision(),
           reservation.reviewNote(),
           reservation.reviewerRole(),
-          reservation.reviewedAt());
+          reservation.reviewedAt(),
+          reservation.resourceId(),
+          reservation.ownerDepartment(),
+          reservation.assignedApproverExternalUserId());
     }
   }
 

@@ -147,6 +147,14 @@ public class BookingReservationService {
           claim.requestId(), exception.getCode().name(), ReconciliationOutcomeCode.NO_ALLOCATION);
       throw exception;
     }
+    ResourceCapacityClient.ResourceSlot responsibility;
+    try {
+      responsibility = resourceClient.findSlot(slotId);
+    } catch (BookingException exception) {
+      repository.fail(claim.requestId(), exception.getCode().name(),
+          ReconciliationOutcomeCode.NO_ALLOCATION);
+      throw exception;
+    }
     try {
       resourceClient.allocate(slotId, allocationId, quantity);
     } catch (BookingException exception) {
@@ -162,7 +170,8 @@ public class BookingReservationService {
     try {
       LocalDateTime expireAt = LocalDateTime.now().plus(confirmationWindow);
       BookingReservation completed =
-          details.activityTitle() == null
+          responsibility == null
+              ? (details.activityTitle() == null
               ? repository.complete(
                   claim.requestId(),
                   userId,
@@ -179,7 +188,19 @@ public class BookingReservationService {
                   allocationId,
                   releaseId,
                   expireAt,
-                  details);
+                  details))
+              : repository.complete(
+                  claim.requestId(),
+                  userId,
+                  slotId,
+                  quantity,
+                  allocationId,
+                  releaseId,
+                  expireAt,
+                  details,
+                  responsibility.resourceId(),
+                  responsibility.ownerDepartment(),
+                  responsibility.approverExternalUserId());
       return new CreateResult(completed, false);
     } catch (RuntimeException persistenceFailure) {
       try {
@@ -227,6 +248,28 @@ public class BookingReservationService {
       throw error(BookingErrorCode.BOOKING_VALIDATION_FAILED, "Invalid management page");
     }
     return repository.managementHistory(status, pageNumber, pageSize);
+  }
+
+  public BookingHistoryPage managementHistory(
+      BookingStatus status, String trustedUserId, String role, int pageNumber, int pageSize) {
+    if ("SYSTEM_ADMIN".equals(role) || trustedUserId == null) {
+      return managementHistory(status, pageNumber, pageSize);
+    }
+    if (trustedUserId.isBlank() || pageNumber < 0 || pageSize < 1 || pageSize > 100) {
+      throw error(BookingErrorCode.BOOKING_VALIDATION_FAILED, "Invalid management scope");
+    }
+    return repository.managementHistory(status, trustedUserId, pageNumber, pageSize);
+  }
+
+  public void requireApprovalScope(String bookingNo, String trustedUserId, String role) {
+    if ("SYSTEM_ADMIN".equals(role) || trustedUserId == null) {
+      return;
+    }
+    BookingReservation reservation = get(bookingNo);
+    if (reservation.assignedApproverExternalUserId() == null
+        || !reservation.assignedApproverExternalUserId().equals(trustedUserId)) {
+      throw error(BookingErrorCode.BOOKING_FORBIDDEN, "Booking is assigned to another approver");
+    }
   }
 
   public BookingReservation cancel(String bookingNo) {

@@ -54,6 +54,8 @@ python -m http.server 3000 --directory venueflow-web
 
 完整说明见 [校园管理端运行手册](docs/runbook/campus-administration.md)。
 
+资源管理支持配置归属部门和指定审批人。新预约会保存责任快照，普通审批人只接收分配给自己的申请，系统管理员保留全局管理视图。
+
 ## 构建与测试
 
 默认验证不连接 Docker 或外部服务：

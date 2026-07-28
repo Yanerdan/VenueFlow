@@ -15,6 +15,8 @@
     <result column="description" property="description"/>
     <result column="location" property="location"/>
     <result column="capacity" property="capacity"/>
+    <result column="owner_department" property="ownerDepartment"/>
+    <result column="approver_external_user_id" property="approverExternalUserId"/>
     <result column="status" property="status"/>
     <result column="version" property="version"/>
     <result column="created_at" property="createdAt"/>
@@ -29,6 +31,8 @@
     description,
     location,
     capacity,
+    owner_department,
+    approver_external_user_id,
     status,
     version,
     created_at,
@@ -74,6 +78,16 @@
     updated_at = CURRENT_TIMESTAMP(6)
     WHERE id = #{resourceId}
     AND status = #{currentStatus}
+    AND version = #{expectedVersion}
+  </update>
+
+  <update id="updateOwnershipIfVersionMatches">
+    UPDATE `resource`
+    SET owner_department = #{ownerDepartment},
+    approver_external_user_id = #{approverExternalUserId},
+    version = version + 1,
+    updated_at = CURRENT_TIMESTAMP(6)
+    WHERE id = #{resourceId}
     AND version = #{expectedVersion}
   </update>
 

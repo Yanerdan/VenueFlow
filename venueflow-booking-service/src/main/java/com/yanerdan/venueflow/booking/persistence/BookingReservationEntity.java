@@ -16,6 +16,9 @@ public class BookingReservationEntity {
   private String requestId;
   private long userId;
   private long slotId;
+  private Long resourceId;
+  private String ownerDepartment;
+  private String assignedApproverExternalUserId;
   private int quantity;
   private String activityTitle;
   private String applicationPurpose;
@@ -73,7 +76,10 @@ public class BookingReservationEntity {
         reviewDecision,
         reviewNote,
         reviewerRole,
-        reviewedAt);
+        reviewedAt,
+        resourceId,
+        ownerDepartment,
+        assignedApproverExternalUserId);
   }
 
   public Long getId() {
@@ -114,6 +120,20 @@ public class BookingReservationEntity {
 
   public void setSlotId(long slotId) {
     this.slotId = slotId;
+  }
+
+  public Long getResourceId() { return resourceId; }
+
+  public void setResourceId(Long resourceId) { this.resourceId = resourceId; }
+
+  public String getOwnerDepartment() { return ownerDepartment; }
+
+  public void setOwnerDepartment(String ownerDepartment) { this.ownerDepartment = ownerDepartment; }
+
+  public String getAssignedApproverExternalUserId() { return assignedApproverExternalUserId; }
+
+  public void setAssignedApproverExternalUserId(String value) {
+    this.assignedApproverExternalUserId = value;
   }
 
   public int getQuantity() {

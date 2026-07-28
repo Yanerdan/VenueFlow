@@ -22,6 +22,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -245,6 +246,18 @@ class BookingReservationServiceTest {
             org.mockito.ArgumentMatchers.anyLong(),
             anyString(),
             org.mockito.ArgumentMatchers.anyInt());
+  }
+
+  @Test
+  void approverManagementHistoryUsesTrustedAssignmentScope() {
+    BookingRepository.BookingHistoryPage page =
+        new BookingRepository.BookingHistoryPage(List.of(), 0, 0, 20);
+    when(repository.managementHistory(null, "approver-uuid", 0, 20)).thenReturn(page);
+
+    assertThat(service.managementHistory(null, "approver-uuid", "APPROVER", 0, 20))
+        .isSameAs(page);
+    verify(repository).managementHistory(null, "approver-uuid", 0, 20);
+    verify(repository, never()).managementHistory(null, 0, 20);
   }
 
   private static ClaimResult owner() {

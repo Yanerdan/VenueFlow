@@ -26,5 +26,11 @@ interface FeignResourceCapacityApi {
 
   record OperationResponse(String operationId, String operationType, int quantity) {}
 
-  record SlotResponse(long id, Instant startAt, Instant endAt) {}
+  record SlotResponse(
+      long id,
+      Long resourceId,
+      String ownerDepartment,
+      String approverExternalUserId,
+      Instant startAt,
+      Instant endAt) {}
 }

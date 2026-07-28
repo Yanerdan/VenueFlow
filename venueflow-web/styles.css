@@ -307,6 +307,8 @@ td { padding: 16px; border-top: 1px solid var(--line-soft); white-space: nowrap;
 .resource-admin-card h3 { margin: 20px 0 7px; }
 .resource-admin-card p { min-height: 38px; color: var(--muted); font-size: .78rem; }
 .resource-admin-card footer { padding-top: 14px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--line-soft); color: var(--muted); font-size: .7rem; }
+.ownership-form { display: grid; gap: 7px; margin: 12px 0; padding: 10px; background: var(--surface-low); border-radius: 5px; }
+.ownership-form input { width: 100%; min-height: 38px; }
 .slot-admin-layout { display: grid; grid-template-columns: 300px 1fr; gap: 18px; align-items: start; }
 .resource-picker { display: grid; gap: 7px; }
 .resource-picker button { padding: 14px; display: grid; gap: 4px; text-align: left; background: white; border: 1px solid var(--line-soft); border-radius: 5px; }

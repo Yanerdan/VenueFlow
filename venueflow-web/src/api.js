@@ -108,6 +108,16 @@ export function createApi({
         method: "PATCH", body: JSON.stringify({ targetStatus, expectedVersion })
       }
     ),
+    changeResourceOwnership: (
+      resourceId, ownerDepartment, approverExternalUserId, expectedVersion
+    ) => request(`/api/v1/resources/${resourceId}/ownership`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        ownerDepartment: ownerDepartment || null,
+        approverExternalUserId: approverExternalUserId || null,
+        expectedVersion
+      })
+    }),
     async search(text) {
       const page = await request(
         `/api/v1/search/resources?text=${encodeURIComponent(text)}&page=0&size=50`

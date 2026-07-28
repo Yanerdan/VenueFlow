@@ -33,6 +33,13 @@ function Invoke-Json([string]$Method, [string]$Uri, $Body, $Headers = @{}) {
     }
 }
 
+function Get-JwtSubject([string]$Token) {
+    $payload = $Token.Split(".")[1].Replace("-", "+").Replace("_", "/")
+    while ($payload.Length % 4) { $payload += "=" }
+    return ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($payload)) |
+        ConvertFrom-Json).sub
+}
+
 $registration = Invoke-Json "Post" "$gateway/api/v1/auth/register" @{
     username = $username
     password = $password
@@ -48,6 +55,7 @@ $adminLogin = Invoke-Json "Post" "$gateway/api/v1/auth/login" @{
     password = "Campus-Admin-2026!"
 }
 $adminHeaders = @{ Authorization = "Bearer $($adminLogin.data.accessToken)" }
+$adminExternalUserId = Get-JwtSubject $adminLogin.data.accessToken
 
 $profile = Invoke-Json "Post" "$gateway/api/v1/users" @{
     externalUserId = [string]$registration.data.userId
@@ -82,6 +90,12 @@ $resource = @($resources.items) |
     Select-Object -First 1
 if (-not $resource) { throw "Demo resource VF-DEMO-001 is missing" }
 
+$resource = Invoke-Json "Patch" "$gateway/api/v1/resources/$($resource.id)/ownership" @{
+    ownerDepartment = "Campus Operations"
+    approverExternalUserId = $adminExternalUserId
+    expectedVersion = $resource.version
+} $adminHeaders
+
 $from = [Uri]::EscapeDataString((Get-Date).ToUniversalTime().AddHours(-1).ToString("o"))
 $to = [Uri]::EscapeDataString((Get-Date).ToUniversalTime().AddDays(30).ToString("o"))
 $slots = Invoke-RestMethod `
@@ -106,6 +120,9 @@ $created = Invoke-Json "Post" "$gateway/api/v1/bookings" @{
 } $bookingHeaders
 $bookingNo = $created.data.bookingNo
 if (-not $bookingNo) { throw "Booking creation returned no booking number" }
+if ($created.data.ownerDepartment -ne "Campus Operations") {
+    throw "Booking did not snapshot resource ownership"
+}
 
 $managementPage = Invoke-Json "Get" `
     "$gateway/api/v1/bookings/management?status=PENDING_CONFIRMATION&pageNumber=0&pageSize=20" `

@@ -31,6 +31,12 @@ public class ResourceEntity {
   @TableField("capacity")
   private Integer capacity;
 
+  @TableField("owner_department")
+  private String ownerDepartment;
+
+  @TableField("approver_external_user_id")
+  private String approverExternalUserId;
+
   @TableField("status")
   private ResourceStatus status;
 
@@ -99,6 +105,22 @@ public class ResourceEntity {
 
   public void setCapacity(Integer capacity) {
     this.capacity = capacity;
+  }
+
+  public String getOwnerDepartment() {
+    return ownerDepartment;
+  }
+
+  public void setOwnerDepartment(String ownerDepartment) {
+    this.ownerDepartment = ownerDepartment;
+  }
+
+  public String getApproverExternalUserId() {
+    return approverExternalUserId;
+  }
+
+  public void setApproverExternalUserId(String approverExternalUserId) {
+    this.approverExternalUserId = approverExternalUserId;
   }
 
   public ResourceStatus getStatus() {

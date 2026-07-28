@@ -146,3 +146,22 @@ test("booking review actions send bounded approval and rejection notes", async (
   assert.deepEqual(JSON.parse(calls[0].options.body), { reviewNote: "材料完整" });
   assert.deepEqual(JSON.parse(calls[1].options.body), { reason: "活动用途不符合场地规则" });
 });
+
+test("resource ownership update sends department, approver and version", async () => {
+  let captured;
+  const api = createApi({
+    baseUrl: "http://gateway",
+    storage: storage({ "venueflow.access": "token" }),
+    fetchImpl: async (url, options) => {
+      captured = { url, options };
+      return response(200, { id: 7 });
+    }
+  });
+  await api.changeResourceOwnership(7, "学生工作处", "approver-12", 3);
+  assert.equal(captured.url, "http://gateway/api/v1/resources/7/ownership");
+  assert.deepEqual(JSON.parse(captured.options.body), {
+    ownerDepartment: "学生工作处",
+    approverExternalUserId: "approver-12",
+    expectedVersion: 3
+  });
+});

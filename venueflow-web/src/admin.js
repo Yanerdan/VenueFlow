@@ -1,4 +1,4 @@
-import { createApi } from "./api.js?v=20260728-c27";
+import { createApi } from "./api.js?v=20260728-c28";
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -96,6 +96,7 @@ function openReview(item) {
     <div><span>申请编号</span><strong>${escapeHtml(item.bookingNo)}</strong></div>
     <div><span>活动用途</span><p>${escapeHtml(item.purpose || "历史申请未记录")}</p></div>
     <div><span>联系人</span><p>${escapeHtml(item.contactName || applicant?.displayName || "待完善")} · ${escapeHtml(item.contactPhone || applicant?.phone || "待完善")}</p></div>
+    <div><span>资源归属</span><p>${escapeHtml(item.ownerDepartment || "未分配部门")} · ${item.assignedApproverExternalUserId ? `审批人 #${item.assignedApproverExternalUserId}` : "未指定审批人"}</p></div>
     ${item.note ? `<div><span>补充说明</span><p>${escapeHtml(item.note)}</p></div>` : ""}
     ${item.reviewNote ? `<div><span>已有处理意见</span><p>${escapeHtml(item.reviewNote)}</p></div>` : ""}`;
   $("#review-note").value = item.reviewNote || "";
@@ -128,6 +129,11 @@ function renderResources() {
     const next = nextResourceStatus(item);
     return `<article class="resource-admin-card"><div><span class="status ${item.status.toLowerCase()}">${statusLabel(item.status)}</span><small>${escapeHtml(item.resourceNo)}</small></div>
       <h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(item.location || "位置待完善")} · 容量 ${item.capacity} 人</p>
+      <form class="ownership-form" data-resource-ownership="${item.id}" data-version="${item.version}">
+        <input name="ownerDepartment" maxlength="160" placeholder="归属部门" value="${escapeHtml(item.ownerDepartment || "")}">
+        <input name="approverExternalUserId" maxlength="64" placeholder="审批人账号 ID" value="${escapeHtml(item.approverExternalUserId || "")}">
+        <button type="submit">保存归属</button>
+      </form>
       <footer><span>分类 #${item.categoryId}</span>${next ? `<button data-resource-status="${item.id}" data-target="${next[0]}" data-version="${item.version}">${next[1]}</button>` : ""}</footer></article>`;
   }).join("") : empty("暂无校园资源", "点击“新增资源”建立统一资源目录。");
 }
@@ -219,6 +225,21 @@ $("#resource-form").addEventListener("submit", async event => {
 $("#resource-admin-list").addEventListener("click", async event => {
   const button = event.target.closest("[data-resource-status]"); if (!button) return;
   try { await api.changeResourceStatus(button.dataset.resourceStatus, button.dataset.target, Number(button.dataset.version)); await loadData(); notify("资源状态已更新"); } catch (error) { fail(error); }
+});
+$("#resource-admin-list").addEventListener("submit", async event => {
+  const form = event.target.closest("[data-resource-ownership]"); if (!form) return;
+  event.preventDefault();
+  const data = new FormData(form);
+  const approver = data.get("approverExternalUserId");
+  try {
+    await api.changeResourceOwnership(
+      Number(form.dataset.resourceOwnership),
+      data.get("ownerDepartment").trim(),
+      approver || null,
+      Number(form.dataset.version)
+    );
+    await loadData(); notify("资源归属已更新");
+  } catch (error) { fail(error); }
 });
 $("#slot-form").addEventListener("submit", async event => {
   event.preventDefault(); const data = new FormData(event.currentTarget);

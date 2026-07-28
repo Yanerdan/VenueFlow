@@ -140,7 +140,7 @@ class CatalogHttpApiTest {
         .andExpectAll(
             status().isCreated(),
             content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON),
-            jsonPath("$.*", hasSize(11)),
+            jsonPath("$.*", hasSize(13)),
             jsonPath("$.id").value(100),
             jsonPath("$.resourceNo").value("ROOM-A-101"),
             jsonPath("$.categoryId").value(10),

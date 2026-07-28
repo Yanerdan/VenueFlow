@@ -124,4 +124,29 @@ public interface BookingReservationMapper extends BaseMapper<BookingReservationE
       WHERE (#{status} IS NULL OR status = #{status})
       """)
   long countManagementHistory(@Param("status") String status);
+
+  @Select(
+      """
+      SELECT *
+      FROM booking_reservation
+      WHERE (#{status} IS NULL OR status = #{status})
+        AND assigned_approver_external_user_id = #{approverId}
+      ORDER BY created_at DESC, id DESC
+      LIMIT #{limit} OFFSET #{offset}
+      """)
+  List<BookingReservationEntity> selectAssignedManagementHistory(
+      @Param("status") String status,
+      @Param("approverId") String approverId,
+      @Param("offset") long offset,
+      @Param("limit") int limit);
+
+  @Select(
+      """
+      SELECT COUNT(*)
+      FROM booking_reservation
+      WHERE (#{status} IS NULL OR status = #{status})
+        AND assigned_approver_external_user_id = #{approverId}
+      """)
+  long countAssignedManagementHistory(
+      @Param("status") String status, @Param("approverId") String approverId);
 }

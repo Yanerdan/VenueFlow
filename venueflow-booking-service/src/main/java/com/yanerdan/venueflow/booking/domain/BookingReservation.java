@@ -29,7 +29,10 @@ public record BookingReservation(
     String reviewDecision,
     String reviewNote,
     String reviewerRole,
-    LocalDateTime reviewedAt) {
+    LocalDateTime reviewedAt,
+    Long resourceId,
+    String ownerDepartment,
+    String assignedApproverExternalUserId) {
   public BookingReservation(
       Long id,
       String bookingNo,
@@ -53,7 +56,7 @@ public record BookingReservation(
         id, bookingNo, requestId, userId, slotId, quantity, status, allocationOperationId,
         releaseOperationId, version, createdAt, expireAt, confirmedAt, cancelledAt, expiredAt,
         completedAt, terminalReason, updatedAt, null, null, null, null, null, null, null, null,
-        null);
+        null, null, null, null);
   }
 
   public BookingReservation(
@@ -101,7 +104,7 @@ public record BookingReservation(
         null,
         null,
         null,
-        null);
+        null, null, null, null);
   }
 
   public BookingReservation(
@@ -146,6 +149,6 @@ public record BookingReservation(
         null,
         null,
         null,
-        null);
+        null, null, null, null);
   }
 }

@@ -127,10 +127,19 @@ public class HttpResourceCapacityClient implements ResourceCapacityClient {
       long returnedId = body.path("id").asLong(-1L);
       String startAt = body.path("startAt").asText(null);
       String endAt = body.path("endAt").asText(null);
+      Long resourceId = body.path("resourceId").isNumber() ? body.path("resourceId").asLong() : null;
+      String ownerDepartment =
+          body.path("ownerDepartment").isTextual() ? body.path("ownerDepartment").asText() : null;
+      String approverId =
+          body.path("approverExternalUserId").isTextual()
+              ? body.path("approverExternalUserId").asText()
+              : null;
       if (returnedId != slotId || startAt == null || endAt == null) {
         throw invalidSlot();
       }
-      return new ResourceSlot(returnedId, Instant.parse(startAt), Instant.parse(endAt));
+      return new ResourceSlot(
+          returnedId, resourceId, ownerDepartment, approverId, Instant.parse(startAt),
+          Instant.parse(endAt));
     } catch (InterruptedException exception) {
       Thread.currentThread().interrupt();
       throw unavailable(exception);
