@@ -329,6 +329,8 @@ td { padding: 16px; border-top: 1px solid var(--line-soft); white-space: nowrap;
 .booking-rules-form label { display: grid; gap: 3px; color: var(--muted); font-size: .68rem; }
 .booking-rules-form input { width: 100%; min-height: 36px; }
 button:disabled { cursor: wait; opacity: .55; }
+.demo-disclosure { max-width: 1180px; margin: 14px auto 0; padding: 9px 13px; color: #49645f; background: #edf5f2; border: 1px solid #d8e7e2; border-radius: 4px; font-size: .72rem; letter-spacing: .02em; }
+.admin-demo { max-width: none; margin: 0 0 18px; }
 .slot-admin-layout { display: grid; grid-template-columns: 300px 1fr; gap: 18px; align-items: start; }
 .resource-picker { display: grid; gap: 7px; }
 .resource-picker button { padding: 14px; display: grid; gap: 4px; text-align: left; background: white; border: 1px solid var(--line-soft); border-radius: 5px; }

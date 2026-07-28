@@ -109,9 +109,10 @@ $headers = @{ Authorization = "Bearer $token" }
 
 $resources = Invoke-RestMethod -Uri "$gateway/api/v1/resources?page=0&size=100" -Headers $headers
 $resource = @($resources.items) |
-    Where-Object { $_.resourceNo -eq "VF-DEMO-001" } |
+    Where-Object { $_.resourceNo -eq "VF-CAMPUS-001" } |
     Select-Object -First 1
-if (-not $resource) { throw "Demo resource VF-DEMO-001 is missing" }
+if (-not $resource) { throw "Showcase resource VF-CAMPUS-001 is missing" }
+$originalResource = $resource
 
 $resource = Invoke-Json "Patch" "$gateway/api/v1/resources/$($resource.id)/ownership" @{
     ownerDepartment = "Campus Operations"
@@ -198,7 +199,7 @@ if (-not (@($report.data.recentReviews) | Where-Object { $_.bookingNo -eq $booki
 }
 
 $search = Invoke-RestMethod `
-    -Uri "$gateway/api/v1/search/resources?text=Emerald&page=0&size=20" -Headers $headers
+    -Uri "$gateway/api/v1/search/resources?text=%E5%9B%BE%E4%B9%A6%E9%A6%86&page=0&size=20" -Headers $headers
 if (@($search.items).Count -lt 1) { throw "Search did not return the demo resource" }
 
 $notificationFound = $false
@@ -228,6 +229,21 @@ $restored = Invoke-Json "Patch" `
         expectedVersion = $promoted.data.version
     } $adminHeaders
 if ($restored.data.role -ne "APPLICANT") { throw "Acceptance account role was not restored" }
+
+$resource = Invoke-Json "Patch" "$gateway/api/v1/resources/$($resource.id)/ownership" @{
+    ownerDepartment = $originalResource.ownerDepartment
+    approverExternalUserId = $originalResource.approverExternalUserId
+    approvalMode = $originalResource.approvalMode
+    finalApproverExternalUserId = $originalResource.finalApproverExternalUserId
+    expectedVersion = $resource.version
+} $adminHeaders
+$null = Invoke-Json "Patch" "$gateway/api/v1/resources/$($resource.id)/booking-rules" @{
+    bookingNotice = $originalResource.bookingNotice
+    minAdvanceHours = $originalResource.minAdvanceHours
+    maxAdvanceDays = $originalResource.maxAdvanceDays
+    maxDurationMinutes = $originalResource.maxDurationMinutes
+    expectedVersion = $resource.version
+} $adminHeaders
 
 [pscustomobject]@{
     Gateway = "UP"

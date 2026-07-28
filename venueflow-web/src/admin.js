@@ -1,4 +1,4 @@
-import { createApi } from "./api.js?v=20260728-c32";
+import { createApi } from "./api.js?v=20260728-c33";
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -71,7 +71,7 @@ async function loadData() {
         ? api.approverAccounts()
         : Promise.resolve([])
     ]);
-  resources = resourcePage.items || [];
+  resources = (resourcePage.items || []).filter(item => item.status !== "ARCHIVED");
   bookings = bookingPage?.items || [];
   users = userPage?.items || [];
   report = reportData || null;
@@ -120,13 +120,18 @@ function renderReports() {
   $("#report-rate").textContent = `${summary.approvalRate}%`;
   $("#report-attendees").textContent = summary.totalAttendees;
   const resourceName = id => resources.find(item => Number(item.id) === Number(id))?.name || `资源 #${id}`;
-  $("#report-resources").innerHTML = report.resources.length ? report.resources.map(item => `
+  const rankedResources = report.resources.filter(item =>
+    resources.some(resource => Number(resource.id) === Number(item.resourceId)));
+  const recentReviews = report.recentReviews.some(item => String(item.bookingNo).startsWith("VF-SHOW-"))
+    ? report.recentReviews.filter(item => String(item.bookingNo).startsWith("VF-SHOW-"))
+    : report.recentReviews;
+  $("#report-resources").innerHTML = rankedResources.length ? rankedResources.map(item => `
     <div><span>${escapeHtml(resourceName(item.resourceId))}</span><strong>${item.bookingCount} 单 · ${item.attendeeCount} 人</strong></div>
   `).join("") : empty("暂无资源统计", "有申请提交后将在这里形成排行。");
   $("#report-departments").innerHTML = report.departments.length ? report.departments.map(item => `
     <div><span>${escapeHtml(item.department)}</span><strong>${item.bookingCount} 单 · ${item.attendeeCount} 人</strong></div>
   `).join("") : empty("暂无部门统计", "资源归属快照会形成部门工作量分布。");
-  $("#report-audit").innerHTML = report.recentReviews.length ? report.recentReviews.map(item => `
+  $("#report-audit").innerHTML = recentReviews.length ? recentReviews.map(item => `
     <tr><td><strong>${escapeHtml(item.bookingNo)}</strong></td><td>${item.decision === "APPROVED" ? "通过" : "驳回"}</td>
       <td>${item.reviewerRole ? statusLabel(item.reviewerRole) : "历史记录"}</td><td>${escapeHtml(item.reviewNote || "未填写")}</td><td>${dateTime(item.reviewedAt)}</td></tr>
   `).join("") : `<tr><td colspan="5">${empty("暂无审批记录", "审批通过或驳回后将在这里留下处理记录。")}</td></tr>`;

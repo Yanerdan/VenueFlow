@@ -1,4 +1,4 @@
-import { createApi } from "./api.js?v=20260728-c32";
+import { createApi } from "./api.js?v=20260728-c33";
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -80,13 +80,16 @@ function exit() {
 async function loadResources(text = "") {
   $("#resource-list").innerHTML = skeletons(4);
   const page = text ? await api.search(text) : await api.resources();
-  const items = (page.items || []).filter(item => !item.status || item.status === "ACTIVE");
+  const items = (page.items || [])
+    .filter(item => !item.status || item.status === "ACTIVE")
+    .sort((a, b) => Number(!String(a.resourceNo).startsWith("VF-CAMPUS-")) -
+      Number(!String(b.resourceNo).startsWith("VF-CAMPUS-")));
   $("#resource-count").textContent = `${items.length} 个空间`;
   $("#resource-list").innerHTML = items.length ? items.map((r, index) => `
     <article class="venue-card">
       <div class="venue-cover"><span class="availability">开放申请</span><span class="venue-index">${String(index + 1).padStart(2, "0")}</span></div>
       <div class="venue-content"><p class="resource-no">${escapeHtml(r.resourceNo || `RESOURCE-${r.id}`)}</p><h3>${escapeHtml(r.name)}</h3>
-        <div class="venue-meta"><span>位置 · ${escapeHtml(r.location || "校内")}</span><span>容量 · ${escapeHtml(r.capacity || "—")} 人</span></div>
+        <div class="venue-meta"><span>位置 · ${escapeHtml(r.location || "校内")}</span><span>容量 · ${escapeHtml(r.capacity || "—")} 人</span><span>管理 · ${escapeHtml(r.ownerDepartment || "校级资源中心")}</span></div>
         <p class="venue-description">${escapeHtml(r.description || "校园共享空间，具体使用要求以管理部门审批为准。")}</p>
         <div class="booking-policy"><strong>申请规则</strong><span>${escapeHtml(ruleSummary(r))}</span>${r.bookingNotice ? `<p>${escapeHtml(r.bookingNotice)}</p>` : ""}</div>
         <div class="venue-footer"><span>统一预约管理</span><button data-resource-id="${r.id}" data-resource-name="${escapeHtml(r.name)}">查看时段 →</button></div>
