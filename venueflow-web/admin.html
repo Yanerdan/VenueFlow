@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#073d3a">
   <title>VenueFlow · 校园管理工作台</title>
-  <link rel="stylesheet" href="./styles.css?v=20260728-c28">
+  <link rel="stylesheet" href="./styles.css?v=20260728-c29">
 </head>
 <body class="admin-body">
   <aside class="admin-sidebar">
@@ -13,6 +13,7 @@
     <div class="admin-product"><span>校园资源管理平台</span><strong>管理工作台</strong></div>
     <nav class="admin-nav">
       <button data-section="dashboard" class="active"><span>◫</span>运营总览</button>
+      <button data-section="reports"><span>▥</span>运营报表</button>
       <button data-section="approvals"><span>✓</span>申请审批 <em id="pending-badge">0</em></button>
       <button data-section="resources"><span>◇</span>资源管理</button>
       <button data-section="slots"><span>◷</span>开放时段</button>
@@ -50,6 +51,30 @@
             <div id="resource-health" class="health-list"></div>
           </article>
         </div>
+      </section>
+
+      <section id="reports" class="admin-section hidden">
+        <div class="toolbar"><p>基于当前预约与审批数据生成的学校资源运营视图。</p></div>
+        <div class="metric-grid report-metrics">
+          <article class="metric-card primary"><span>申请总量</span><strong id="report-total">—</strong><small>当前统计范围内的全部申请</small></article>
+          <article class="metric-card"><span>待审批</span><strong id="report-pending">—</strong><small>仍需处理的申请</small></article>
+          <article class="metric-card"><span>审批通过率</span><strong id="report-rate">—</strong><small>已处理申请中的通过比例</small></article>
+          <article class="metric-card"><span>预约参与人数</span><strong id="report-attendees">—</strong><small>全部申请预计使用人数</small></article>
+        </div>
+        <div class="report-grid">
+          <article class="admin-panel">
+            <div class="panel-title"><div><p class="eyebrow">RESOURCE RANKING</p><h2>资源申请排行</h2></div></div>
+            <div id="report-resources" class="report-list"></div>
+          </article>
+          <article class="admin-panel">
+            <div class="panel-title"><div><p class="eyebrow">DEPARTMENT LOAD</p><h2>归属部门分布</h2></div></div>
+            <div id="report-departments" class="report-list"></div>
+          </article>
+        </div>
+        <article class="admin-panel report-audit">
+          <div class="panel-title"><div><p class="eyebrow">APPROVAL AUDIT</p><h2>最近审批记录</h2></div></div>
+          <div class="table-shell"><table><thead><tr><th>申请编号</th><th>处理结果</th><th>处理角色</th><th>审批意见</th><th>处理时间</th></tr></thead><tbody id="report-audit"></tbody></table></div>
+        </article>
       </section>
 
       <section id="approvals" class="admin-section hidden">
@@ -102,6 +127,6 @@
     </div>
     <div id="message" class="message hidden" role="status"></div>
   </main>
-  <script type="module" src="./src/admin.js?v=20260728-form-reset"></script>
+  <script type="module" src="./src/admin.js?v=20260728-c29"></script>
 </body>
 </html>

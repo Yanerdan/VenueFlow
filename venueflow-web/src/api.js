@@ -147,6 +147,7 @@ export function createApi({
     managementBookings: status => request(
       `/api/v1/bookings/management?pageNumber=0&pageSize=100${status ? `&status=${status}` : ""}`
     ),
+    operationalReport: () => request("/api/v1/bookings/management/report"),
     bookingAction: (bookingNo, action, note) => {
       const body = note
         ? JSON.stringify(action === "rejection" ? { reason: note } : { reviewNote: note })

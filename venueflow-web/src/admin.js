@@ -1,4 +1,4 @@
-import { createApi } from "./api.js?v=20260728-c28";
+import { createApi } from "./api.js?v=20260728-c29";
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -9,6 +9,7 @@ const approvalRoles = ["APPROVER", "SYSTEM_ADMIN"];
 let resources = [];
 let bookings = [];
 let users = [];
+let report;
 let selectedBooking;
 let messageTimer;
 
@@ -50,12 +51,14 @@ async function loadData() {
   if (approvalRoles.includes(api.role())) {
     tasks.push(api.managementBookings());
     tasks.push(api.managementUsers());
+    tasks.push(api.operationalReport());
   }
-  const [resourcePage, bookingPage, userPage] = await Promise.all(tasks);
+  const [resourcePage, bookingPage, userPage, reportData] = await Promise.all(tasks);
   resources = resourcePage.items || [];
   bookings = bookingPage?.items || [];
   users = userPage?.items || [];
-  renderDashboard(); renderApprovals(); renderResources(); renderResourceOptions(); renderResourcePicker(); renderUsers();
+  report = reportData || null;
+  renderDashboard(); renderReports(); renderApprovals(); renderResources(); renderResourceOptions(); renderResourcePicker(); renderUsers();
 }
 const userFor = userId => users.find(user => Number(user.id) === Number(userId));
 const applicantLabel = userId => {
@@ -81,6 +84,31 @@ function renderDashboard() {
     <div><span>已发布</span><strong>${active}</strong></div><div><span>草稿</span><strong>${draft}</strong></div>
     <div><span>暂停 / 归档</span><strong>${resources.length - active - draft}</strong></div>`;
 }
+function renderReports() {
+  if (!report) {
+    $("#reports").classList.add("hidden");
+    $('[data-section="reports"]').classList.add("hidden");
+    return;
+  }
+  $('[data-section="reports"]').classList.remove("hidden");
+  const summary = report.summary;
+  $("#report-total").textContent = summary.totalBookings;
+  $("#report-pending").textContent = summary.pendingBookings;
+  $("#report-rate").textContent = `${summary.approvalRate}%`;
+  $("#report-attendees").textContent = summary.totalAttendees;
+  const resourceName = id => resources.find(item => Number(item.id) === Number(id))?.name || `资源 #${id}`;
+  $("#report-resources").innerHTML = report.resources.length ? report.resources.map(item => `
+    <div><span>${escapeHtml(resourceName(item.resourceId))}</span><strong>${item.bookingCount} 单 · ${item.attendeeCount} 人</strong></div>
+  `).join("") : empty("暂无资源统计", "有申请提交后将在这里形成排行。");
+  $("#report-departments").innerHTML = report.departments.length ? report.departments.map(item => `
+    <div><span>${escapeHtml(item.department)}</span><strong>${item.bookingCount} 单 · ${item.attendeeCount} 人</strong></div>
+  `).join("") : empty("暂无部门统计", "资源归属快照会形成部门工作量分布。");
+  $("#report-audit").innerHTML = report.recentReviews.length ? report.recentReviews.map(item => `
+    <tr><td><strong>${escapeHtml(item.bookingNo)}</strong></td><td>${item.decision === "APPROVED" ? "通过" : "驳回"}</td>
+      <td>${item.reviewerRole ? statusLabel(item.reviewerRole) : "历史记录"}</td><td>${escapeHtml(item.reviewNote || "未填写")}</td><td>${dateTime(item.reviewedAt)}</td></tr>
+  `).join("") : `<tr><td colspan="5">${empty("暂无审批记录", "审批通过或驳回后将在这里留下处理记录。")}</td></tr>`;
+}
+
 function approvalActions(item) {
   if (!approvalRoles.includes(api.role())) return "—";
   if (item.status === "PENDING_CONFIRMATION") return `<button data-review-booking="${item.bookingNo}">查看并审批</button>`;
@@ -156,8 +184,7 @@ async function selectSlots(id, name) {
 }
 async function actBooking(button) {
   await api.bookingAction(button.dataset.approval, button.dataset.action, button.dataset.note);
-  const page = await api.managementBookings($("#approval-filter").value);
-  bookings = page.items || []; renderDashboard(); renderApprovals();
+  await loadData();
   notify(button.dataset.action === "confirmation" ? "申请已审批通过" : button.dataset.action === "check-in" ? "已完成签到核销" : "申请已取消");
 }
 async function reviewAction(action) {
@@ -169,9 +196,7 @@ async function reviewAction(action) {
   }
   await api.bookingAction(selectedBooking.bookingNo, action, note);
   $("#review-panel").classList.add("hidden");
-  const page = await api.managementBookings($("#approval-filter").value);
-  bookings = page.items || [];
-  renderDashboard(); renderApprovals();
+  await loadData();
   notify(action === "confirmation" ? "申请已审批通过" : "申请已驳回");
 }
 
@@ -179,7 +204,7 @@ $$("[data-section]").forEach(button => button.addEventListener("click", () => {
   const section = button.dataset.section;
   $$(".admin-section").forEach(item => item.classList.toggle("hidden", item.id !== section));
   $$("[data-section]").forEach(item => item.classList.toggle("active", item === button));
-  $("#section-title").textContent = ({ dashboard: "运营总览", approvals: "申请审批", resources: "资源管理", slots: "开放时段", users: "人员目录" })[section];
+  $("#section-title").textContent = ({ dashboard: "运营总览", reports: "运营报表", approvals: "申请审批", resources: "资源管理", slots: "开放时段", users: "人员目录" })[section];
 }));
 $$("[data-jump]").forEach(button => button.addEventListener("click", () => $(`[data-section="${button.dataset.jump}"]`).click()));
 $("#admin-refresh").addEventListener("click", () => loadData().then(() => notify("管理数据已更新")).catch(fail));

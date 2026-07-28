@@ -277,6 +277,12 @@ select, textarea { width: 100%; padding: 11px 13px; color: var(--ink); backgroun
 .panel-title h2 { margin: 2px 0 0; font-size: 1.5rem; }
 .panel-title button { color: var(--primary); background: transparent; border: 0; font-weight: 700; }
 .compact-list { display: grid; gap: 8px; }
+.report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.report-list { display: grid; gap: 10px; }
+.report-list > div { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line-soft); }
+.report-list > div:last-child { border-bottom: 0; }
+.report-list span { color: var(--ink-soft); }
+.report-audit { margin-top: 16px; }
 .compact-row { padding: 13px 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line-soft); }
 .compact-row div { display: grid; gap: 3px; }
 .compact-row span { color: var(--muted); font-size: .72rem; }
@@ -344,7 +350,7 @@ td { padding: 16px; border-top: 1px solid var(--line-soft); white-space: nowrap;
   .admin-main { padding: 24px 18px 80px; }
   .admin-header { align-items: flex-start; }
   .admin-header-actions .role-chip, .admin-header-actions .text-button { display: none; }
-  .metric-grid, .admin-grid, .resource-admin-grid, .slot-admin-layout { grid-template-columns: 1fr; }
+  .metric-grid, .admin-grid, .report-grid, .resource-admin-grid, .slot-admin-layout { grid-template-columns: 1fr; }
   .admin-form { grid-template-columns: 1fr; }
   .admin-form > * { grid-column: 1; }
 }

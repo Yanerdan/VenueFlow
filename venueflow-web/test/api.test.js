@@ -126,6 +126,21 @@ test("campus role and management query come from the authenticated session", asy
   );
 });
 
+test("operational report uses the scoped management endpoint", async () => {
+  let requestedUrl;
+  const api = createApi({
+    baseUrl: "http://gateway",
+    storage: storage({ "venueflow.access": "token" }),
+    fetchImpl: async url => {
+      requestedUrl = url;
+      return response(200, { data: { summary: { totalBookings: 4 } } });
+    }
+  });
+  const report = await api.operationalReport();
+  assert.equal(requestedUrl, "http://gateway/api/v1/bookings/management/report");
+  assert.equal(report.summary.totalBookings, 4);
+});
+
 test("campus profile and user directory use bounded management endpoints", async () => {
   const calls = [];
   const api = createApi({

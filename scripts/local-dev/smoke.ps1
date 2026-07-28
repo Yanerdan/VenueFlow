@@ -137,6 +137,13 @@ if ($confirmed.data.status -ne "CONFIRMED") { throw "Booking was not confirmed" 
 if ($confirmed.data.reviewNote -ne "Application details verified") {
     throw "Booking review note was not persisted"
 }
+$report = Invoke-Json "Get" "$gateway/api/v1/bookings/management/report" $null $adminHeaders
+if ($report.data.summary.totalBookings -lt 1 -or $report.data.summary.totalAttendees -lt 1) {
+    throw "Operational report did not include persisted bookings"
+}
+if (-not (@($report.data.recentReviews) | Where-Object { $_.bookingNo -eq $bookingNo })) {
+    throw "Operational report did not include the latest approval audit"
+}
 
 $search = Invoke-RestMethod `
     -Uri "$gateway/api/v1/search/resources?text=Emerald&page=0&size=20" -Headers $headers
@@ -170,6 +177,7 @@ $null = Invoke-Json "Post" "$gateway/api/v1/auth/logout" @{
     UserDirectory = "PASS"
     ResourceAndSlot = "PASS"
     Booking = "CONFIRMED"
+    OperationalReport = "PASS"
     Search = "PASS"
     Notification = "PASS"
     RefreshAndLogout = "PASS"
