@@ -98,6 +98,11 @@ $created = Invoke-Json "Post" "$gateway/api/v1/bookings" @{
     userId = $profile.id
     slotId = $slot.id
     quantity = 1
+    activityTitle = "VenueFlow Acceptance Workshop"
+    purpose = "Verify the complete campus application and review workflow"
+    contactName = "Local Acceptance"
+    contactPhone = "13800000000"
+    note = "Automated local acceptance"
 } $bookingHeaders
 $bookingNo = $created.data.bookingNo
 if (-not $bookingNo) { throw "Booking creation returned no booking number" }
@@ -108,8 +113,13 @@ $managementPage = Invoke-Json "Get" `
 if (-not (@($managementPage.data.items) | Where-Object { $_.bookingNo -eq $bookingNo })) {
     throw "Booking did not appear in the management approval queue"
 }
-$confirmed = Invoke-Json "Post" "$gateway/api/v1/bookings/$bookingNo/confirmation" $null $adminHeaders
+$confirmed = Invoke-Json "Post" "$gateway/api/v1/bookings/$bookingNo/confirmation" @{
+    reviewNote = "Application details verified"
+} $adminHeaders
 if ($confirmed.data.status -ne "CONFIRMED") { throw "Booking was not confirmed" }
+if ($confirmed.data.reviewNote -ne "Application details verified") {
+    throw "Booking review note was not persisted"
+}
 
 $search = Invoke-RestMethod `
     -Uri "$gateway/api/v1/search/resources?text=Emerald&page=0&size=20" -Headers $headers

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#073d3a">
   <title>VenueFlow · 校园空间预约</title>
-  <link rel="stylesheet" href="./styles.css?v=20260728-c26">
+  <link rel="stylesheet" href="./styles.css?v=20260728-c27">
 </head>
 <body>
   <header class="site-header">
@@ -82,6 +82,13 @@
             <div id="slot-list" class="slots"></div>
             <form id="booking-form" class="booking-form hidden">
               <input name="slotId" type="hidden">
+              <label>活动名称<input name="activityTitle" maxlength="160" required placeholder="如 学生创新项目讨论会"></label>
+              <label>申请用途<textarea name="purpose" maxlength="500" rows="3" required placeholder="说明活动内容和场地需求"></textarea></label>
+              <div class="form-pair">
+                <label>联系人<input name="contactName" maxlength="120" required></label>
+                <label>联系电话<input name="contactPhone" maxlength="32" required></label>
+              </div>
+              <label>补充说明<textarea name="note" maxlength="1000" rows="2" placeholder="设备、布置或其他说明（选填）"></textarea></label>
               <label>预计使用人数<input name="quantity" type="number" min="1" value="1" required></label>
               <button class="primary-button" type="submit">提交使用申请 <span>→</span></button>
             </form>
@@ -118,6 +125,6 @@
   <nav id="mobile-nav" class="mobile-nav hidden">
     <button data-view="discover" class="active">空间</button><button data-view="bookings">申请</button><button data-view="notifications">消息</button><button data-view="profile">我的</button>
   </nav>
-  <script type="module" src="./src/app.js?v=20260728-c26"></script>
+  <script type="module" src="./src/app.js?v=20260728-c27"></script>
 </body>
 </html>

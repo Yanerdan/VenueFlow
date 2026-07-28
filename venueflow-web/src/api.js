@@ -127,18 +127,23 @@ export function createApi({
         `/api/v1/resources/${resourceId}/slots?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&page=0&size=50`
       );
     },
-    createBooking: (userId, slotId, quantity) => request("/api/v1/bookings", {
+    createBooking: (userId, slotId, quantity, details = {}) => request("/api/v1/bookings", {
       method: "POST",
       headers: { "Idempotency-Key": uuid() },
-      body: JSON.stringify({ userId, slotId, quantity })
+      body: JSON.stringify({ userId, slotId, quantity, ...details })
     }),
     bookings: userId => request(`/api/v1/bookings?userId=${userId}&pageNumber=0&pageSize=50`),
     managementBookings: status => request(
       `/api/v1/bookings/management?pageNumber=0&pageSize=100${status ? `&status=${status}` : ""}`
     ),
-    bookingAction: (bookingNo, action) => request(
-      `/api/v1/bookings/${encodeURIComponent(bookingNo)}/${action}`, { method: "POST" }
-    ),
+    bookingAction: (bookingNo, action, note) => {
+      const body = note
+        ? JSON.stringify(action === "rejection" ? { reason: note } : { reviewNote: note })
+        : undefined;
+      return request(`/api/v1/bookings/${encodeURIComponent(bookingNo)}/${action}`, {
+        method: "POST", ...(body ? { body } : {})
+      });
+    },
     createSlot: (resourceId, startAt, endAt) => request(
       `/api/v1/resources/${resourceId}/slots`, {
         method: "POST", body: JSON.stringify({ startAt, endAt })

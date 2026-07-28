@@ -17,6 +17,11 @@ public class BookingReservationEntity {
   private long userId;
   private long slotId;
   private int quantity;
+  private String activityTitle;
+  private String applicationPurpose;
+  private String contactName;
+  private String contactPhone;
+  private String applicationNote;
   private BookingStatus status;
   private String allocationOperationId;
   private String releaseOperationId;
@@ -28,6 +33,10 @@ public class BookingReservationEntity {
   private LocalDateTime expiredAt;
   private LocalDateTime completedAt;
   private String terminalReason;
+  private String reviewDecision;
+  private String reviewNote;
+  private String reviewerRole;
+  private LocalDateTime reviewedAt;
   private String timeoutState;
   private String timeoutLeaseOwner;
   private LocalDateTime timeoutLeaseExpiresAt;
@@ -55,7 +64,16 @@ public class BookingReservationEntity {
         expiredAt,
         completedAt,
         terminalReason,
-        updatedAt);
+        updatedAt,
+        activityTitle,
+        applicationPurpose,
+        contactName,
+        contactPhone,
+        applicationNote,
+        reviewDecision,
+        reviewNote,
+        reviewerRole,
+        reviewedAt);
   }
 
   public Long getId() {
@@ -105,6 +123,28 @@ public class BookingReservationEntity {
   public void setQuantity(int quantity) {
     this.quantity = quantity;
   }
+
+  public String getActivityTitle() { return activityTitle; }
+
+  public void setActivityTitle(String activityTitle) { this.activityTitle = activityTitle; }
+
+  public String getApplicationPurpose() { return applicationPurpose; }
+
+  public void setApplicationPurpose(String applicationPurpose) {
+    this.applicationPurpose = applicationPurpose;
+  }
+
+  public String getContactName() { return contactName; }
+
+  public void setContactName(String contactName) { this.contactName = contactName; }
+
+  public String getContactPhone() { return contactPhone; }
+
+  public void setContactPhone(String contactPhone) { this.contactPhone = contactPhone; }
+
+  public String getApplicationNote() { return applicationNote; }
+
+  public void setApplicationNote(String applicationNote) { this.applicationNote = applicationNote; }
 
   public BookingStatus getStatus() {
     return status;
@@ -193,6 +233,22 @@ public class BookingReservationEntity {
   public void setTerminalReason(String terminalReason) {
     this.terminalReason = terminalReason;
   }
+
+  public String getReviewDecision() { return reviewDecision; }
+
+  public void setReviewDecision(String reviewDecision) { this.reviewDecision = reviewDecision; }
+
+  public String getReviewNote() { return reviewNote; }
+
+  public void setReviewNote(String reviewNote) { this.reviewNote = reviewNote; }
+
+  public String getReviewerRole() { return reviewerRole; }
+
+  public void setReviewerRole(String reviewerRole) { this.reviewerRole = reviewerRole; }
+
+  public LocalDateTime getReviewedAt() { return reviewedAt; }
+
+  public void setReviewedAt(LocalDateTime reviewedAt) { this.reviewedAt = reviewedAt; }
 
   public String getTimeoutState() {
     return timeoutState;

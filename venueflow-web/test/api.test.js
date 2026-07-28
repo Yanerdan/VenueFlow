@@ -130,3 +130,19 @@ test("campus profile and user directory use bounded management endpoints", async
     "http://gateway/api/v1/users/management?pageNumber=0&pageSize=100&keyword=%E8%AE%A1%E7%AE%97%E6%9C%BA"
   );
 });
+
+test("booking review actions send bounded approval and rejection notes", async () => {
+  const calls = [];
+  const api = createApi({
+    baseUrl: "http://gateway",
+    storage: storage({ "venueflow.access": "token" }),
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return response(200, { data: { status: "CONFIRMED" } });
+    }
+  });
+  await api.bookingAction("B-1", "confirmation", "材料完整");
+  await api.bookingAction("B-2", "rejection", "活动用途不符合场地规则");
+  assert.deepEqual(JSON.parse(calls[0].options.body), { reviewNote: "材料完整" });
+  assert.deepEqual(JSON.parse(calls[1].options.body), { reason: "活动用途不符合场地规则" });
+});

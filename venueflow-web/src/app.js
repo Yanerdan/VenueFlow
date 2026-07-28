@@ -1,4 +1,4 @@
-import { createApi } from "./api.js?v=20260728-c26";
+import { createApi } from "./api.js?v=20260728-c27";
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -104,9 +104,10 @@ async function loadBookings() {
   const items = page.items || [];
   $("#booking-list").innerHTML = items.length ? items.map(b => `
     <article class="booking-card">
-      <div><p class="booking-label">申请编号</p><div class="booking-id">${escapeHtml(b.bookingNo)}</div><span class="status ${b.status.toLowerCase()}">${labels[b.status] || b.status}</span></div>
+      <div><p class="booking-label">申请编号</p><div class="booking-id">${escapeHtml(b.bookingNo)}</div><strong class="activity-name">${escapeHtml(b.activityTitle || "历史场地申请")}</strong><span class="status ${b.status.toLowerCase()}">${labels[b.status] || b.status}</span></div>
       <div><p class="booking-label">资源时段</p><div class="booking-value">#${b.slotId}</div></div>
       <div><p class="booking-label">使用人数</p><div class="booking-value">${b.quantity} 人</div></div>
+      <details class="booking-detail"><summary>申请详情</summary><div><span>用途</span><p>${escapeHtml(b.purpose || "历史申请未记录")}</p><span>联系人</span><p>${escapeHtml(b.contactName || "待完善")} · ${escapeHtml(b.contactPhone || "待完善")}</p>${b.note ? `<span>补充说明</span><p>${escapeHtml(b.note)}</p>` : ""}${b.reviewNote ? `<span>处理意见</span><p>${escapeHtml(b.reviewNote)}</p>` : ""}</div></details>
       <div class="card-actions">${["PENDING_CONFIRMATION", "CONFIRMED"].includes(b.status) ? `<button data-booking="${escapeHtml(b.bookingNo)}" data-action="cancellation">撤回申请</button>` : ""}</div>
     </article>`).join("") : empty("还没有申请记录", "在空间大厅选择开放时段即可提交第一份申请。");
 }
@@ -169,7 +170,13 @@ $("#slot-list").addEventListener("click", event => {
 $("#booking-form").addEventListener("submit", async event => {
   event.preventDefault(); const data = new FormData(event.currentTarget);
   try {
-    await api.createBooking(profile.id, Number(data.get("slotId")), Number(data.get("quantity")));
+    await api.createBooking(profile.id, Number(data.get("slotId")), Number(data.get("quantity")), {
+      activityTitle: data.get("activityTitle"),
+      purpose: data.get("purpose"),
+      contactName: data.get("contactName"),
+      contactPhone: data.get("contactPhone"),
+      note: data.get("note") || null
+    });
     await loadBookings(); notify("申请已提交，等待管理部门审批");
   } catch (error) { fail(error); }
 });

@@ -1,4 +1,4 @@
-import { createApi } from "./api.js?v=20260728-c26";
+import { createApi } from "./api.js?v=20260728-c27";
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -9,6 +9,7 @@ const approvalRoles = ["APPROVER", "SYSTEM_ADMIN"];
 let resources = [];
 let bookings = [];
 let users = [];
+let selectedBooking;
 let messageTimer;
 
 const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, char =>
@@ -82,9 +83,25 @@ function renderDashboard() {
 }
 function approvalActions(item) {
   if (!approvalRoles.includes(api.role())) return "—";
-  if (item.status === "PENDING_CONFIRMATION") return `<button data-approval="${item.bookingNo}" data-action="confirmation">通过</button><button class="danger" data-approval="${item.bookingNo}" data-action="cancellation">驳回</button>`;
+  if (item.status === "PENDING_CONFIRMATION") return `<button data-review-booking="${item.bookingNo}">查看并审批</button>`;
   if (item.status === "CONFIRMED") return `<button data-approval="${item.bookingNo}" data-action="check-in">签到核销</button><button class="danger" data-approval="${item.bookingNo}" data-action="cancellation">取消</button>`;
   return "—";
+}
+function openReview(item) {
+  selectedBooking = item;
+  const applicant = userFor(item.userId);
+  $("#review-title").textContent = item.activityTitle || "历史场地申请";
+  $("#review-detail").innerHTML = `
+    <div><span>申请人</span><strong>${applicantLabel(item.userId)}</strong></div>
+    <div><span>申请编号</span><strong>${escapeHtml(item.bookingNo)}</strong></div>
+    <div><span>活动用途</span><p>${escapeHtml(item.purpose || "历史申请未记录")}</p></div>
+    <div><span>联系人</span><p>${escapeHtml(item.contactName || applicant?.displayName || "待完善")} · ${escapeHtml(item.contactPhone || applicant?.phone || "待完善")}</p></div>
+    ${item.note ? `<div><span>补充说明</span><p>${escapeHtml(item.note)}</p></div>` : ""}
+    ${item.reviewNote ? `<div><span>已有处理意见</span><p>${escapeHtml(item.reviewNote)}</p></div>` : ""}`;
+  $("#review-note").value = item.reviewNote || "";
+  $("#approve-review").classList.toggle("hidden", item.status !== "PENDING_CONFIRMATION");
+  $("#reject-review").classList.toggle("hidden", item.status !== "PENDING_CONFIRMATION");
+  $("#review-panel").classList.remove("hidden");
 }
 function renderApprovals() {
   $("#approval-table").innerHTML = bookings.length ? bookings.map(item => `
@@ -132,10 +149,24 @@ async function selectSlots(id, name) {
       empty("暂无开放时段", "使用上方按钮为该资源新增开放时段。"));
 }
 async function actBooking(button) {
-  await api.bookingAction(button.dataset.approval, button.dataset.action);
+  await api.bookingAction(button.dataset.approval, button.dataset.action, button.dataset.note);
   const page = await api.managementBookings($("#approval-filter").value);
   bookings = page.items || []; renderDashboard(); renderApprovals();
   notify(button.dataset.action === "confirmation" ? "申请已审批通过" : button.dataset.action === "check-in" ? "已完成签到核销" : "申请已取消");
+}
+async function reviewAction(action) {
+  if (!selectedBooking) return;
+  const note = $("#review-note").value.trim();
+  if (action === "rejection" && !note) {
+    notify("驳回申请必须填写原因", true);
+    return;
+  }
+  await api.bookingAction(selectedBooking.bookingNo, action, note);
+  $("#review-panel").classList.add("hidden");
+  const page = await api.managementBookings($("#approval-filter").value);
+  bookings = page.items || [];
+  renderDashboard(); renderApprovals();
+  notify(action === "confirmation" ? "申请已审批通过" : "申请已驳回");
 }
 
 $$("[data-section]").forEach(button => button.addEventListener("click", () => {
@@ -161,9 +192,17 @@ $("#user-search-form").addEventListener("submit", async event => {
 document.addEventListener("click", event => {
   const approval = event.target.closest("[data-approval]");
   if (approval) actBooking(approval).catch(fail);
+  const review = event.target.closest("[data-review-booking]");
+  if (review) {
+    const item = bookings.find(value => value.bookingNo === review.dataset.reviewBooking);
+    if (item) openReview(item);
+  }
   const close = event.target.closest("[data-close-form]");
   if (close) close.closest("form").classList.add("hidden");
 });
+$("#close-review").addEventListener("click", () => $("#review-panel").classList.add("hidden"));
+$("#approve-review").addEventListener("click", () => reviewAction("confirmation").catch(fail));
+$("#reject-review").addEventListener("click", () => reviewAction("rejection").catch(fail));
 $("#show-resource-form").addEventListener("click", async () => {
   try {
     const categories = await api.categories();

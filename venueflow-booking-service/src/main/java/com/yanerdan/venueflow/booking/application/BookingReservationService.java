@@ -3,6 +3,7 @@ package com.yanerdan.venueflow.booking.application;
 import com.yanerdan.venueflow.booking.collaboration.ResourceCapacityClient;
 import com.yanerdan.venueflow.booking.collaboration.UserEligibilityClient;
 import com.yanerdan.venueflow.booking.domain.BookingReservation;
+import com.yanerdan.venueflow.booking.domain.BookingApplicationDetails;
 import com.yanerdan.venueflow.booking.domain.BookingStatus;
 import com.yanerdan.venueflow.booking.persistence.BookingRepository;
 import com.yanerdan.venueflow.booking.persistence.BookingRepository.BookingHistoryPage;
@@ -88,7 +89,39 @@ public class BookingReservationService {
 
   public CreateResult create(String key, long userId, long slotId, int quantity) {
     validateKey(key);
-    String hash = hash(userId, slotId, quantity);
+    return createOwned(
+        key,
+        userId,
+        slotId,
+        quantity,
+        hash(userId, slotId, quantity),
+        BookingApplicationDetails.historical());
+  }
+
+  public CreateResult create(
+      String key,
+      long userId,
+      long slotId,
+      int quantity,
+      String activityTitle,
+      String purpose,
+      String contactName,
+      String contactPhone,
+      String note) {
+    validateKey(key);
+    BookingApplicationDetails details =
+        new BookingApplicationDetails(activityTitle, purpose, contactName, contactPhone, note);
+    return createOwned(
+        key, userId, slotId, quantity, hash(userId, slotId, quantity, details), details);
+  }
+
+  private CreateResult createOwned(
+      String key,
+      long userId,
+      long slotId,
+      int quantity,
+      String hash,
+      BookingApplicationDetails details) {
     ClaimResult claim = repository.claim(userId, key, hash, slotId, quantity);
     switch (claim.kind()) {
       case SUCCEEDED:
@@ -127,16 +160,27 @@ public class BookingReservationService {
     }
 
     try {
-      return new CreateResult(
-          repository.complete(
-              claim.requestId(),
-              userId,
-              slotId,
-              quantity,
-              allocationId,
-              releaseId,
-              LocalDateTime.now().plus(confirmationWindow)),
-          false);
+      LocalDateTime expireAt = LocalDateTime.now().plus(confirmationWindow);
+      BookingReservation completed =
+          details.activityTitle() == null
+              ? repository.complete(
+                  claim.requestId(),
+                  userId,
+                  slotId,
+                  quantity,
+                  allocationId,
+                  releaseId,
+                  expireAt)
+              : repository.complete(
+                  claim.requestId(),
+                  userId,
+                  slotId,
+                  quantity,
+                  allocationId,
+                  releaseId,
+                  expireAt,
+                  details);
+      return new CreateResult(completed, false);
     } catch (RuntimeException persistenceFailure) {
       try {
         resourceClient.release(slotId, releaseId, quantity);
@@ -186,6 +230,40 @@ public class BookingReservationService {
   }
 
   public BookingReservation cancel(String bookingNo) {
+    return cancelInternal(
+        bookingNo, "USER_CANCELLED", "CANCELLED", null, "APPLICANT", true);
+  }
+
+  public BookingReservation cancel(String bookingNo, String note) {
+    return cancelInternal(
+        bookingNo,
+        "USER_CANCELLED",
+        "CANCELLED",
+        normalizeOptional(note),
+        "APPLICANT",
+        false);
+  }
+
+  public BookingReservation reject(String bookingNo, String reason, String reviewerRole) {
+    if (reason == null || reason.isBlank()) {
+      throw error(BookingErrorCode.BOOKING_VALIDATION_FAILED, "Rejection reason is required");
+    }
+    return cancelInternal(
+        bookingNo,
+        "MANAGEMENT_REJECTED",
+        "REJECTED",
+        normalizeRequired(reason),
+        reviewerRole,
+        false);
+  }
+
+  private BookingReservation cancelInternal(
+      String bookingNo,
+      String terminalReason,
+      String decision,
+      String note,
+      String reviewerRole,
+      boolean legacyAction) {
     BookingReservation reservation = get(bookingNo);
     if (reservation.status() == BookingStatus.CANCELLED) return reservation;
     if (reservation.status() != BookingStatus.PENDING_CONFIRMATION
@@ -198,7 +276,17 @@ public class BookingReservationService {
     repository.prepareCancellation(reservation);
     resourceClient.release(
         reservation.slotId(), reservation.releaseOperationId(), reservation.quantity());
-    if (!repository.cancelAndResolve(bookingNo, reservation.version())) {
+    boolean cancelled =
+        legacyAction
+            ? repository.cancelAndResolve(bookingNo, reservation.version())
+            : repository.cancelAndResolve(
+                bookingNo,
+                reservation.version(),
+                terminalReason,
+                decision,
+                note,
+                reviewerRole);
+    if (!cancelled) {
       BookingReservation current = get(bookingNo);
       if (current.status() == BookingStatus.CANCELLED) return current;
       throw error(BookingErrorCode.BOOKING_STATE_CONFLICT, "Booking state changed concurrently");
@@ -207,6 +295,15 @@ public class BookingReservationService {
   }
 
   public BookingReservation confirm(String bookingNo) {
+    return confirmInternal(bookingNo, null, null, true);
+  }
+
+  public BookingReservation confirm(String bookingNo, String note, String reviewerRole) {
+    return confirmInternal(bookingNo, note, reviewerRole, false);
+  }
+
+  private BookingReservation confirmInternal(
+      String bookingNo, String note, String reviewerRole, boolean legacyAction) {
     BookingReservation current = get(bookingNo);
     if (current.status() == BookingStatus.CONFIRMED) return current;
     if (current.status() != BookingStatus.PENDING_CONFIRMATION) {
@@ -221,7 +318,10 @@ public class BookingReservationService {
       throw error(BookingErrorCode.BOOKING_TIMEOUT_IN_PROGRESS, "Timeout owns this reservation");
     }
     try {
-      BookingReservation result = repository.confirm(bookingNo);
+      BookingReservation result =
+          legacyAction
+              ? repository.confirm(bookingNo)
+              : repository.confirm(bookingNo, normalizeOptional(note), reviewerRole);
       if (result != null && result.status() == BookingStatus.CONFIRMED) return result;
     } catch (IllegalArgumentException exception) {
       throw error(
@@ -262,6 +362,18 @@ public class BookingReservationService {
     return value;
   }
 
+  private static String normalizeRequired(String value) {
+    String normalized = value.trim();
+    if (normalized.length() > 1000) {
+      throw error(BookingErrorCode.BOOKING_VALIDATION_FAILED, "Review note is too long");
+    }
+    return normalized;
+  }
+
+  private static String normalizeOptional(String value) {
+    return value == null || value.isBlank() ? null : normalizeRequired(value);
+  }
+
   private static void validateKey(String key) {
     try {
       UUID.fromString(key);
@@ -277,6 +389,37 @@ public class BookingReservationService {
               MessageDigest.getInstance("SHA-256")
                   .digest(
                       (userId + "|" + slotId + "|" + quantity).getBytes(StandardCharsets.UTF_8)));
+    } catch (NoSuchAlgorithmException exception) {
+      throw new IllegalStateException("SHA-256 is required", exception);
+    }
+  }
+
+  static String hash(
+      long userId, long slotId, int quantity, BookingApplicationDetails details) {
+    return sha256(
+        userId
+            + "|"
+            + slotId
+            + "|"
+            + quantity
+            + "|"
+            + details.activityTitle()
+            + "|"
+            + details.purpose()
+            + "|"
+            + details.contactName()
+            + "|"
+            + details.contactPhone()
+            + "|"
+            + (details.note() == null ? "" : details.note()));
+  }
+
+  private static String sha256(String value) {
+    try {
+      return HexFormat.of()
+          .formatHex(
+              MessageDigest.getInstance("SHA-256")
+                  .digest(value.getBytes(StandardCharsets.UTF_8)));
     } catch (NoSuchAlgorithmException exception) {
       throw new IllegalStateException("SHA-256 is required", exception);
     }

@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Positive;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -39,8 +40,26 @@ public class BookingReservationController {
   public ResponseEntity<SuccessEnvelope<BookingResponse>> create(
       @RequestHeader("Idempotency-Key") @NotBlank String idempotencyKey,
       @Valid @RequestBody CreateBookingRequest request) {
+    boolean detailsAbsent =
+        request.activityTitle() == null
+            && request.purpose() == null
+            && request.contactName() == null
+            && request.contactPhone() == null
+            && request.note() == null;
     BookingReservationService.CreateResult result =
-        service.create(idempotencyKey, request.userId(), request.slotId(), request.quantity());
+        detailsAbsent
+            ? service.create(
+                idempotencyKey, request.userId(), request.slotId(), request.quantity())
+            : service.create(
+                idempotencyKey,
+                request.userId(),
+                request.slotId(),
+                request.quantity(),
+                request.activityTitle(),
+                request.purpose(),
+                request.contactName(),
+                request.contactPhone(),
+                request.note());
     return ResponseEntity.status(result.replay() ? HttpStatus.OK : HttpStatus.CREATED)
         .body(SuccessEnvelope.of(BookingResponse.from(result.reservation())));
   }
@@ -65,16 +84,37 @@ public class BookingReservationController {
   }
 
   @PostMapping("/{bookingNo}/cancellation")
-  public SuccessEnvelope<BookingResponse> cancel(@PathVariable @NotBlank String bookingNo) {
-    return SuccessEnvelope.of(BookingResponse.from(service.cancel(bookingNo)));
+  public SuccessEnvelope<BookingResponse> cancel(
+      @PathVariable @NotBlank String bookingNo,
+      @Valid @RequestBody(required = false) ReviewActionRequest request) {
+    BookingReservation result =
+        request == null || request.reviewNote() == null
+            ? service.cancel(bookingNo)
+            : service.cancel(bookingNo, request.reviewNote());
+    return SuccessEnvelope.of(BookingResponse.from(result));
   }
 
   @PostMapping("/{bookingNo}/confirmation")
   public SuccessEnvelope<BookingResponse> confirm(
       @PathVariable @NotBlank String bookingNo,
-      @RequestHeader(value = "X-Role", defaultValue = "APPLICANT") String role) {
+      @RequestHeader(value = "X-Role", defaultValue = "APPLICANT") String role,
+      @Valid @RequestBody(required = false) ReviewActionRequest request) {
     BookingRoleGuard.requireApprover(role);
-    return SuccessEnvelope.of(BookingResponse.from(service.confirm(bookingNo)));
+    BookingReservation result =
+        request == null || request.reviewNote() == null
+            ? service.confirm(bookingNo)
+            : service.confirm(bookingNo, request.reviewNote(), role);
+    return SuccessEnvelope.of(BookingResponse.from(result));
+  }
+
+  @PostMapping("/{bookingNo}/rejection")
+  public SuccessEnvelope<BookingResponse> reject(
+      @PathVariable @NotBlank String bookingNo,
+      @RequestHeader(value = "X-Role", defaultValue = "APPLICANT") String role,
+      @Valid @RequestBody RejectionRequest request) {
+    BookingRoleGuard.requireApprover(role);
+    return SuccessEnvelope.of(
+        BookingResponse.from(service.reject(bookingNo, request.reason(), role)));
   }
 
   @PostMapping("/{bookingNo}/check-in")
@@ -103,7 +143,23 @@ public class BookingReservationController {
   }
 
   public record CreateBookingRequest(
-      @Positive long userId, @Positive long slotId, @Positive int quantity) {}
+      @Positive long userId,
+      @Positive long slotId,
+      @Positive int quantity,
+      @Size(max = 160) String activityTitle,
+      @Size(max = 500) String purpose,
+      @Size(max = 120) String contactName,
+      @Size(max = 32) String contactPhone,
+      @Size(max = 1000) String note) {
+    public CreateBookingRequest(long userId, long slotId, int quantity) {
+      this(userId, slotId, quantity, null, null, null, null, null);
+    }
+  }
+
+  public record ReviewActionRequest(@Size(max = 1000) String reviewNote) {}
+
+  public record RejectionRequest(
+      @NotBlank(message = "Rejection reason must not be blank") @Size(max = 1000) String reason) {}
 
   public record BookingResponse(
       String bookingNo,
@@ -118,7 +174,16 @@ public class BookingReservationController {
       LocalDateTime cancelledAt,
       LocalDateTime expiredAt,
       LocalDateTime completedAt,
-      LocalDateTime updatedAt) {
+      LocalDateTime updatedAt,
+      String activityTitle,
+      String purpose,
+      String contactName,
+      String contactPhone,
+      String note,
+      String reviewDecision,
+      String reviewNote,
+      String reviewerRole,
+      LocalDateTime reviewedAt) {
     static BookingResponse from(BookingReservation reservation) {
       return new BookingResponse(
           reservation.bookingNo(),
@@ -133,7 +198,16 @@ public class BookingReservationController {
           reservation.cancelledAt(),
           reservation.expiredAt(),
           reservation.completedAt(),
-          reservation.updatedAt());
+          reservation.updatedAt(),
+          reservation.activityTitle(),
+          reservation.applicationPurpose(),
+          reservation.contactName(),
+          reservation.contactPhone(),
+          reservation.applicationNote(),
+          reservation.reviewDecision(),
+          reservation.reviewNote(),
+          reservation.reviewerRole(),
+          reservation.reviewedAt());
     }
   }
 

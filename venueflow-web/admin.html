@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#073d3a">
   <title>VenueFlow · 校园管理工作台</title>
-  <link rel="stylesheet" href="./styles.css?v=20260728-c26">
+  <link rel="stylesheet" href="./styles.css?v=20260728-c27">
 </head>
 <body class="admin-body">
   <aside class="admin-sidebar">
@@ -57,6 +57,13 @@
           <select id="approval-filter"><option value="">全部状态</option><option value="PENDING_CONFIRMATION">待审批</option><option value="CONFIRMED">已通过</option><option value="COMPLETED">已核销</option><option value="CANCELLED">已取消</option><option value="EXPIRED">已失效</option></select>
         </div>
         <div class="table-shell"><table><thead><tr><th>申请编号</th><th>申请人</th><th>资源时段</th><th>人数</th><th>状态</th><th>提交时间</th><th>操作</th></tr></thead><tbody id="approval-table"></tbody></table></div>
+        <aside id="review-panel" class="review-panel hidden">
+          <button id="close-review" class="close-button">×</button>
+          <p class="eyebrow">APPLICATION REVIEW</p><h2 id="review-title">申请详情</h2>
+          <div id="review-detail" class="review-detail"></div>
+          <label>审批意见 / 驳回原因<textarea id="review-note" maxlength="1000" rows="4" placeholder="通过时可选，驳回时必填"></textarea></label>
+          <div class="review-actions"><button id="approve-review" class="primary-button">审批通过</button><button id="reject-review" class="danger-button">驳回申请</button></div>
+        </aside>
       </section>
 
       <section id="resources" class="admin-section hidden">
@@ -95,6 +102,6 @@
     </div>
     <div id="message" class="message hidden" role="status"></div>
   </main>
-  <script type="module" src="./src/admin.js?v=20260728-c26-2"></script>
+  <script type="module" src="./src/admin.js?v=20260728-c27"></script>
 </body>
 </html>

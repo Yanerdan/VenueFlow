@@ -3,6 +3,7 @@ package com.yanerdan.venueflow.booking.persistence;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.yanerdan.venueflow.booking.domain.BookingReservation;
+import com.yanerdan.venueflow.booking.domain.BookingApplicationDetails;
 import com.yanerdan.venueflow.booking.domain.BookingStatus;
 import com.yanerdan.venueflow.booking.domain.IdempotencyStatus;
 import com.yanerdan.venueflow.booking.expiration.domain.TimeoutReservation;
@@ -85,6 +86,27 @@ public class BookingRepository {
       String allocationId,
       String releaseId,
       LocalDateTime expireAt) {
+    return complete(
+        requestId,
+        userId,
+        slotId,
+        quantity,
+        allocationId,
+        releaseId,
+        expireAt,
+        BookingApplicationDetails.historical());
+  }
+
+  @Transactional
+  public BookingReservation complete(
+      String requestId,
+      long userId,
+      long slotId,
+      int quantity,
+      String allocationId,
+      String releaseId,
+      LocalDateTime expireAt,
+      BookingApplicationDetails details) {
     LocalDateTime now = LocalDateTime.now();
     BookingReservationEntity entity = new BookingReservationEntity();
     entity.setBookingNo(UUID.randomUUID().toString());
@@ -92,6 +114,11 @@ public class BookingRepository {
     entity.setUserId(userId);
     entity.setSlotId(slotId);
     entity.setQuantity(quantity);
+    entity.setActivityTitle(details.activityTitle());
+    entity.setApplicationPurpose(details.purpose());
+    entity.setContactName(details.contactName());
+    entity.setContactPhone(details.contactPhone());
+    entity.setApplicationNote(details.note());
     entity.setStatus(BookingStatus.PENDING_CONFIRMATION);
     entity.setAllocationOperationId(allocationId);
     entity.setReleaseOperationId(releaseId);
@@ -183,6 +210,11 @@ public class BookingRepository {
 
   @Transactional
   public BookingReservation confirm(String bookingNo) {
+    return confirm(bookingNo, null, null);
+  }
+
+  @Transactional
+  public BookingReservation confirm(String bookingNo, String reviewNote, String reviewerRole) {
     BookingReservationEntity current = findEntity(bookingNo);
     if (current == null) return null;
     if (current.getStatus() == BookingStatus.CONFIRMED) return current.toDomain();
@@ -209,6 +241,10 @@ public class BookingRepository {
                             .le(BookingReservationEntity::getTimeoutLeaseExpiresAt, now))
                 .set(BookingReservationEntity::getStatus, BookingStatus.CONFIRMED)
                 .set(BookingReservationEntity::getConfirmedAt, now)
+                .set(BookingReservationEntity::getReviewDecision, "APPROVED")
+                .set(BookingReservationEntity::getReviewNote, reviewNote)
+                .set(BookingReservationEntity::getReviewerRole, reviewerRole)
+                .set(BookingReservationEntity::getReviewedAt, now)
                 .set(BookingReservationEntity::getTimeoutState, "COMPLETED")
                 .set(BookingReservationEntity::getTimeoutNextCheckAt, null)
                 .set(BookingReservationEntity::getUpdatedAt, now)
@@ -278,6 +314,23 @@ public class BookingRepository {
 
   @Transactional
   public boolean cancelAndResolve(String bookingNo, long expectedVersion) {
+    return cancelAndResolve(
+        bookingNo,
+        expectedVersion,
+        "USER_CANCELLED",
+        "CANCELLED",
+        null,
+        "APPLICANT");
+  }
+
+  @Transactional
+  public boolean cancelAndResolve(
+      String bookingNo,
+      long expectedVersion,
+      String terminalReason,
+      String reviewDecision,
+      String reviewNote,
+      String reviewerRole) {
     LocalDateTime now = LocalDateTime.now();
     BookingReservationEntity before = findEntity(bookingNo);
     boolean updated =
@@ -298,7 +351,11 @@ public class BookingRepository {
                                 .le(BookingReservationEntity::getTimeoutLeaseExpiresAt, now))
                     .set(BookingReservationEntity::getStatus, BookingStatus.CANCELLED)
                     .set(BookingReservationEntity::getCancelledAt, now)
-                    .set(BookingReservationEntity::getTerminalReason, "USER_CANCELLED")
+                    .set(BookingReservationEntity::getTerminalReason, terminalReason)
+                    .set(BookingReservationEntity::getReviewDecision, reviewDecision)
+                    .set(BookingReservationEntity::getReviewNote, reviewNote)
+                    .set(BookingReservationEntity::getReviewerRole, reviewerRole)
+                    .set(BookingReservationEntity::getReviewedAt, now)
                     .set(BookingReservationEntity::getTimeoutState, "COMPLETED")
                     .set(BookingReservationEntity::getTimeoutNextCheckAt, null)
                     .set(BookingReservationEntity::getUpdatedAt, now)
@@ -314,7 +371,7 @@ public class BookingRepository {
           before.getStatus().name(),
           BookingStatus.CANCELLED.name(),
           "CANCEL",
-          "USER_CANCELLED",
+          terminalReason,
           now);
       outboxMapper.insert(OutboxEventEntity.from(outboxFactory.create(entity.toDomain())));
       if (!reconciliationIntents.resolveOpen(
