@@ -18,6 +18,21 @@ public class UserProfileEntity {
   @TableField("display_name")
   private String displayName;
 
+  @TableField("campus_id")
+  private String campusId;
+
+  @TableField("identity_type")
+  private String identityType;
+
+  @TableField("department")
+  private String department;
+
+  @TableField("phone")
+  private String phone;
+
+  @TableField("email")
+  private String email;
+
   @TableField("account_status")
   private String accountStatus;
 
@@ -56,6 +71,26 @@ public class UserProfileEntity {
   public void setDisplayName(String displayName) {
     this.displayName = displayName;
   }
+
+  public String getCampusId() { return campusId; }
+
+  public void setCampusId(String campusId) { this.campusId = campusId; }
+
+  public String getIdentityType() { return identityType; }
+
+  public void setIdentityType(String identityType) { this.identityType = identityType; }
+
+  public String getDepartment() { return department; }
+
+  public void setDepartment(String department) { this.department = department; }
+
+  public String getPhone() { return phone; }
+
+  public void setPhone(String phone) { this.phone = phone; }
+
+  public String getEmail() { return email; }
+
+  public void setEmail(String email) { this.email = email; }
 
   public String getAccountStatus() {
     return accountStatus;

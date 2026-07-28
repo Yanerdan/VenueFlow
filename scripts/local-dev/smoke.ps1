@@ -26,10 +26,6 @@ function Invoke-Json([string]$Method, [string]$Uri, $Body, $Headers = @{}) {
         }
         $details = if ($_.ErrorDetails.Message) {
             $_.ErrorDetails.Message
-        } elseif ($_.Exception.Response) {
-            $stream = $_.Exception.Response.GetResponseStream()
-            $reader = New-Object IO.StreamReader($stream)
-            try { $reader.ReadToEnd() } finally { $reader.Dispose() }
         } else {
             $_.Exception.Message
         }
@@ -56,7 +52,29 @@ $adminHeaders = @{ Authorization = "Bearer $($adminLogin.data.accessToken)" }
 $profile = Invoke-Json "Post" "$gateway/api/v1/users" @{
     externalUserId = [string]$registration.data.userId
     displayName = "Local Acceptance"
+    campusId = "VF-$($registration.data.userId)"
+    identityType = "STUDENT"
+    department = "Computer Science"
+    phone = "13800000000"
+    email = "$username@example.edu.cn"
 } $headers
+
+$profile = Invoke-Json "Patch" "$gateway/api/v1/users/me/campus-profile" @{
+    displayName = "Local Acceptance"
+    campusId = "VF-$($registration.data.userId)"
+    identityType = "STUDENT"
+    department = "Computer Science"
+    phone = "13800000000"
+    email = "$username@example.edu.cn"
+    expectedVersion = $profile.version
+} $headers
+
+$directory = Invoke-Json "Get" `
+    "$gateway/api/v1/users/management?keyword=Local%20Acceptance&pageNumber=0&pageSize=100" `
+    $null $adminHeaders
+if (-not (@($directory.items) | Where-Object { $_.id -eq $profile.id })) {
+    throw "Created profile did not appear in the management user directory"
+}
 
 $resources = Invoke-RestMethod -Uri "$gateway/api/v1/resources?page=0&size=100" -Headers $headers
 $resource = @($resources.items) |
@@ -122,6 +140,7 @@ $null = Invoke-Json "Post" "$gateway/api/v1/auth/logout" @{
     Gateway = "UP"
     Registration = "PASS"
     Profile = "PASS"
+    UserDirectory = "PASS"
     ResourceAndSlot = "PASS"
     Booking = "CONFIRMED"
     Search = "PASS"

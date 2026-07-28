@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#073d3a">
   <title>VenueFlow · 校园管理工作台</title>
-  <link rel="stylesheet" href="./styles.css?v=20260728-c25">
+  <link rel="stylesheet" href="./styles.css?v=20260728-c26">
 </head>
 <body class="admin-body">
   <aside class="admin-sidebar">
@@ -16,6 +16,7 @@
       <button data-section="approvals"><span>✓</span>申请审批 <em id="pending-badge">0</em></button>
       <button data-section="resources"><span>◇</span>资源管理</button>
       <button data-section="slots"><span>◷</span>开放时段</button>
+      <button data-section="users"><span>◎</span>人员目录</button>
     </nav>
     <div class="sidebar-foot"><p>申请人服务入口</p><a href="./index.html">返回用户端 →</a></div>
   </aside>
@@ -84,9 +85,16 @@
         </form>
         <div class="slot-admin-layout"><div id="slot-resource-list" class="resource-picker"></div><div id="slot-admin-list" class="admin-panel"><div class="empty"><strong>选择一个资源</strong>查看并维护开放时段。</div></div></div>
       </section>
+
+      <section id="users" class="admin-section hidden">
+        <div class="toolbar"><p>查询平台申请人及其校园身份资料。</p>
+          <form id="user-search-form" class="inline-search"><input name="keyword" maxlength="80" placeholder="姓名、学工号或院系"><button>搜索</button></form>
+        </div>
+        <div class="table-shell"><table><thead><tr><th>姓名</th><th>学工号</th><th>身份</th><th>院系 / 部门</th><th>联系电话</th><th>邮箱</th><th>状态</th></tr></thead><tbody id="user-table"></tbody></table></div>
+      </section>
     </div>
     <div id="message" class="message hidden" role="status"></div>
   </main>
-  <script type="module" src="./src/admin.js?v=20260728-c25-2"></script>
+  <script type="module" src="./src/admin.js?v=20260728-c26-2"></script>
 </body>
 </html>

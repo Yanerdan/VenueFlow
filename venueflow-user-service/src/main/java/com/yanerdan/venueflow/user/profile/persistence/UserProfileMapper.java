@@ -15,6 +15,11 @@ public interface UserProfileMapper extends BaseMapper<UserProfileEntity> {
         (
             external_user_id,
             display_name,
+            campus_id,
+            identity_type,
+            department,
+            phone,
+            email,
             account_status,
             booking_eligibility,
             version
@@ -23,6 +28,11 @@ public interface UserProfileMapper extends BaseMapper<UserProfileEntity> {
         (
             #{externalUserId},
             #{displayName},
+            #{campusId},
+            #{identityType},
+            #{department},
+            #{phone},
+            #{email},
             #{accountStatus},
             #{bookingEligibility},
             #{version}
@@ -37,6 +47,11 @@ public interface UserProfileMapper extends BaseMapper<UserProfileEntity> {
             id,
             external_user_id AS externalUserId,
             display_name AS displayName,
+            campus_id AS campusId,
+            identity_type AS identityType,
+            department,
+            phone,
+            email,
             account_status AS accountStatus,
             booking_eligibility AS bookingEligibility,
             version,
@@ -91,4 +106,58 @@ public interface UserProfileMapper extends BaseMapper<UserProfileEntity> {
       @Param("id") long id,
       @Param("bookingEligibility") String bookingEligibility,
       @Param("expectedVersion") long expectedVersion);
+
+  @Update(
+      """
+        UPDATE user_profile
+        SET display_name = #{displayName},
+            campus_id = #{campusId},
+            identity_type = #{identityType},
+            department = #{department},
+            phone = #{phone},
+            email = #{email},
+            version = version + 1,
+            updated_at = CURRENT_TIMESTAMP(6)
+        WHERE id = #{id}
+          AND version = #{expectedVersion}
+        """)
+  int updateCampusProfile(
+      @Param("id") long id,
+      @Param("displayName") String displayName,
+      @Param("campusId") String campusId,
+      @Param("identityType") String identityType,
+      @Param("department") String department,
+      @Param("phone") String phone,
+      @Param("email") String email,
+      @Param("expectedVersion") long expectedVersion);
+
+  @Select(
+      """
+        SELECT id, external_user_id AS externalUserId, display_name AS displayName,
+               campus_id AS campusId, identity_type AS identityType, department, phone, email,
+               account_status AS accountStatus, booking_eligibility AS bookingEligibility,
+               version, created_at AS createdAt, updated_at AS updatedAt
+        FROM user_profile
+        WHERE #{keyword} IS NULL
+           OR display_name LIKE CONCAT('%', #{keyword}, '%')
+           OR campus_id LIKE CONCAT('%', #{keyword}, '%')
+           OR department LIKE CONCAT('%', #{keyword}, '%')
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+        """)
+  java.util.List<UserProfileEntity> selectPage(
+      @Param("keyword") String keyword,
+      @Param("offset") long offset,
+      @Param("limit") int limit);
+
+  @Select(
+      """
+        SELECT COUNT(*)
+        FROM user_profile
+        WHERE #{keyword} IS NULL
+           OR display_name LIKE CONCAT('%', #{keyword}, '%')
+           OR campus_id LIKE CONCAT('%', #{keyword}, '%')
+           OR department LIKE CONCAT('%', #{keyword}, '%')
+        """)
+  long countPage(@Param("keyword") String keyword);
 }

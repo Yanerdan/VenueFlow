@@ -2,10 +2,12 @@ package com.yanerdan.venueflow.user.profile.application;
 
 import com.yanerdan.venueflow.user.profile.domain.AccountStatus;
 import com.yanerdan.venueflow.user.profile.domain.BookingEligibility;
+import com.yanerdan.venueflow.user.profile.domain.CampusIdentityType;
 import com.yanerdan.venueflow.user.profile.domain.ExternalUserId;
 import com.yanerdan.venueflow.user.profile.domain.UserProfile;
 import com.yanerdan.venueflow.user.profile.domain.UserProfileId;
 import com.yanerdan.venueflow.user.profile.domain.UserProfileRepository;
+import com.yanerdan.venueflow.user.profile.domain.UserProfilePage;
 import com.yanerdan.venueflow.user.profile.domain.VersionedUpdateResult;
 import java.util.Objects;
 import org.springframework.context.annotation.Profile;
@@ -25,14 +27,71 @@ public class UserProfileApplicationService {
 
   public UserProfile create(String externalUserId, String displayName) {
     ExternalUserId validatedExternalUserId = new ExternalUserId(externalUserId);
-
     UserProfileId createdId = repository.create(validatedExternalUserId, displayName);
+    return reloadCreatedProfile(createdId);
+  }
 
+  public UserProfile create(
+      String externalUserId,
+      String displayName,
+      String campusId,
+      CampusIdentityType identityType,
+      String department,
+      String phone,
+      String email) {
+    ExternalUserId validatedExternalUserId = new ExternalUserId(externalUserId);
+
+    UserProfileId createdId =
+        repository.create(
+            validatedExternalUserId,
+            displayName,
+            campusId,
+            Objects.requireNonNullElse(identityType, CampusIdentityType.OTHER),
+            department,
+            phone,
+            email);
+
+    return reloadCreatedProfile(createdId);
+  }
+
+  private UserProfile reloadCreatedProfile(UserProfileId createdId) {
     return repository
         .findById(createdId)
         .orElseThrow(
             () ->
                 new UserProfilePersistenceException("Created user profile could not be reloaded"));
+  }
+
+  public UserProfile updateCampusProfile(
+      String externalUserId,
+      String displayName,
+      String campusId,
+      CampusIdentityType identityType,
+      String department,
+      String phone,
+      String email,
+      long expectedVersion) {
+    UserProfile current = getByExternalUserId(externalUserId);
+    validateExpectedVersion(expectedVersion);
+    VersionedUpdateResult result =
+        repository.updateCampusProfile(
+            current.id(),
+            displayName,
+            campusId,
+            identityType,
+            department,
+            phone,
+            email,
+            expectedVersion);
+    return completeVersionedUpdate(current.id(), expectedVersion, result);
+  }
+
+  @Transactional(readOnly = true)
+  public UserProfilePage findDirectory(String keyword, int pageNumber, int pageSize) {
+    if (pageNumber < 0 || pageSize < 1 || pageSize > 100) {
+      throw new IllegalArgumentException("Invalid user directory page");
+    }
+    return repository.findPage(keyword, pageNumber, pageSize);
   }
 
   @Transactional(readOnly = true)

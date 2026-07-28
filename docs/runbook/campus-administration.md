@@ -16,7 +16,9 @@ python -m http.server 3000 --directory venueflow-web
 - `http://127.0.0.1:3000/`：师生申请人工作区。
 - `http://127.0.0.1:3000/admin.html`：学校管理工作区。
 
-管理端使用与申请人端相同的 `sessionStorage` 会话；在同一标签页从用户端进入管理端时不需要重复登录。`APPLICANT` 不能访问管理端，`APPROVER` 可审批，`RESOURCE_MANAGER` 可维护资源，`SYSTEM_ADMIN` 拥有当前全部管理能力。
+管理端使用与申请人端相同的 `sessionStorage` 会话；在同一标签页从用户端进入管理端时不需要重复登录。`APPLICANT` 不能访问管理端，`APPROVER` 可审批并查看人员目录，`RESOURCE_MANAGER` 可维护资源，`SYSTEM_ADMIN` 拥有当前全部管理能力。
+
+申请人可在注册时填写学工号、人员类型、院系、电话和邮箱，也可在“个人资料”中随时补全。管理端“人员目录”支持按姓名、学工号或院系查询；审批列表会优先展示申请人姓名和院系，缺失字段明确显示“待完善”。
 
 ## 业务状态
 
@@ -37,7 +39,7 @@ python -m http.server 3000 --directory venueflow-web
 .\scripts\local-dev\smoke.ps1
 ```
 
-`smoke.ps1` 会创建一次性申请人、建立资料、提交申请，再以管理员查询审批队列并审批，通过搜索、通知、令牌刷新和退出完成全链路验证。
+`smoke.ps1` 会创建一次性申请人、建立并更新校园资料、验证人员目录、提交申请，再以管理员查询审批队列并审批，通过搜索、通知、令牌刷新和退出完成全链路验证。
 
 ## 常见问题
 

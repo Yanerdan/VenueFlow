@@ -4,7 +4,19 @@ import java.util.Optional;
 
 public interface UserProfileRepository {
 
-  UserProfileId create(ExternalUserId externalUserId, String displayName);
+  UserProfileId create(
+      ExternalUserId externalUserId,
+      String displayName,
+      String campusId,
+      CampusIdentityType identityType,
+      String department,
+      String phone,
+      String email);
+
+  default UserProfileId create(ExternalUserId externalUserId, String displayName) {
+    return create(
+        externalUserId, displayName, null, CampusIdentityType.OTHER, null, null, null);
+  }
 
   Optional<UserProfile> findById(UserProfileId id);
 
@@ -18,4 +30,16 @@ public interface UserProfileRepository {
 
   VersionedUpdateResult updateBookingEligibility(
       UserProfileId id, BookingEligibility bookingEligibility, long expectedVersion);
+
+  VersionedUpdateResult updateCampusProfile(
+      UserProfileId id,
+      String displayName,
+      String campusId,
+      CampusIdentityType identityType,
+      String department,
+      String phone,
+      String email,
+      long expectedVersion);
+
+  UserProfilePage findPage(String keyword, int pageNumber, int pageSize);
 }

@@ -1,4 +1,4 @@
-import { createApi } from "./api.js?v=20260728-c25";
+import { createApi } from "./api.js?v=20260728-c26";
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -34,21 +34,33 @@ function resetApi() {
   localStorage.setItem("venueflow.gateway", value);
   api = createApi({ baseUrl: value });
 }
-async function ensureProfile(name) {
+async function ensureProfile(registration) {
   try { profile = await api.currentProfile(); }
   catch (error) {
     if (error.status !== 404) throw error;
-    profile = await api.createProfile(api.subject(), name || "校园用户");
+    profile = await api.createProfile(
+      api.subject(),
+      registration?.displayName || registration || "校园用户",
+      typeof registration === "object" ? registration : {}
+    );
   }
 }
-async function enter(name) {
-  await ensureProfile(name);
+function renderProfile() {
+  if (!profile) return;
+  const form = $("#profile-form");
+  ["displayName", "campusId", "identityType", "department", "phone", "email"].forEach(name => {
+    form.elements[name].value = profile[name] || (name === "identityType" ? "OTHER" : "");
+  });
+}
+async function enter(registration) {
+  await ensureProfile(registration);
   $("#auth-view").classList.add("hidden");
   $("#app-view").classList.remove("hidden");
   ["#logout", "#profile-chip", "#desktop-nav", "#mobile-nav"].forEach(id => $(id).classList.remove("hidden"));
   $("#profile-name").textContent = profile.displayName;
   $("#profile-initial").textContent = profile.displayName.trim().charAt(0);
   $("#welcome-name").textContent = `${profile.displayName}，发现校园空间`;
+  renderProfile();
   if (["APPROVER", "RESOURCE_MANAGER", "SYSTEM_ADMIN"].includes(api.role())) $("#admin-entry").classList.remove("hidden");
   await Promise.allSettled([loadResources(), loadBookings(), loadNotifications()]);
 }
@@ -127,7 +139,14 @@ $("#register-form").addEventListener("submit", async event => {
   try {
     await api.register(data.get("username"), data.get("password"));
     await api.login(data.get("username"), data.get("password"));
-    await enter(data.get("displayName")); notify("账号已创建，可以开始提交申请");
+    await enter({
+      displayName: data.get("displayName"),
+      campusId: data.get("campusId") || null,
+      identityType: data.get("identityType"),
+      department: data.get("department") || null,
+      phone: data.get("phone") || null,
+      email: data.get("email") || null
+    }); notify("账号已创建，可以开始提交申请");
   } catch (error) { fail(error); }
 });
 $("#logout").addEventListener("click", async () => { try { await api.logout(); } finally { exit(); } });
@@ -157,6 +176,24 @@ $("#booking-form").addEventListener("submit", async event => {
 $("#booking-list").addEventListener("click", async event => {
   const button = event.target.closest("[data-booking]"); if (!button) return;
   try { await api.bookingAction(button.dataset.booking, button.dataset.action); await loadBookings(); notify("申请已撤回"); } catch (error) { fail(error); }
+});
+$("#profile-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  const data = Object.fromEntries(new FormData(event.currentTarget));
+  try {
+    profile = await api.updateCampusProfile({
+      ...data,
+      campusId: data.campusId || null,
+      department: data.department || null,
+      phone: data.phone || null,
+      email: data.email || null,
+      expectedVersion: profile.version
+    });
+    $("#profile-name").textContent = profile.displayName;
+    $("#profile-initial").textContent = profile.displayName.trim().charAt(0);
+    renderProfile();
+    notify("校园资料已保存");
+  } catch (error) { fail(error); }
 });
 $("#close-slots").addEventListener("click", () => $("#slot-panel").classList.remove("open"));
 $$("[data-view]").forEach(button => button.addEventListener("click", () => {

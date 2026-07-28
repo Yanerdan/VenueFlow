@@ -86,9 +86,15 @@ export function createApi({
     },
     clear,
     currentProfile: () => request("/api/v1/users/me"),
-    createProfile: (externalUserId, displayName) => request("/api/v1/users", {
-      method: "POST", body: JSON.stringify({ externalUserId, displayName })
+    createProfile: (externalUserId, displayName, campus = {}) => request("/api/v1/users", {
+      method: "POST", body: JSON.stringify({ externalUserId, displayName, ...campus })
     }),
+    updateCampusProfile: payload => request("/api/v1/users/me/campus-profile", {
+      method: "PATCH", body: JSON.stringify(payload)
+    }),
+    managementUsers: (keyword = "") => request(
+      `/api/v1/users/management?pageNumber=0&pageSize=100${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""}`
+    ),
     resources: () => request("/api/v1/resources?page=0&size=50"),
     categories: () => request("/api/v1/resource-categories"),
     createCategory: payload => request("/api/v1/resource-categories", {

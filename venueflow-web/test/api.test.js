@@ -108,3 +108,25 @@ test("campus role and management query come from the authenticated session", asy
     "http://gateway/api/v1/bookings/management?pageNumber=0&pageSize=100&status=PENDING_CONFIRMATION"
   );
 });
+
+test("campus profile and user directory use bounded management endpoints", async () => {
+  const calls = [];
+  const api = createApi({
+    baseUrl: "http://gateway",
+    storage: storage({ "venueflow.access": "token" }),
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return response(200, { items: [] });
+    }
+  });
+  await api.updateCampusProfile({
+    displayName: "Ada", identityType: "STAFF", department: "计算机学院", expectedVersion: 1
+  });
+  await api.managementUsers("计算机");
+  assert.equal(calls[0].url, "http://gateway/api/v1/users/me/campus-profile");
+  assert.equal(calls[0].options.method, "PATCH");
+  assert.equal(
+    calls[1].url,
+    "http://gateway/api/v1/users/management?pageNumber=0&pageSize=100&keyword=%E8%AE%A1%E7%AE%97%E6%9C%BA"
+  );
+});

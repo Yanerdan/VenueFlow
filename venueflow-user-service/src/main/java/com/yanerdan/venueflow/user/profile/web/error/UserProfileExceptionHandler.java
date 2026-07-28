@@ -2,6 +2,7 @@ package com.yanerdan.venueflow.user.profile.web.error;
 
 import com.yanerdan.venueflow.user.profile.application.StaleUserProfileVersionException;
 import com.yanerdan.venueflow.user.profile.application.UserProfileNotFoundException;
+import com.yanerdan.venueflow.user.profile.application.UserDirectoryAccessDeniedException;
 import com.yanerdan.venueflow.user.profile.application.UserProfilePersistenceException;
 import com.yanerdan.venueflow.user.profile.domain.DuplicateExternalUserIdException;
 import com.yanerdan.venueflow.user.profile.web.UserProfileController;
@@ -127,6 +128,17 @@ public class UserProfileExceptionHandler {
         UserProfileErrorCode.USER_PROFILE_VERSION_CONFLICT,
         "User profile version is stale",
         details,
+        request);
+  }
+
+  @ExceptionHandler(UserDirectoryAccessDeniedException.class)
+  public ResponseEntity<UserProfileErrorResponse> handleForbidden(
+      UserDirectoryAccessDeniedException exception, HttpServletRequest request) {
+    return response(
+        HttpStatus.FORBIDDEN,
+        UserProfileErrorCode.USER_PROFILE_FORBIDDEN,
+        "Current role cannot access the user directory",
+        Map.of(),
         request);
   }
 

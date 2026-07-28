@@ -1,4 +1,4 @@
-import { createApi } from "./api.js?v=20260728-c25";
+import { createApi } from "./api.js?v=20260728-c26";
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -8,6 +8,7 @@ const managementRoles = ["APPROVER", "RESOURCE_MANAGER", "SYSTEM_ADMIN"];
 const approvalRoles = ["APPROVER", "SYSTEM_ADMIN"];
 let resources = [];
 let bookings = [];
+let users = [];
 let messageTimer;
 
 const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, char =>
@@ -18,6 +19,7 @@ const dateTime = value => value ? new Intl.DateTimeFormat("zh-CN", {
 const statusLabel = value => ({
   APPLICANT: "申请人", APPROVER: "审批人员", RESOURCE_MANAGER: "资源管理员",
   SYSTEM_ADMIN: "系统管理员",
+  STUDENT: "学生", STAFF: "教职工", OTHER: "其他",
   PENDING_CONFIRMATION: "待审批", CONFIRMED: "已通过", COMPLETED: "已核销",
   CANCELLED: "已取消", EXPIRED: "已失效", DRAFT: "草稿", ACTIVE: "已发布",
   SUSPENDED: "已暂停", ARCHIVED: "已归档", OPEN: "开放", CLOSED: "关闭"
@@ -44,12 +46,23 @@ function guard() {
 }
 async function loadData() {
   const tasks = [api.resources()];
-  if (approvalRoles.includes(api.role())) tasks.push(api.managementBookings());
-  const [resourcePage, bookingPage] = await Promise.all(tasks);
+  if (approvalRoles.includes(api.role())) {
+    tasks.push(api.managementBookings());
+    tasks.push(api.managementUsers());
+  }
+  const [resourcePage, bookingPage, userPage] = await Promise.all(tasks);
   resources = resourcePage.items || [];
   bookings = bookingPage?.items || [];
-  renderDashboard(); renderApprovals(); renderResources(); renderResourceOptions(); renderResourcePicker();
+  users = userPage?.items || [];
+  renderDashboard(); renderApprovals(); renderResources(); renderResourceOptions(); renderResourcePicker(); renderUsers();
 }
+const userFor = userId => users.find(user => Number(user.id) === Number(userId));
+const applicantLabel = userId => {
+  const user = userFor(userId);
+  return user
+    ? `${escapeHtml(user.displayName)} · ${escapeHtml(user.department || "院系待完善")}`
+    : `用户 #${userId}`;
+};
 function renderDashboard() {
   const pending = bookings.filter(item => item.status === "PENDING_CONFIRMATION");
   $("#metric-pending").textContent = pending.length;
@@ -58,7 +71,7 @@ function renderDashboard() {
   $("#metric-confirmed").textContent = bookings.filter(item => item.status === "CONFIRMED").length;
   $("#metric-completed").textContent = bookings.filter(item => item.status === "COMPLETED").length;
   $("#dashboard-pending").innerHTML = pending.length ? pending.slice(0, 5).map(item => `
-    <div class="compact-row"><div><strong>${escapeHtml(item.bookingNo)}</strong><span>用户 #${item.userId} · 时段 #${item.slotId} · ${item.quantity} 人</span></div>
+    <div class="compact-row"><div><strong>${escapeHtml(item.bookingNo)}</strong><span>${applicantLabel(item.userId)} · 时段 #${item.slotId} · ${item.quantity} 人</span></div>
       <button data-approval="${escapeHtml(item.bookingNo)}" data-action="confirmation">通过</button></div>`).join("") :
     empty("待办已清空", approvalRoles.includes(api.role()) ? "当前没有需要处理的申请。" : "该角色不承担预约审批。");
   const active = resources.filter(item => item.status === "ACTIVE").length;
@@ -75,9 +88,17 @@ function approvalActions(item) {
 }
 function renderApprovals() {
   $("#approval-table").innerHTML = bookings.length ? bookings.map(item => `
-    <tr><td><strong>${escapeHtml(item.bookingNo)}</strong></td><td>用户 #${item.userId}</td><td>#${item.slotId}</td><td>${item.quantity} 人</td>
+    <tr><td><strong>${escapeHtml(item.bookingNo)}</strong></td><td>${applicantLabel(item.userId)}</td><td>#${item.slotId}</td><td>${item.quantity} 人</td>
       <td><span class="status ${item.status.toLowerCase()}">${statusLabel(item.status)}</span></td><td>${dateTime(item.createdAt)}</td><td class="table-actions">${approvalActions(item)}</td></tr>
   `).join("") : `<tr><td colspan="7">${empty("暂无申请记录", "新的师生申请会出现在这里。")}</td></tr>`;
+}
+function renderUsers() {
+  $("#user-table").innerHTML = users.length ? users.map(user => `
+    <tr><td><strong>${escapeHtml(user.displayName)}</strong></td><td>${escapeHtml(user.campusId || "待完善")}</td>
+      <td>${statusLabel(user.identityType)}</td><td>${escapeHtml(user.department || "待完善")}</td>
+      <td>${escapeHtml(user.phone || "待完善")}</td><td>${escapeHtml(user.email || "待完善")}</td>
+      <td><span class="status ${user.accountStatus.toLowerCase()}">${user.accountStatus === "ACTIVE" ? "正常" : "停用"}</span></td></tr>
+  `).join("") : `<tr><td colspan="7">${empty("暂无人员资料", approvalRoles.includes(api.role()) ? "没有符合条件的平台用户。" : "当前角色不可查看人员目录。")}</td></tr>`;
 }
 function nextResourceStatus(item) {
   if (item.status === "DRAFT") return ["ACTIVE", "发布"];
@@ -121,13 +142,21 @@ $$("[data-section]").forEach(button => button.addEventListener("click", () => {
   const section = button.dataset.section;
   $$(".admin-section").forEach(item => item.classList.toggle("hidden", item.id !== section));
   $$("[data-section]").forEach(item => item.classList.toggle("active", item === button));
-  $("#section-title").textContent = ({ dashboard: "运营总览", approvals: "申请审批", resources: "资源管理", slots: "开放时段" })[section];
+  $("#section-title").textContent = ({ dashboard: "运营总览", approvals: "申请审批", resources: "资源管理", slots: "开放时段", users: "人员目录" })[section];
 }));
 $$("[data-jump]").forEach(button => button.addEventListener("click", () => $(`[data-section="${button.dataset.jump}"]`).click()));
 $("#admin-refresh").addEventListener("click", () => loadData().then(() => notify("管理数据已更新")).catch(fail));
 $("#admin-logout").addEventListener("click", async () => { await api.logout(); location.href = "./index.html"; });
 $("#approval-filter").addEventListener("change", async event => {
   try { const page = await api.managementBookings(event.target.value); bookings = page.items || []; renderApprovals(); } catch (error) { fail(error); }
+});
+$("#user-search-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  try {
+    const page = await api.managementUsers(new FormData(event.currentTarget).get("keyword").trim());
+    users = page.items || [];
+    renderUsers();
+  } catch (error) { fail(error); }
 });
 document.addEventListener("click", event => {
   const approval = event.target.closest("[data-approval]");
