@@ -21,6 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.yanerdan.venueflow.resource.catalog.application.CatalogApplicationService;
 import com.yanerdan.venueflow.resource.catalog.application.CategoryResult;
+import com.yanerdan.venueflow.resource.catalog.application.ChangeResourceBookingRulesCommand;
 import com.yanerdan.venueflow.resource.catalog.application.ChangeResourceStatusCommand;
 import com.yanerdan.venueflow.resource.catalog.application.CreateCategoryCommand;
 import com.yanerdan.venueflow.resource.catalog.application.CreateResourceCommand;
@@ -140,7 +141,7 @@ class CatalogHttpApiTest {
         .andExpectAll(
             status().isCreated(),
             content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON),
-            jsonPath("$.*", hasSize(15)),
+            jsonPath("$.*", hasSize(19)),
             jsonPath("$.id").value(100),
             jsonPath("$.resourceNo").value("ROOM-A-101"),
             jsonPath("$.categoryId").value(10),
@@ -148,6 +149,9 @@ class CatalogHttpApiTest {
             jsonPath("$.description").value("Meeting room"),
             jsonPath("$.location").value("Building A"),
             jsonPath("$.capacity").value(10),
+            jsonPath("$.minAdvanceHours").value(0),
+            jsonPath("$.maxAdvanceDays").value(90),
+            jsonPath("$.maxDurationMinutes").value(480),
             jsonPath("$.status").value("DRAFT"),
             jsonPath("$.version").value(1),
             jsonPath("$.createdAt").exists(),
@@ -241,6 +245,35 @@ class CatalogHttpApiTest {
     assertThat(commandCaptor.getValue().targetStatus()).isEqualTo(ResourceStatus.ACTIVE);
 
     assertThat(commandCaptor.getValue().expectedVersion()).isEqualTo(1L);
+  }
+
+  @Test
+  void changesResourceBookingRulesThroughCommandBoundary() throws Exception {
+    when(catalogApplicationService.changeResourceBookingRules(
+            any(ChangeResourceBookingRulesCommand.class)))
+        .thenReturn(resourceResult(ResourceStatus.ACTIVE, 3L));
+
+    mockMvc
+        .perform(
+            patch("/api/v1/resources/{resourceId}/booking-rules", 100L)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "bookingNotice": "Bring a campus card",
+                      "minAdvanceHours": 2,
+                      "maxAdvanceDays": 30,
+                      "maxDurationMinutes": 120,
+                      "expectedVersion": 2
+                    }
+                    """))
+        .andExpectAll(status().isOk(), jsonPath("$.id").value(100), jsonPath("$.version").value(3));
+
+    ArgumentCaptor<ChangeResourceBookingRulesCommand> captor =
+        ArgumentCaptor.forClass(ChangeResourceBookingRulesCommand.class);
+    verify(catalogApplicationService).changeResourceBookingRules(captor.capture());
+    assertThat(captor.getValue().bookingNotice()).isEqualTo("Bring a campus card");
+    assertThat(captor.getValue().maxDurationMinutes()).isEqualTo(120);
   }
 
   @Test

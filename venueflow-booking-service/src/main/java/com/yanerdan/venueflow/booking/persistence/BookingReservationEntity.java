@@ -128,23 +128,37 @@ public class BookingReservationEntity {
     this.slotId = slotId;
   }
 
-  public Long getResourceId() { return resourceId; }
+  public Long getResourceId() {
+    return resourceId;
+  }
 
-  public void setResourceId(Long resourceId) { this.resourceId = resourceId; }
+  public void setResourceId(Long resourceId) {
+    this.resourceId = resourceId;
+  }
 
-  public String getOwnerDepartment() { return ownerDepartment; }
+  public String getOwnerDepartment() {
+    return ownerDepartment;
+  }
 
-  public void setOwnerDepartment(String ownerDepartment) { this.ownerDepartment = ownerDepartment; }
+  public void setOwnerDepartment(String ownerDepartment) {
+    this.ownerDepartment = ownerDepartment;
+  }
 
-  public String getAssignedApproverExternalUserId() { return assignedApproverExternalUserId; }
+  public String getAssignedApproverExternalUserId() {
+    return assignedApproverExternalUserId;
+  }
 
   public void setAssignedApproverExternalUserId(String value) {
     this.assignedApproverExternalUserId = value;
   }
 
-  public String getApprovalMode() { return approvalMode; }
+  public String getApprovalMode() {
+    return approvalMode;
+  }
 
-  public void setApprovalMode(String value) { approvalMode = value; }
+  public void setApprovalMode(String value) {
+    approvalMode = value;
+  }
 
   public String getFinalAssignedApproverExternalUserId() {
     return finalAssignedApproverExternalUserId;
@@ -154,9 +168,13 @@ public class BookingReservationEntity {
     finalAssignedApproverExternalUserId = value;
   }
 
-  public int getCurrentApprovalStep() { return currentApprovalStep; }
+  public int getCurrentApprovalStep() {
+    return currentApprovalStep;
+  }
 
-  public void setCurrentApprovalStep(int value) { currentApprovalStep = value; }
+  public void setCurrentApprovalStep(int value) {
+    currentApprovalStep = value;
+  }
 
   public int getQuantity() {
     return quantity;
@@ -166,27 +184,45 @@ public class BookingReservationEntity {
     this.quantity = quantity;
   }
 
-  public String getActivityTitle() { return activityTitle; }
+  public String getActivityTitle() {
+    return activityTitle;
+  }
 
-  public void setActivityTitle(String activityTitle) { this.activityTitle = activityTitle; }
+  public void setActivityTitle(String activityTitle) {
+    this.activityTitle = activityTitle;
+  }
 
-  public String getApplicationPurpose() { return applicationPurpose; }
+  public String getApplicationPurpose() {
+    return applicationPurpose;
+  }
 
   public void setApplicationPurpose(String applicationPurpose) {
     this.applicationPurpose = applicationPurpose;
   }
 
-  public String getContactName() { return contactName; }
+  public String getContactName() {
+    return contactName;
+  }
 
-  public void setContactName(String contactName) { this.contactName = contactName; }
+  public void setContactName(String contactName) {
+    this.contactName = contactName;
+  }
 
-  public String getContactPhone() { return contactPhone; }
+  public String getContactPhone() {
+    return contactPhone;
+  }
 
-  public void setContactPhone(String contactPhone) { this.contactPhone = contactPhone; }
+  public void setContactPhone(String contactPhone) {
+    this.contactPhone = contactPhone;
+  }
 
-  public String getApplicationNote() { return applicationNote; }
+  public String getApplicationNote() {
+    return applicationNote;
+  }
 
-  public void setApplicationNote(String applicationNote) { this.applicationNote = applicationNote; }
+  public void setApplicationNote(String applicationNote) {
+    this.applicationNote = applicationNote;
+  }
 
   public BookingStatus getStatus() {
     return status;
@@ -276,21 +312,37 @@ public class BookingReservationEntity {
     this.terminalReason = terminalReason;
   }
 
-  public String getReviewDecision() { return reviewDecision; }
+  public String getReviewDecision() {
+    return reviewDecision;
+  }
 
-  public void setReviewDecision(String reviewDecision) { this.reviewDecision = reviewDecision; }
+  public void setReviewDecision(String reviewDecision) {
+    this.reviewDecision = reviewDecision;
+  }
 
-  public String getReviewNote() { return reviewNote; }
+  public String getReviewNote() {
+    return reviewNote;
+  }
 
-  public void setReviewNote(String reviewNote) { this.reviewNote = reviewNote; }
+  public void setReviewNote(String reviewNote) {
+    this.reviewNote = reviewNote;
+  }
 
-  public String getReviewerRole() { return reviewerRole; }
+  public String getReviewerRole() {
+    return reviewerRole;
+  }
 
-  public void setReviewerRole(String reviewerRole) { this.reviewerRole = reviewerRole; }
+  public void setReviewerRole(String reviewerRole) {
+    this.reviewerRole = reviewerRole;
+  }
 
-  public LocalDateTime getReviewedAt() { return reviewedAt; }
+  public LocalDateTime getReviewedAt() {
+    return reviewedAt;
+  }
 
-  public void setReviewedAt(LocalDateTime reviewedAt) { this.reviewedAt = reviewedAt; }
+  public void setReviewedAt(LocalDateTime reviewedAt) {
+    this.reviewedAt = reviewedAt;
+  }
 
   public String getTimeoutState() {
     return timeoutState;

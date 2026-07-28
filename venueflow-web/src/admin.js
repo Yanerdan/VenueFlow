@@ -1,4 +1,4 @@
-import { createApi } from "./api.js?v=20260728-c31";
+import { createApi } from "./api.js?v=20260728-c32";
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -6,6 +6,11 @@ const baseUrl = localStorage.getItem("venueflow.gateway") || "http://127.0.0.1:8
 const api = createApi({ baseUrl });
 const managementRoles = ["APPROVER", "RESOURCE_MANAGER", "SYSTEM_ADMIN"];
 const approvalRoles = ["APPROVER", "SYSTEM_ADMIN"];
+const sectionsByRole = {
+  APPROVER: ["dashboard", "reports", "approvals", "users"],
+  RESOURCE_MANAGER: ["dashboard", "resources", "slots", "users"],
+  SYSTEM_ADMIN: ["dashboard", "reports", "approvals", "resources", "slots", "users"]
+};
 let resources = [];
 let bookings = [];
 let users = [];
@@ -46,6 +51,11 @@ function guard() {
     $("#guard-copy").textContent = api.hasSession() ? `当前身份为 ${statusLabel(role)}，没有管理工作台权限。` : "请先登录管理人员账号。";
     return false;
   }
+  const allowed = sectionsByRole[role];
+  $$("[data-section]").forEach(button =>
+    button.classList.toggle("hidden", !allowed.includes(button.dataset.section)));
+  $$("[data-jump]").forEach(button =>
+    button.classList.toggle("hidden", !allowed.includes(button.dataset.jump)));
   return true;
 }
 async function loadData() {
@@ -199,12 +209,20 @@ function renderResources() {
     const next = nextResourceStatus(item);
     return `<article class="resource-admin-card"><div><span class="status ${item.status.toLowerCase()}">${statusLabel(item.status)}</span><small>${escapeHtml(item.resourceNo)}</small></div>
       <h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(item.location || "位置待完善")} · 容量 ${item.capacity} 人</p>
+      <div class="policy-summary"><strong>预约规则</strong><span>提前 ${item.minAdvanceHours ?? 0} 小时至 ${item.maxAdvanceDays ?? 90} 天 · 最长 ${item.maxDurationMinutes ?? 480} 分钟</span>${item.bookingNotice ? `<p>${escapeHtml(item.bookingNotice)}</p>` : ""}</div>
       <form class="ownership-form" data-resource-ownership="${item.id}" data-version="${item.version}">
         <input name="ownerDepartment" maxlength="160" placeholder="归属部门" value="${escapeHtml(item.ownerDepartment || "")}">
         <select name="approvalMode" aria-label="${escapeHtml(item.name)}的审批模式"><option value="DIRECT" ${item.approvalMode !== "TWO_STAGE" ? "selected" : ""}>直接审批</option><option value="TWO_STAGE" ${item.approvalMode === "TWO_STAGE" ? "selected" : ""}>两级审批</option></select>
         <select name="approverExternalUserId" aria-label="${escapeHtml(item.name)}的初审人">${approverOptions(item.approverExternalUserId)}</select>
         <select name="finalApproverExternalUserId" aria-label="${escapeHtml(item.name)}的终审人">${approverOptions(item.finalApproverExternalUserId)}</select>
         <button type="submit">保存归属</button>
+      </form>
+      <form class="booking-rules-form" data-resource-rules="${item.id}" data-version="${item.version}">
+        <textarea name="bookingNotice" maxlength="1000" rows="2" placeholder="申请须知，例如携带校园卡">${escapeHtml(item.bookingNotice || "")}</textarea>
+        <label>最少提前（小时）<input name="minAdvanceHours" type="number" min="0" max="720" required value="${item.minAdvanceHours ?? 0}"></label>
+        <label>最多提前（天）<input name="maxAdvanceDays" type="number" min="1" max="365" required value="${item.maxAdvanceDays ?? 90}"></label>
+        <label>最长使用（分钟）<input name="maxDurationMinutes" type="number" min="15" max="1440" required value="${item.maxDurationMinutes ?? 480}"></label>
+        <button type="submit">保存预约规则</button>
       </form>
       <footer><span>分类 #${item.categoryId}</span>${next ? `<button data-resource-status="${item.id}" data-target="${next[0]}" data-version="${item.version}">${next[1]}</button>` : ""}</footer></article>`;
   }).join("") : empty("暂无校园资源", "点击“新增资源”建立统一资源目录。");
@@ -333,6 +351,26 @@ $("#resource-admin-list").addEventListener("submit", async event => {
     );
     await loadData(); notify("资源归属已更新");
   } catch (error) { fail(error); }
+});
+$("#resource-admin-list").addEventListener("submit", async event => {
+  const form = event.target.closest("[data-resource-rules]"); if (!form) return;
+  event.preventDefault();
+  if (form.dataset.submitting === "true") return;
+  const data = new FormData(form);
+  const button = form.querySelector('button[type="submit"]');
+  form.dataset.submitting = "true"; button.disabled = true;
+  try {
+    await api.changeResourceBookingRules(
+      Number(form.dataset.resourceRules),
+      data.get("bookingNotice").trim(),
+      Number(data.get("minAdvanceHours")),
+      Number(data.get("maxAdvanceDays")),
+      Number(data.get("maxDurationMinutes")),
+      Number(form.dataset.version)
+    );
+    await loadData(); notify("预约规则已更新");
+  } catch (error) { fail(error); }
+  finally { form.dataset.submitting = "false"; button.disabled = false; }
 });
 $("#slot-form").addEventListener("submit", async event => {
   event.preventDefault();

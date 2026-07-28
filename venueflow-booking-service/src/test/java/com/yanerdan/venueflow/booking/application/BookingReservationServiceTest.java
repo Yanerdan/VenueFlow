@@ -70,6 +70,54 @@ class BookingReservationServiceTest {
   }
 
   @Test
+  void rejectsResourceRuleViolationBeforeCapacityAllocation() {
+    Instant now = Instant.parse("2026-07-28T08:00:00Z");
+    service =
+        new BookingReservationService(
+            repository,
+            userClient,
+            resourceClient,
+            Duration.ofMinutes(15),
+            Duration.ofMinutes(30),
+            Duration.ofMinutes(30),
+            Clock.fixed(now, ZoneOffset.UTC));
+    when(repository.claim(1L, KEY, hash(), 2L, 1)).thenReturn(owner());
+    when(userClient.isBookingPermitted(1L)).thenReturn(true);
+    when(resourceClient.findSlot(2L))
+        .thenReturn(
+            new ResourceCapacityClient.ResourceSlot(
+                2L,
+                10L,
+                "Student Affairs",
+                "approver-1",
+                "DIRECT",
+                null,
+                "Campus card required",
+                24,
+                30,
+                60,
+                now.plus(Duration.ofHours(2)),
+                now.plus(Duration.ofHours(4))));
+
+    assertThatThrownBy(() -> service.create(KEY, 1L, 2L, 1))
+        .isInstanceOfSatisfying(
+            BookingException.class,
+            exception ->
+                assertThat(exception.getCode())
+                    .isEqualTo(BookingErrorCode.BOOKING_VALIDATION_FAILED));
+    verify(resourceClient, never())
+        .allocate(
+            org.mockito.ArgumentMatchers.anyLong(),
+            anyString(),
+            org.mockito.ArgumentMatchers.anyInt());
+    verify(repository)
+        .fail(
+            "request-1",
+            BookingErrorCode.BOOKING_VALIDATION_FAILED.name(),
+            ReconciliationOutcomeCode.NO_ALLOCATION);
+  }
+
+  @Test
   void rejectsConflictBeforeCollaboratorCalls() {
     when(repository.claim(1L, KEY, hash(), 2L, 1))
         .thenReturn(new ClaimResult(ClaimResult.Kind.CONFLICT, null, null, null));
@@ -254,8 +302,7 @@ class BookingReservationServiceTest {
         new BookingRepository.BookingHistoryPage(List.of(), 0, 0, 20);
     when(repository.managementHistory(null, "approver-uuid", 0, 20)).thenReturn(page);
 
-    assertThat(service.managementHistory(null, "approver-uuid", "APPROVER", 0, 20))
-        .isSameAs(page);
+    assertThat(service.managementHistory(null, "approver-uuid", "APPROVER", 0, 20)).isSameAs(page);
     verify(repository).managementHistory(null, "approver-uuid", 0, 20);
     verify(repository, never()).managementHistory(null, 0, 20);
   }
@@ -314,11 +361,39 @@ class BookingReservationServiceTest {
   private static BookingReservation twoStageReservation(int step) {
     LocalDateTime now = LocalDateTime.now();
     return new BookingReservation(
-        1L, "booking-1", "request-1", 1L, 2L, 1, BookingStatus.PENDING_CONFIRMATION,
-        "allocate:request-1", "release:request-1", step - 1L, now, now.plusMinutes(10), null,
-        null, null, null, null, now, "活动", "用途", "联系人", "13800000000", null, null,
-        null, null, null, 9L, "校团委", "initial-approver", "TWO_STAGE",
-        "final-approver", step);
+        1L,
+        "booking-1",
+        "request-1",
+        1L,
+        2L,
+        1,
+        BookingStatus.PENDING_CONFIRMATION,
+        "allocate:request-1",
+        "release:request-1",
+        step - 1L,
+        now,
+        now.plusMinutes(10),
+        null,
+        null,
+        null,
+        null,
+        null,
+        now,
+        "活动",
+        "用途",
+        "联系人",
+        "13800000000",
+        null,
+        null,
+        null,
+        null,
+        null,
+        9L,
+        "校团委",
+        "initial-approver",
+        "TWO_STAGE",
+        "final-approver",
+        step);
   }
 
   private static String hash() {

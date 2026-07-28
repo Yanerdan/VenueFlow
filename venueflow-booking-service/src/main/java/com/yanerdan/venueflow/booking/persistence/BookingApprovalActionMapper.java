@@ -9,7 +9,8 @@ import org.apache.ibatis.annotations.Select;
 
 @Mapper
 public interface BookingApprovalActionMapper {
-  @Insert("""
+  @Insert(
+      """
       INSERT INTO booking_approval_action
         (booking_id, approval_step, actor_external_user_id, actor_role, decision, review_note,
          created_at)
@@ -25,7 +26,8 @@ public interface BookingApprovalActionMapper {
       @Param("note") String note,
       @Param("createdAt") LocalDateTime createdAt);
 
-  @Select("""
+  @Select(
+      """
       SELECT approval_step AS approvalStep, actor_external_user_id AS actorExternalUserId,
              actor_role AS actorRole, decision, review_note AS reviewNote, created_at AS createdAt
       FROM booking_approval_action

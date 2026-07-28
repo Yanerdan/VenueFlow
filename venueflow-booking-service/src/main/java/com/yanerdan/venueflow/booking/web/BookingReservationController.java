@@ -3,14 +3,14 @@ package com.yanerdan.venueflow.booking.web;
 import com.yanerdan.venueflow.booking.application.BookingReservationService;
 import com.yanerdan.venueflow.booking.domain.BookingReservation;
 import com.yanerdan.venueflow.booking.domain.BookingStatus;
-import com.yanerdan.venueflow.booking.persistence.BookingRepository;
 import com.yanerdan.venueflow.booking.persistence.BookingApprovalAction;
+import com.yanerdan.venueflow.booking.persistence.BookingRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.context.annotation.Profile;
@@ -49,8 +49,7 @@ public class BookingReservationController {
             && request.note() == null;
     BookingReservationService.CreateResult result =
         detailsAbsent
-            ? service.create(
-                idempotencyKey, request.userId(), request.slotId(), request.quantity())
+            ? service.create(idempotencyKey, request.userId(), request.slotId(), request.quantity())
             : service.create(
                 idempotencyKey,
                 request.userId(),

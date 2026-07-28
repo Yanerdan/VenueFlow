@@ -1,7 +1,7 @@
 package com.yanerdan.venueflow.resource.catalog.application;
 
-import com.yanerdan.venueflow.resource.catalog.domain.ResourceStatus;
 import com.yanerdan.venueflow.resource.catalog.domain.ApprovalMode;
+import com.yanerdan.venueflow.resource.catalog.domain.ResourceStatus;
 import com.yanerdan.venueflow.resource.catalog.persistence.entity.ResourceEntity;
 import java.time.LocalDateTime;
 
@@ -17,6 +17,10 @@ public record ResourceResult(
     String approverExternalUserId,
     ApprovalMode approvalMode,
     String finalApproverExternalUserId,
+    String bookingNotice,
+    Integer minAdvanceHours,
+    Integer maxAdvanceDays,
+    Integer maxDurationMinutes,
     ResourceStatus status,
     Long version,
     LocalDateTime createdAt,
@@ -35,6 +39,10 @@ public record ResourceResult(
         entity.getApproverExternalUserId(),
         entity.getApprovalMode(),
         entity.getFinalApproverExternalUserId(),
+        entity.getBookingNotice(),
+        entity.getMinAdvanceHours(),
+        entity.getMaxAdvanceDays(),
+        entity.getMaxDurationMinutes(),
         entity.getStatus(),
         entity.getVersion(),
         entity.getCreatedAt(),
@@ -42,10 +50,36 @@ public record ResourceResult(
   }
 
   public ResourceResult(
-      Long id, String resourceNo, Long categoryId, String name, String description, String location,
-      Integer capacity, ResourceStatus status, Long version, LocalDateTime createdAt,
+      Long id,
+      String resourceNo,
+      Long categoryId,
+      String name,
+      String description,
+      String location,
+      Integer capacity,
+      ResourceStatus status,
+      Long version,
+      LocalDateTime createdAt,
       LocalDateTime updatedAt) {
-    this(id, resourceNo, categoryId, name, description, location, capacity, null, null,
-        ApprovalMode.DIRECT, null, status, version, createdAt, updatedAt);
+    this(
+        id,
+        resourceNo,
+        categoryId,
+        name,
+        description,
+        location,
+        capacity,
+        null,
+        null,
+        ApprovalMode.DIRECT,
+        null,
+        null,
+        0,
+        90,
+        480,
+        status,
+        version,
+        createdAt,
+        updatedAt);
   }
 }

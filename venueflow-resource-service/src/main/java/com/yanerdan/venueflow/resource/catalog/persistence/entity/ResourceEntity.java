@@ -4,8 +4,8 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.yanerdan.venueflow.resource.catalog.domain.ResourceStatus;
 import com.yanerdan.venueflow.resource.catalog.domain.ApprovalMode;
+import com.yanerdan.venueflow.resource.catalog.domain.ResourceStatus;
 import java.time.LocalDateTime;
 
 @TableName("resource")
@@ -43,6 +43,18 @@ public class ResourceEntity {
 
   @TableField("final_approver_external_user_id")
   private String finalApproverExternalUserId;
+
+  @TableField("booking_notice")
+  private String bookingNotice;
+
+  @TableField("min_advance_hours")
+  private Integer minAdvanceHours;
+
+  @TableField("max_advance_days")
+  private Integer maxAdvanceDays;
+
+  @TableField("max_duration_minutes")
+  private Integer maxDurationMinutes;
 
   @TableField("status")
   private ResourceStatus status;
@@ -130,14 +142,52 @@ public class ResourceEntity {
     this.approverExternalUserId = approverExternalUserId;
   }
 
-  public ApprovalMode getApprovalMode() { return approvalMode; }
+  public ApprovalMode getApprovalMode() {
+    return approvalMode;
+  }
 
-  public void setApprovalMode(ApprovalMode approvalMode) { this.approvalMode = approvalMode; }
+  public void setApprovalMode(ApprovalMode approvalMode) {
+    this.approvalMode = approvalMode;
+  }
 
-  public String getFinalApproverExternalUserId() { return finalApproverExternalUserId; }
+  public String getFinalApproverExternalUserId() {
+    return finalApproverExternalUserId;
+  }
 
   public void setFinalApproverExternalUserId(String value) {
     this.finalApproverExternalUserId = value;
+  }
+
+  public String getBookingNotice() {
+    return bookingNotice;
+  }
+
+  public void setBookingNotice(String bookingNotice) {
+    this.bookingNotice = bookingNotice;
+  }
+
+  public Integer getMinAdvanceHours() {
+    return minAdvanceHours;
+  }
+
+  public void setMinAdvanceHours(Integer minAdvanceHours) {
+    this.minAdvanceHours = minAdvanceHours;
+  }
+
+  public Integer getMaxAdvanceDays() {
+    return maxAdvanceDays;
+  }
+
+  public void setMaxAdvanceDays(Integer maxAdvanceDays) {
+    this.maxAdvanceDays = maxAdvanceDays;
+  }
+
+  public Integer getMaxDurationMinutes() {
+    return maxDurationMinutes;
+  }
+
+  public void setMaxDurationMinutes(Integer maxDurationMinutes) {
+    this.maxDurationMinutes = maxDurationMinutes;
   }
 
   public ResourceStatus getStatus() {

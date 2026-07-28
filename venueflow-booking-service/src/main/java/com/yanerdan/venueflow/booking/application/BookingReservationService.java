@@ -2,11 +2,11 @@ package com.yanerdan.venueflow.booking.application;
 
 import com.yanerdan.venueflow.booking.collaboration.ResourceCapacityClient;
 import com.yanerdan.venueflow.booking.collaboration.UserEligibilityClient;
-import com.yanerdan.venueflow.booking.domain.BookingReservation;
 import com.yanerdan.venueflow.booking.domain.BookingApplicationDetails;
+import com.yanerdan.venueflow.booking.domain.BookingReservation;
 import com.yanerdan.venueflow.booking.domain.BookingStatus;
-import com.yanerdan.venueflow.booking.persistence.BookingRepository;
 import com.yanerdan.venueflow.booking.persistence.BookingApprovalAction;
+import com.yanerdan.venueflow.booking.persistence.BookingRepository;
 import com.yanerdan.venueflow.booking.persistence.BookingRepository.BookingHistoryPage;
 import com.yanerdan.venueflow.booking.persistence.ClaimResult;
 import com.yanerdan.venueflow.booking.reconciliation.domain.ReconciliationOutcomeCode;
@@ -153,8 +153,15 @@ public class BookingReservationService {
     try {
       responsibility = resourceClient.findSlot(slotId);
     } catch (BookingException exception) {
-      repository.fail(claim.requestId(), exception.getCode().name(),
-          ReconciliationOutcomeCode.NO_ALLOCATION);
+      repository.fail(
+          claim.requestId(), exception.getCode().name(), ReconciliationOutcomeCode.NO_ALLOCATION);
+      throw exception;
+    }
+    try {
+      validateBookingRules(responsibility);
+    } catch (BookingException exception) {
+      repository.fail(
+          claim.requestId(), exception.getCode().name(), ReconciliationOutcomeCode.NO_ALLOCATION);
       throw exception;
     }
     try {
@@ -174,23 +181,23 @@ public class BookingReservationService {
       BookingReservation completed =
           responsibility == null
               ? (details.activityTitle() == null
-              ? repository.complete(
-                  claim.requestId(),
-                  userId,
-                  slotId,
-                  quantity,
-                  allocationId,
-                  releaseId,
-                  expireAt)
-              : repository.complete(
-                  claim.requestId(),
-                  userId,
-                  slotId,
-                  quantity,
-                  allocationId,
-                  releaseId,
-                  expireAt,
-                  details))
+                  ? repository.complete(
+                      claim.requestId(),
+                      userId,
+                      slotId,
+                      quantity,
+                      allocationId,
+                      releaseId,
+                      expireAt)
+                  : repository.complete(
+                      claim.requestId(),
+                      userId,
+                      slotId,
+                      quantity,
+                      allocationId,
+                      releaseId,
+                      expireAt,
+                      details))
               : repository.complete(
                   claim.requestId(),
                   userId,
@@ -231,6 +238,26 @@ public class BookingReservationService {
           BookingErrorCode.BOOKING_PERSISTENCE_FAILED,
           "Booking persistence failed after allocation",
           persistenceFailure);
+    }
+  }
+
+  private void validateBookingRules(ResourceCapacityClient.ResourceSlot slot) {
+    if (slot == null) {
+      return;
+    }
+    int minimumHours = slot.minAdvanceHours() == null ? 0 : slot.minAdvanceHours();
+    int maximumDays = slot.maxAdvanceDays() == null ? 90 : slot.maxAdvanceDays();
+    int maximumMinutes = slot.maxDurationMinutes() == null ? 480 : slot.maxDurationMinutes();
+    Instant now = clock.instant();
+    boolean tooSoon = slot.startAt().isBefore(now.plus(Duration.ofHours(minimumHours)));
+    boolean tooFar = slot.startAt().isAfter(now.plus(Duration.ofDays(maximumDays)));
+    boolean tooLong =
+        Duration.between(slot.startAt(), slot.endAt()).compareTo(Duration.ofMinutes(maximumMinutes))
+            > 0;
+    if (tooSoon || tooFar || tooLong) {
+      throw error(
+          BookingErrorCode.BOOKING_VALIDATION_FAILED,
+          "Booking violates resource advance or duration rules");
     }
   }
 
@@ -280,18 +307,12 @@ public class BookingReservationService {
   }
 
   public BookingReservation cancel(String bookingNo) {
-    return cancelInternal(
-        bookingNo, "USER_CANCELLED", "CANCELLED", null, "APPLICANT", true);
+    return cancelInternal(bookingNo, "USER_CANCELLED", "CANCELLED", null, "APPLICANT", true);
   }
 
   public BookingReservation cancel(String bookingNo, String note) {
     return cancelInternal(
-        bookingNo,
-        "USER_CANCELLED",
-        "CANCELLED",
-        normalizeOptional(note),
-        "APPLICANT",
-        false);
+        bookingNo, "USER_CANCELLED", "CANCELLED", normalizeOptional(note), "APPLICANT", false);
   }
 
   public BookingReservation reject(String bookingNo, String reason, String reviewerRole) {
@@ -303,15 +324,20 @@ public class BookingReservationService {
     if (reason == null || reason.isBlank()) {
       throw error(BookingErrorCode.BOOKING_VALIDATION_FAILED, "Rejection reason is required");
     }
-    BookingReservation result = cancelInternal(
-        bookingNo,
-        "MANAGEMENT_REJECTED",
-        "REJECTED",
-        normalizeRequired(reason),
-        reviewerRole,
-        false);
+    BookingReservation result =
+        cancelInternal(
+            bookingNo,
+            "MANAGEMENT_REJECTED",
+            "REJECTED",
+            normalizeRequired(reason),
+            reviewerRole,
+            false);
     repository.recordApprovalAction(
-        bookingNo, result.currentApprovalStep(), actorExternalUserId, reviewerRole, "REJECTED",
+        bookingNo,
+        result.currentApprovalStep(),
+        actorExternalUserId,
+        reviewerRole,
+        "REJECTED",
         normalizeRequired(reason));
     return result;
   }
@@ -339,12 +365,7 @@ public class BookingReservationService {
         legacyAction
             ? repository.cancelAndResolve(bookingNo, reservation.version())
             : repository.cancelAndResolve(
-                bookingNo,
-                reservation.version(),
-                terminalReason,
-                decision,
-                note,
-                reviewerRole);
+                bookingNo, reservation.version(), terminalReason, decision, note, reviewerRole);
     if (!cancelled) {
       BookingReservation current = get(bookingNo);
       if (current.status() == BookingStatus.CANCELLED) return current;
@@ -478,8 +499,7 @@ public class BookingReservationService {
     }
   }
 
-  static String hash(
-      long userId, long slotId, int quantity, BookingApplicationDetails details) {
+  static String hash(long userId, long slotId, int quantity, BookingApplicationDetails details) {
     return sha256(
         userId
             + "|"
@@ -502,8 +522,7 @@ public class BookingReservationService {
     try {
       return HexFormat.of()
           .formatHex(
-              MessageDigest.getInstance("SHA-256")
-                  .digest(value.getBytes(StandardCharsets.UTF_8)));
+              MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)));
     } catch (NoSuchAlgorithmException exception) {
       throw new IllegalStateException("SHA-256 is required", exception);
     }

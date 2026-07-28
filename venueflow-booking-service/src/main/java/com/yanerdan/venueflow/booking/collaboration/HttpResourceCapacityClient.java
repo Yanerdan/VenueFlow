@@ -127,7 +127,8 @@ public class HttpResourceCapacityClient implements ResourceCapacityClient {
       long returnedId = body.path("id").asLong(-1L);
       String startAt = body.path("startAt").asText(null);
       String endAt = body.path("endAt").asText(null);
-      Long resourceId = body.path("resourceId").isNumber() ? body.path("resourceId").asLong() : null;
+      Long resourceId =
+          body.path("resourceId").isNumber() ? body.path("resourceId").asLong() : null;
       String ownerDepartment =
           body.path("ownerDepartment").isTextual() ? body.path("ownerDepartment").asText() : null;
       String approverId =
@@ -140,12 +141,27 @@ public class HttpResourceCapacityClient implements ResourceCapacityClient {
           body.path("finalApproverExternalUserId").isTextual()
               ? body.path("finalApproverExternalUserId").asText()
               : null;
+      String bookingNotice =
+          body.path("bookingNotice").isTextual() ? body.path("bookingNotice").asText() : null;
+      int minAdvanceHours = body.path("minAdvanceHours").asInt(0);
+      int maxAdvanceDays = body.path("maxAdvanceDays").asInt(90);
+      int maxDurationMinutes = body.path("maxDurationMinutes").asInt(480);
       if (returnedId != slotId || startAt == null || endAt == null) {
         throw invalidSlot();
       }
       return new ResourceSlot(
-          returnedId, resourceId, ownerDepartment, approverId, approvalMode, finalApproverId,
-          Instant.parse(startAt), Instant.parse(endAt));
+          returnedId,
+          resourceId,
+          ownerDepartment,
+          approverId,
+          approvalMode,
+          finalApproverId,
+          bookingNotice,
+          minAdvanceHours,
+          maxAdvanceDays,
+          maxDurationMinutes,
+          Instant.parse(startAt),
+          Instant.parse(endAt));
     } catch (InterruptedException exception) {
       Thread.currentThread().interrupt();
       throw unavailable(exception);

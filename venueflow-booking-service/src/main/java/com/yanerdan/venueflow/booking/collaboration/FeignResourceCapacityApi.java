@@ -33,6 +33,10 @@ interface FeignResourceCapacityApi {
       String approverExternalUserId,
       String approvalMode,
       String finalApproverExternalUserId,
+      String bookingNotice,
+      Integer minAdvanceHours,
+      Integer maxAdvanceDays,
+      Integer maxDurationMinutes,
       Instant startAt,
       Instant endAt) {}
 }

@@ -14,7 +14,11 @@ public record ChangeResourceOwnershipRequest(
 
   public ChangeResourceOwnershipCommand toCommand(Long resourceId) {
     return new ChangeResourceOwnershipCommand(
-        resourceId, ownerDepartment, approverExternalUserId, approvalMode,
-        finalApproverExternalUserId, expectedVersion);
+        resourceId,
+        ownerDepartment,
+        approverExternalUserId,
+        approvalMode,
+        finalApproverExternalUserId,
+        expectedVersion);
   }
 }

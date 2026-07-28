@@ -170,3 +170,12 @@ as a current capacity guarantee.
 - **WHEN** this increment's implementation, dependencies, schema, and APIs are inspected
 - **THEN** Resource Service contains only resource catalog and slot-management behavior
 - **AND** no Booking or allocation model, endpoint, client, or messaging dependency exists
+
+### Requirement: Slot detail carries resource booking rules
+
+The Resource service SHALL include the owning resource's booking notice and time limits in the slot-detail collaboration response.
+
+#### Scenario: Booking service retrieves a slot
+
+- **WHEN** the Booking service retrieves an existing slot
+- **THEN** the response includes the slot interval, approval policy, and current resource booking rules

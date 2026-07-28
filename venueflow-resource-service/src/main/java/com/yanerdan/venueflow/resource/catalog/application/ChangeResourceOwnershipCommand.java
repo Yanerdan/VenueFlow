@@ -44,9 +44,16 @@ public record ChangeResourceOwnershipCommand(
   }
 
   public ChangeResourceOwnershipCommand(
-      Long resourceId, String ownerDepartment, String approverExternalUserId,
+      Long resourceId,
+      String ownerDepartment,
+      String approverExternalUserId,
       Long expectedVersion) {
-    this(resourceId, ownerDepartment, approverExternalUserId, ApprovalMode.DIRECT, null,
+    this(
+        resourceId,
+        ownerDepartment,
+        approverExternalUserId,
+        ApprovalMode.DIRECT,
+        null,
         expectedVersion);
   }
 

@@ -103,6 +103,7 @@ export function createApi({
       }
     ),
     resources: () => request("/api/v1/resources?page=0&size=50"),
+    resource: resourceId => request(`/api/v1/resources/${resourceId}`),
     categories: () => request("/api/v1/resource-categories"),
     createCategory: payload => request("/api/v1/resource-categories", {
       method: "POST", body: JSON.stringify(payload)
@@ -135,6 +136,19 @@ export function createApi({
         })
       })
     },
+    changeResourceBookingRules: (
+      resourceId, bookingNotice, minAdvanceHours, maxAdvanceDays,
+      maxDurationMinutes, expectedVersion
+    ) => request(`/api/v1/resources/${resourceId}/booking-rules`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        bookingNotice: bookingNotice || null,
+        minAdvanceHours,
+        maxAdvanceDays,
+        maxDurationMinutes,
+        expectedVersion
+      })
+    }),
     approvalActions: bookingNo => request(
       `/api/v1/bookings/${encodeURIComponent(bookingNo)}/approval-actions`
     ),

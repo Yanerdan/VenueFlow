@@ -121,6 +121,17 @@ $resource = Invoke-Json "Patch" "$gateway/api/v1/resources/$($resource.id)/owner
     expectedVersion = $resource.version
 } $adminHeaders
 
+$resource = Invoke-Json "Patch" "$gateway/api/v1/resources/$($resource.id)/booking-rules" @{
+    bookingNotice = "Bring a campus card and follow the room instructions"
+    minAdvanceHours = 0
+    maxAdvanceDays = 90
+    maxDurationMinutes = 480
+    expectedVersion = $resource.version
+} $adminHeaders
+if ($resource.bookingNotice -notlike "Bring a campus card*") {
+    throw "Resource booking notice was not persisted"
+}
+
 $from = [Uri]::EscapeDataString((Get-Date).ToUniversalTime().AddHours(-1).ToString("o"))
 $to = [Uri]::EscapeDataString((Get-Date).ToUniversalTime().AddDays(30).ToString("o"))
 $slots = Invoke-RestMethod `
@@ -128,6 +139,10 @@ $slots = Invoke-RestMethod `
     -Headers $headers
 $slot = @($slots.items) | Where-Object { $_.status -eq "OPEN" } | Select-Object -First 1
 if (-not $slot) { throw "Demo resource has no open slot" }
+$slotDetail = Invoke-Json "Get" "$gateway/api/v1/resource-slots/$($slot.id)" $null $headers
+if ($slotDetail.maxAdvanceDays -ne 90 -or $slotDetail.maxDurationMinutes -ne 480) {
+    throw "Slot collaboration response did not carry resource booking rules"
+}
 
 $bookingHeaders = @{
     Authorization = "Bearer $token"
@@ -220,6 +235,7 @@ if ($restored.data.role -ne "APPLICANT") { throw "Acceptance account role was no
     Profile = "PASS"
     UserDirectory = "PASS"
     ResourceAndSlot = "PASS"
+    BookingRules = "PASS"
     Booking = "CONFIRMED"
     OperationalReport = "PASS"
     RoleManagement = "PASS"

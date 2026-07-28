@@ -21,6 +21,10 @@ public interface ResourceCapacityClient {
       String approverExternalUserId,
       String approvalMode,
       String finalApproverExternalUserId,
+      String bookingNotice,
+      Integer minAdvanceHours,
+      Integer maxAdvanceDays,
+      Integer maxDurationMinutes,
       Instant startAt,
       Instant endAt) {
     public ResourceSlot {
@@ -30,7 +34,31 @@ public interface ResourceCapacityClient {
     }
 
     public ResourceSlot(long slotId, Instant startAt, Instant endAt) {
-      this(slotId, null, null, null, "DIRECT", null, startAt, endAt);
+      this(slotId, null, null, null, "DIRECT", null, null, 0, 90, 480, startAt, endAt);
+    }
+
+    public ResourceSlot(
+        long slotId,
+        Long resourceId,
+        String ownerDepartment,
+        String approverExternalUserId,
+        String approvalMode,
+        String finalApproverExternalUserId,
+        Instant startAt,
+        Instant endAt) {
+      this(
+          slotId,
+          resourceId,
+          ownerDepartment,
+          approverExternalUserId,
+          approvalMode,
+          finalApproverExternalUserId,
+          null,
+          0,
+          90,
+          480,
+          startAt,
+          endAt);
     }
   }
 }

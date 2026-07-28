@@ -336,6 +336,31 @@ class CatalogApplicationServiceTest {
   }
 
   @Test
+  void changesBookingRulesWithExpectedVersion() {
+    LocalDateTime now = LocalDateTime.of(2026, 7, 21, 19, 30);
+    ResourceEntity current =
+        resource(100L, "ROOM-A-101", 10L, "Room A101", 10, ResourceStatus.ACTIVE, 2L, now);
+    ResourceEntity updated =
+        resource(100L, "ROOM-A-101", 10L, "Room A101", 10, ResourceStatus.ACTIVE, 3L, now);
+    updated.setBookingNotice("Bring a campus card");
+    updated.setMinAdvanceHours(2);
+    updated.setMaxAdvanceDays(30);
+    updated.setMaxDurationMinutes(120);
+    when(resourceMapper.selectById(100L)).thenReturn(current, updated);
+    when(resourceMapper.updateBookingRulesIfVersionMatches(
+            100L, "Bring a campus card", 2, 30, 120, 2L))
+        .thenReturn(1);
+
+    ResourceResult result =
+        service.changeResourceBookingRules(
+            new ChangeResourceBookingRulesCommand(100L, " Bring a campus card ", 2, 30, 120, 2L));
+
+    assertThat(result.bookingNotice()).isEqualTo("Bring a campus card");
+    assertThat(result.maxDurationMinutes()).isEqualTo(120);
+    assertThat(result.version()).isEqualTo(3L);
+  }
+
+  @Test
   void rejectsStaleExpectedVersionBeforeUpdate() {
     LocalDateTime now = LocalDateTime.of(2026, 7, 21, 19, 30);
 

@@ -25,8 +25,7 @@ public record BookingOperationalReport(
 
   public record ResourceBreakdown(Long resourceId, long bookingCount, long attendeeCount) {}
 
-  public record DepartmentBreakdown(
-      String department, long bookingCount, long attendeeCount) {}
+  public record DepartmentBreakdown(String department, long bookingCount, long attendeeCount) {}
 
   public record ReviewAudit(
       String bookingNo,

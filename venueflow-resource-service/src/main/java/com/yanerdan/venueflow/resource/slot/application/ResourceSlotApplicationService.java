@@ -92,11 +92,15 @@ public class ResourceSlotApplicationService {
         throw resourceNotFound(entity.getResourceId());
       }
       return ResourceSlotResult.from(entity)
-          .withOwnership(
+          .withResourcePolicy(
               resource.getOwnerDepartment(),
               resource.getApproverExternalUserId(),
               resource.getApprovalMode(),
-              resource.getFinalApproverExternalUserId());
+              resource.getFinalApproverExternalUserId(),
+              resource.getBookingNotice(),
+              resource.getMinAdvanceHours(),
+              resource.getMaxAdvanceDays(),
+              resource.getMaxDurationMinutes());
     } catch (CatalogException exception) {
       throw exception;
     } catch (DataAccessException exception) {

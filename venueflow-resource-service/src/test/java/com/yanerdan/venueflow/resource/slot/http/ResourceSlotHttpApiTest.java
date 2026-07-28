@@ -65,9 +65,12 @@ class ResourceSlotHttpApiTest {
                         """))
         .andExpectAll(
             status().isCreated(),
-            jsonPath("$.*", hasSize(12)),
+            jsonPath("$.*", hasSize(16)),
             jsonPath("$.id").value(500),
             jsonPath("$.resourceId").value(100),
+            jsonPath("$.minAdvanceHours").value(0),
+            jsonPath("$.maxAdvanceDays").value(90),
+            jsonPath("$.maxDurationMinutes").value(480),
             jsonPath("$.startAt").value("2026-07-23T10:00:00Z"),
             jsonPath("$.endAt").value("2026-07-23T11:00:00Z"),
             jsonPath("$.status").value("OPEN"),

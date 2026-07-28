@@ -246,3 +246,24 @@ test("approval workflow policy and action history use bounded APIs", async () =>
   assert.equal(calls[1].url, "http://gateway/api/v1/bookings/VF-9/approval-actions");
   assert.equal(actions[0].approvalStep, 1);
 });
+
+test("resource booking rules use the focused optimistic endpoint", async () => {
+  let captured;
+  const api = createApi({
+    baseUrl: "http://gateway",
+    storage: storage({ "venueflow.access": "token" }),
+    fetchImpl: async (url, options) => {
+      captured = { url, options };
+      return response(200, { id: 7, version: 5 });
+    }
+  });
+  await api.changeResourceBookingRules(7, "携带校园卡", 2, 30, 120, 4);
+  assert.equal(captured.url, "http://gateway/api/v1/resources/7/booking-rules");
+  assert.deepEqual(JSON.parse(captured.options.body), {
+    bookingNotice: "携带校园卡",
+    minAdvanceHours: 2,
+    maxAdvanceDays: 30,
+    maxDurationMinutes: 120,
+    expectedVersion: 4
+  });
+});

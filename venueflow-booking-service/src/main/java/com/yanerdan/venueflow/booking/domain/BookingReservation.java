@@ -56,10 +56,39 @@ public record BookingReservation(
       String terminalReason,
       LocalDateTime updatedAt) {
     this(
-        id, bookingNo, requestId, userId, slotId, quantity, status, allocationOperationId,
-        releaseOperationId, version, createdAt, expireAt, confirmedAt, cancelledAt, expiredAt,
-        completedAt, terminalReason, updatedAt, null, null, null, null, null, null, null, null,
-        null, null, null, null, "DIRECT", null, 1);
+        id,
+        bookingNo,
+        requestId,
+        userId,
+        slotId,
+        quantity,
+        status,
+        allocationOperationId,
+        releaseOperationId,
+        version,
+        createdAt,
+        expireAt,
+        confirmedAt,
+        cancelledAt,
+        expiredAt,
+        completedAt,
+        terminalReason,
+        updatedAt,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        "DIRECT",
+        null,
+        1);
   }
 
   public BookingReservation(
@@ -107,7 +136,13 @@ public record BookingReservation(
         null,
         null,
         null,
-        null, null, null, null, "DIRECT", null, 1);
+        null,
+        null,
+        null,
+        null,
+        "DIRECT",
+        null,
+        1);
   }
 
   public BookingReservation(
@@ -152,6 +187,12 @@ public record BookingReservation(
         null,
         null,
         null,
-        null, null, null, null, "DIRECT", null, 1);
+        null,
+        null,
+        null,
+        null,
+        "DIRECT",
+        null,
+        1);
   }
 }

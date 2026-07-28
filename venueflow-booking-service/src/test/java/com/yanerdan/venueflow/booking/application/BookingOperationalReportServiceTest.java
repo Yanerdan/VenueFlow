@@ -46,8 +46,7 @@ class BookingOperationalReportServiceTest {
 
   @Test
   void rejectsApproverWithoutTrustedIdentity() {
-    assertThatThrownBy(
-            () -> new BookingOperationalReportService(mapper).report(null, "APPROVER"))
+    assertThatThrownBy(() -> new BookingOperationalReportService(mapper).report(null, "APPROVER"))
         .isInstanceOf(BookingException.class)
         .extracting("code")
         .isEqualTo(BookingErrorCode.BOOKING_FORBIDDEN);
@@ -55,8 +54,7 @@ class BookingOperationalReportServiceTest {
 
   private static BookingOperationalReportMapper.SummaryRow summary(
       long total, long pending, long approved, long completed, long attendees, long reviewed) {
-    BookingOperationalReportMapper.SummaryRow row =
-        new BookingOperationalReportMapper.SummaryRow();
+    BookingOperationalReportMapper.SummaryRow row = new BookingOperationalReportMapper.SummaryRow();
     row.setTotalBookings(total);
     row.setPendingBookings(pending);
     row.setApprovedBookings(approved);

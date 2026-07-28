@@ -2,8 +2,8 @@ package com.yanerdan.venueflow.booking.persistence;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.yanerdan.venueflow.booking.domain.BookingReservation;
 import com.yanerdan.venueflow.booking.domain.BookingApplicationDetails;
+import com.yanerdan.venueflow.booking.domain.BookingReservation;
 import com.yanerdan.venueflow.booking.domain.BookingStatus;
 import com.yanerdan.venueflow.booking.domain.IdempotencyStatus;
 import com.yanerdan.venueflow.booking.expiration.domain.TimeoutReservation;
@@ -111,8 +111,17 @@ public class BookingRepository {
       LocalDateTime expireAt,
       BookingApplicationDetails details) {
     return complete(
-        requestId, userId, slotId, quantity, allocationId, releaseId, expireAt, details,
-        null, null, null);
+        requestId,
+        userId,
+        slotId,
+        quantity,
+        allocationId,
+        releaseId,
+        expireAt,
+        details,
+        null,
+        null,
+        null);
   }
 
   @Transactional
@@ -129,8 +138,19 @@ public class BookingRepository {
       String ownerDepartment,
       String assignedApproverExternalUserId) {
     return complete(
-        requestId, userId, slotId, quantity, allocationId, releaseId, expireAt, details,
-        resourceId, ownerDepartment, assignedApproverExternalUserId, "DIRECT", null);
+        requestId,
+        userId,
+        slotId,
+        quantity,
+        allocationId,
+        releaseId,
+        expireAt,
+        details,
+        resourceId,
+        ownerDepartment,
+        assignedApproverExternalUserId,
+        "DIRECT",
+        null);
   }
 
   @Transactional
@@ -267,8 +287,7 @@ public class BookingRepository {
     String statusValue = status == null ? null : status.name();
     List<BookingReservation> items =
         reservationMapper
-            .selectAssignedManagementHistory(
-                statusValue, approverExternalUserId, offset, pageSize)
+            .selectAssignedManagementHistory(statusValue, approverExternalUserId, offset, pageSize)
             .stream()
             .map(BookingReservationEntity::toDomain)
             .toList();
@@ -291,10 +310,7 @@ public class BookingRepository {
 
   @Transactional
   public BookingReservation confirm(
-      String bookingNo,
-      String reviewNote,
-      String reviewerRole,
-      String actorExternalUserId) {
+      String bookingNo, String reviewNote, String reviewerRole, String actorExternalUserId) {
     BookingReservationEntity current = findEntity(bookingNo);
     if (current == null) return null;
     if (current.getStatus() == BookingStatus.CONFIRMED) return current.toDomain();
@@ -305,8 +321,7 @@ public class BookingRepository {
     if (current.getExpireAt() == null || !now.isBefore(current.getExpireAt())) {
       throw new IllegalArgumentException("Reservation confirmation deadline expired");
     }
-    if ("TWO_STAGE".equals(current.getApprovalMode())
-        && current.getCurrentApprovalStep() == 1) {
+    if ("TWO_STAGE".equals(current.getApprovalMode()) && current.getCurrentApprovalStep() == 1) {
       int advanced =
           reservationMapper.update(
               null,
@@ -357,8 +372,13 @@ public class BookingRepository {
     if (updated != 1) return findEntity(bookingNo).toDomain();
     BookingReservationEntity confirmed = findEntity(bookingNo);
     approvalActionMapper.insertAction(
-        confirmed.getId(), current.getCurrentApprovalStep(), actorExternalUserId, reviewerRole,
-        "APPROVED", reviewNote, now);
+        confirmed.getId(),
+        current.getCurrentApprovalStep(),
+        actorExternalUserId,
+        reviewerRole,
+        "APPROVED",
+        reviewNote,
+        now);
     statusLogMapper.insertLog(
         confirmed.getId(),
         BookingStatus.PENDING_CONFIRMATION.name(),
@@ -381,7 +401,12 @@ public class BookingRepository {
     BookingReservationEntity entity = findEntity(bookingNo);
     if (entity != null) {
       approvalActionMapper.insertAction(
-          entity.getId(), step, actorExternalUserId, actorRole, decision, note,
+          entity.getId(),
+          step,
+          actorExternalUserId,
+          actorRole,
+          decision,
+          note,
           LocalDateTime.now());
     }
   }
@@ -439,12 +464,7 @@ public class BookingRepository {
   @Transactional
   public boolean cancelAndResolve(String bookingNo, long expectedVersion) {
     return cancelAndResolve(
-        bookingNo,
-        expectedVersion,
-        "USER_CANCELLED",
-        "CANCELLED",
-        null,
-        "APPLICANT");
+        bookingNo, expectedVersion, "USER_CANCELLED", "CANCELLED", null, "APPLICANT");
   }
 
   @Transactional

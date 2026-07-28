@@ -1,8 +1,8 @@
 package com.yanerdan.venueflow.resource.catalog.persistence.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.yanerdan.venueflow.resource.catalog.domain.ResourceStatus;
 import com.yanerdan.venueflow.resource.catalog.domain.ApprovalMode;
+import com.yanerdan.venueflow.resource.catalog.domain.ResourceStatus;
 import com.yanerdan.venueflow.resource.catalog.persistence.entity.ResourceEntity;
 import java.util.List;
 import org.apache.ibatis.annotations.Param;
@@ -29,6 +29,14 @@ public interface ResourceMapper extends BaseMapper<ResourceEntity> {
       @Param("approverExternalUserId") String approverExternalUserId,
       @Param("approvalMode") ApprovalMode approvalMode,
       @Param("finalApproverExternalUserId") String finalApproverExternalUserId,
+      @Param("expectedVersion") Long expectedVersion);
+
+  int updateBookingRulesIfVersionMatches(
+      @Param("resourceId") Long resourceId,
+      @Param("bookingNotice") String bookingNotice,
+      @Param("minAdvanceHours") Integer minAdvanceHours,
+      @Param("maxAdvanceDays") Integer maxAdvanceDays,
+      @Param("maxDurationMinutes") Integer maxDurationMinutes,
       @Param("expectedVersion") Long expectedVersion);
 
   ResourceEntity selectByIdForUpdate(@Param("resourceId") Long resourceId);

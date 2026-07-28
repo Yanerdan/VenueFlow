@@ -1,4 +1,4 @@
-import { createApi } from "./api.js?v=20260728-c31";
+import { createApi } from "./api.js?v=20260728-c32";
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -28,11 +28,14 @@ function notify(text, error = false) {
 }
 function fail(error) {
   const friendlyMessages = {
-    BOOKING_CAPACITY_UNAVAILABLE: "该时段剩余容量不足，请减少使用人数或选择其他时段"
+    BOOKING_CAPACITY_UNAVAILABLE: "该时段剩余容量不足，请减少使用人数或选择其他时段",
+    BOOKING_VALIDATION_FAILED: "该时段不符合资源的提前预约或最长使用规则，请选择其他时段"
   };
   const message = friendlyMessages[error.code] || error.message;
   notify(`${message}${error.traceId ? ` · 追踪号 ${error.traceId}` : ""}`, true);
 }
+const ruleSummary = resource =>
+  `至少提前 ${resource.minAdvanceHours ?? 0} 小时 · 最多提前 ${resource.maxAdvanceDays ?? 90} 天 · 单次不超过 ${resource.maxDurationMinutes ?? 480} 分钟`;
 function resetApi() {
   const value = gateway.value.trim() || "http://127.0.0.1:8080";
   localStorage.setItem("venueflow.gateway", value);
@@ -85,17 +88,19 @@ async function loadResources(text = "") {
       <div class="venue-content"><p class="resource-no">${escapeHtml(r.resourceNo || `RESOURCE-${r.id}`)}</p><h3>${escapeHtml(r.name)}</h3>
         <div class="venue-meta"><span>位置 · ${escapeHtml(r.location || "校内")}</span><span>容量 · ${escapeHtml(r.capacity || "—")} 人</span></div>
         <p class="venue-description">${escapeHtml(r.description || "校园共享空间，具体使用要求以管理部门审批为准。")}</p>
+        <div class="booking-policy"><strong>申请规则</strong><span>${escapeHtml(ruleSummary(r))}</span>${r.bookingNotice ? `<p>${escapeHtml(r.bookingNotice)}</p>` : ""}</div>
         <div class="venue-footer"><span>统一预约管理</span><button data-resource-id="${r.id}" data-resource-name="${escapeHtml(r.name)}">查看时段 →</button></div>
       </div>
     </article>`).join("") : empty("没有匹配的空间", "请更换关键词或稍后刷新。");
 }
 async function loadSlots(resourceId, name) {
   $("#slot-title").textContent = name;
-  $("#slot-hint").textContent = "选择开放时段并填写预计使用人数，提交后由管理部门审批。";
+  $("#slot-hint").textContent = "正在读取该资源的申请规则…";
   $("#slot-list").innerHTML = skeletons(2);
   $("#booking-form").classList.add("hidden");
   $("#slot-panel").classList.add("open");
-  const page = await api.slots(resourceId);
+  const [page, resource] = await Promise.all([api.slots(resourceId), api.resource(resourceId)]);
+  $("#slot-hint").textContent = `${ruleSummary(resource)}${resource.bookingNotice ? `；${resource.bookingNotice}` : ""}`;
   const openSlots = (page.items || []).filter(slot => slot.status === "OPEN");
   const items = await Promise.all(openSlots.map(async slot => ({
     ...slot,
@@ -192,7 +197,11 @@ $("#slot-list").addEventListener("click", event => {
   $("#booking-form").classList.remove("hidden");
 });
 $("#booking-form").addEventListener("submit", async event => {
-  event.preventDefault(); const data = new FormData(event.currentTarget);
+  event.preventDefault(); const form = event.currentTarget;
+  if (form.dataset.submitting === "true") return;
+  const button = form.querySelector('button[type="submit"]');
+  form.dataset.submitting = "true"; button.disabled = true;
+  const data = new FormData(form);
   try {
     await api.createBooking(profile.id, Number(data.get("slotId")), Number(data.get("quantity")), {
       activityTitle: data.get("activityTitle"),
@@ -203,6 +212,7 @@ $("#booking-form").addEventListener("submit", async event => {
     });
     await loadBookings(); notify("申请已提交，等待管理部门审批");
   } catch (error) { fail(error); }
+  finally { form.dataset.submitting = "false"; button.disabled = false; }
 });
 $("#booking-list").addEventListener("click", async event => {
   const button = event.target.closest("[data-booking]"); if (!button) return;
@@ -210,7 +220,11 @@ $("#booking-list").addEventListener("click", async event => {
 });
 $("#profile-form").addEventListener("submit", async event => {
   event.preventDefault();
-  const data = Object.fromEntries(new FormData(event.currentTarget));
+  const form = event.currentTarget;
+  if (form.dataset.submitting === "true") return;
+  const button = form.querySelector('button[type="submit"]');
+  form.dataset.submitting = "true"; button.disabled = true;
+  const data = Object.fromEntries(new FormData(form));
   try {
     profile = await api.updateCampusProfile({
       ...data,
@@ -225,6 +239,7 @@ $("#profile-form").addEventListener("submit", async event => {
     renderProfile();
     notify("校园资料已保存");
   } catch (error) { fail(error); }
+  finally { form.dataset.submitting = "false"; button.disabled = false; }
 });
 $("#close-slots").addEventListener("click", () => $("#slot-panel").classList.remove("open"));
 $$("[data-view]").forEach(button => button.addEventListener("click", () => {

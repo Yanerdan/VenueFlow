@@ -1,11 +1,7 @@
 package com.yanerdan.venueflow.booking.domain;
 
 public record BookingApplicationDetails(
-    String activityTitle,
-    String purpose,
-    String contactName,
-    String contactPhone,
-    String note) {
+    String activityTitle, String purpose, String contactName, String contactPhone, String note) {
 
   public static final int MAX_ACTIVITY_TITLE = 160;
   public static final int MAX_PURPOSE = 500;

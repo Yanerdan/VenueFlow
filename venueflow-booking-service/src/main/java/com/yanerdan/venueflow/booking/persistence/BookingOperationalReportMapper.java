@@ -70,18 +70,53 @@ public interface BookingOperationalReportMapper {
     private long totalAttendees;
     private long reviewedBookings;
 
-    public long getTotalBookings() { return totalBookings; }
-    public void setTotalBookings(long value) { totalBookings = value; }
-    public long getPendingBookings() { return pendingBookings; }
-    public void setPendingBookings(long value) { pendingBookings = value; }
-    public long getApprovedBookings() { return approvedBookings; }
-    public void setApprovedBookings(long value) { approvedBookings = value; }
-    public long getCompletedBookings() { return completedBookings; }
-    public void setCompletedBookings(long value) { completedBookings = value; }
-    public long getTotalAttendees() { return totalAttendees; }
-    public void setTotalAttendees(long value) { totalAttendees = value; }
-    public long getReviewedBookings() { return reviewedBookings; }
-    public void setReviewedBookings(long value) { reviewedBookings = value; }
+    public long getTotalBookings() {
+      return totalBookings;
+    }
+
+    public void setTotalBookings(long value) {
+      totalBookings = value;
+    }
+
+    public long getPendingBookings() {
+      return pendingBookings;
+    }
+
+    public void setPendingBookings(long value) {
+      pendingBookings = value;
+    }
+
+    public long getApprovedBookings() {
+      return approvedBookings;
+    }
+
+    public void setApprovedBookings(long value) {
+      approvedBookings = value;
+    }
+
+    public long getCompletedBookings() {
+      return completedBookings;
+    }
+
+    public void setCompletedBookings(long value) {
+      completedBookings = value;
+    }
+
+    public long getTotalAttendees() {
+      return totalAttendees;
+    }
+
+    public void setTotalAttendees(long value) {
+      totalAttendees = value;
+    }
+
+    public long getReviewedBookings() {
+      return reviewedBookings;
+    }
+
+    public void setReviewedBookings(long value) {
+      reviewedBookings = value;
+    }
   }
 
   class ResourceRow {
@@ -89,12 +124,29 @@ public interface BookingOperationalReportMapper {
     private long bookingCount;
     private long attendeeCount;
 
-    public Long getResourceId() { return resourceId; }
-    public void setResourceId(Long value) { resourceId = value; }
-    public long getBookingCount() { return bookingCount; }
-    public void setBookingCount(long value) { bookingCount = value; }
-    public long getAttendeeCount() { return attendeeCount; }
-    public void setAttendeeCount(long value) { attendeeCount = value; }
+    public Long getResourceId() {
+      return resourceId;
+    }
+
+    public void setResourceId(Long value) {
+      resourceId = value;
+    }
+
+    public long getBookingCount() {
+      return bookingCount;
+    }
+
+    public void setBookingCount(long value) {
+      bookingCount = value;
+    }
+
+    public long getAttendeeCount() {
+      return attendeeCount;
+    }
+
+    public void setAttendeeCount(long value) {
+      attendeeCount = value;
+    }
   }
 
   class DepartmentRow {
@@ -102,12 +154,29 @@ public interface BookingOperationalReportMapper {
     private long bookingCount;
     private long attendeeCount;
 
-    public String getDepartment() { return department; }
-    public void setDepartment(String value) { department = value; }
-    public long getBookingCount() { return bookingCount; }
-    public void setBookingCount(long value) { bookingCount = value; }
-    public long getAttendeeCount() { return attendeeCount; }
-    public void setAttendeeCount(long value) { attendeeCount = value; }
+    public String getDepartment() {
+      return department;
+    }
+
+    public void setDepartment(String value) {
+      department = value;
+    }
+
+    public long getBookingCount() {
+      return bookingCount;
+    }
+
+    public void setBookingCount(long value) {
+      bookingCount = value;
+    }
+
+    public long getAttendeeCount() {
+      return attendeeCount;
+    }
+
+    public void setAttendeeCount(long value) {
+      attendeeCount = value;
+    }
   }
 
   class ReviewRow {
@@ -117,15 +186,44 @@ public interface BookingOperationalReportMapper {
     private String reviewNote;
     private LocalDateTime reviewedAt;
 
-    public String getBookingNo() { return bookingNo; }
-    public void setBookingNo(String value) { bookingNo = value; }
-    public String getDecision() { return decision; }
-    public void setDecision(String value) { decision = value; }
-    public String getReviewerRole() { return reviewerRole; }
-    public void setReviewerRole(String value) { reviewerRole = value; }
-    public String getReviewNote() { return reviewNote; }
-    public void setReviewNote(String value) { reviewNote = value; }
-    public LocalDateTime getReviewedAt() { return reviewedAt; }
-    public void setReviewedAt(LocalDateTime value) { reviewedAt = value; }
+    public String getBookingNo() {
+      return bookingNo;
+    }
+
+    public void setBookingNo(String value) {
+      bookingNo = value;
+    }
+
+    public String getDecision() {
+      return decision;
+    }
+
+    public void setDecision(String value) {
+      decision = value;
+    }
+
+    public String getReviewerRole() {
+      return reviewerRole;
+    }
+
+    public void setReviewerRole(String value) {
+      reviewerRole = value;
+    }
+
+    public String getReviewNote() {
+      return reviewNote;
+    }
+
+    public void setReviewNote(String value) {
+      reviewNote = value;
+    }
+
+    public LocalDateTime getReviewedAt() {
+      return reviewedAt;
+    }
+
+    public void setReviewedAt(LocalDateTime value) {
+      reviewedAt = value;
+    }
   }
 }

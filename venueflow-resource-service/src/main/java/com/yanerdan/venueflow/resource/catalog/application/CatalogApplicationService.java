@@ -284,11 +284,46 @@ public class CatalogApplicationService {
     validateExpectedVersion(current, command.expectedVersion());
     int updated;
     try {
-      updated = resourceMapper.updateOwnershipIfVersionMatches(
-          command.resourceId(), command.ownerDepartment(), command.approverExternalUserId(),
-          command.approvalMode(), command.finalApproverExternalUserId(), command.expectedVersion());
+      updated =
+          resourceMapper.updateOwnershipIfVersionMatches(
+              command.resourceId(),
+              command.ownerDepartment(),
+              command.approverExternalUserId(),
+              command.approvalMode(),
+              command.finalApproverExternalUserId(),
+              command.expectedVersion());
     } catch (DataAccessException exception) {
       throw persistenceFailure("Resource ownership could not be updated", exception);
+    }
+    if (updated != 1) {
+      throw resolveFailedConditionalUpdate(command.resourceId(), command.expectedVersion());
+    }
+    ResourceEntity persisted = resourceMapper.selectById(command.resourceId());
+    if (persisted == null) {
+      throw resourceNotFound(command.resourceId());
+    }
+    ResourceResult result = ResourceResult.from(persisted);
+    changeRecorder.record(result);
+    resourceCache.evictAfterCommit(result.id());
+    return result;
+  }
+
+  @Transactional
+  public ResourceResult changeResourceBookingRules(ChangeResourceBookingRulesCommand command) {
+    ResourceEntity current = findResourceForStatusChange(command.resourceId());
+    validateExpectedVersion(current, command.expectedVersion());
+    int updated;
+    try {
+      updated =
+          resourceMapper.updateBookingRulesIfVersionMatches(
+              command.resourceId(),
+              command.bookingNotice(),
+              command.minAdvanceHours(),
+              command.maxAdvanceDays(),
+              command.maxDurationMinutes(),
+              command.expectedVersion());
+    } catch (DataAccessException exception) {
+      throw persistenceFailure("Resource booking rules could not be updated", exception);
     }
     if (updated != 1) {
       throw resolveFailedConditionalUpdate(command.resourceId(), command.expectedVersion());
