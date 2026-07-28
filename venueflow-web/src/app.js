@@ -1,4 +1,4 @@
-import { createApi } from "./api.js";
+import { createApi } from "./api.js?v=20260728-2";
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -10,7 +10,7 @@ let profile = null;
 let activeResource = null;
 
 const statusLabels = {
-  PENDING: "待确认",
+  PENDING_CONFIRMATION: "待确认",
   CONFIRMED: "已确认",
   COMPLETED: "已完成",
   CANCELLED: "已取消",
@@ -84,6 +84,13 @@ async function enterApp(displayName = "VenueFlow 用户") {
 function exitApp() {
   profile = null;
   activeResource = null;
+  $("#login-form").reset();
+  $("#register-form").reset();
+  $$('[data-auth-tab]').forEach(button =>
+    button.classList.toggle("active", button.dataset.authTab === "login")
+  );
+  $("#login-form").classList.remove("hidden");
+  $("#register-form").classList.add("hidden");
   $("#auth-view").classList.remove("hidden");
   $("#app-view").classList.add("hidden");
   $("#logout").classList.add("hidden");
@@ -142,7 +149,9 @@ async function loadBookings() {
   const items = page.items || [];
   $("#booking-list").innerHTML = items.length ? items.map(booking => {
     const actions = [];
-    if (booking.status === "PENDING") actions.push(["confirmation", "确认"], ["cancellation", "取消"]);
+    if (booking.status === "PENDING_CONFIRMATION") {
+      actions.push(["confirmation", "确认"], ["cancellation", "取消"]);
+    }
     if (booking.status === "CONFIRMED") actions.push(["check-in", "签到"], ["cancellation", "取消"]);
     return `<article class="booking-card">
       <div>
@@ -177,12 +186,13 @@ async function loadNotifications() {
 }
 
 async function run(operation, success) {
+  const hadSession = api.hasSession();
   try {
     resetApi();
     await operation();
     if (success) message(success);
   } catch (error) {
-    if (error.status === 401 && !api.hasSession()) {
+    if (error.status === 401 && hadSession) {
       exitApp();
       message("登录已过期，请重新登录。", true);
       return;

@@ -64,6 +64,17 @@ test("booking creation sends a generated idempotency key", async () => {
   assert.deepEqual(JSON.parse(captured.body), { userId: 1, slotId: 2, quantity: 3 });
 });
 
+test("search results expose the resource id used by slot navigation", async () => {
+  const api = createApi({
+    baseUrl: "http://gateway",
+    storage: storage({ "venueflow.access": "token" }),
+    fetchImpl: async () =>
+      response(200, { items: [{ resourceId: 7, name: "Emerald Hall" }] })
+  });
+  const page = await api.search("Emerald");
+  assert.equal(page.items[0].id, 7);
+});
+
 test("API errors retain status, server message and trace id", async () => {
   const api = createApi({
     baseUrl: "http://gateway",

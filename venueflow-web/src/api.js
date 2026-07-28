@@ -89,7 +89,18 @@ export function createApi({
       method: "POST", body: JSON.stringify({ externalUserId, displayName })
     }),
     resources: () => request("/api/v1/resources?page=0&size=50"),
-    search: text => request(`/api/v1/search/resources?text=${encodeURIComponent(text)}&page=0&size=50`),
+    async search(text) {
+      const page = await request(
+        `/api/v1/search/resources?text=${encodeURIComponent(text)}&page=0&size=50`
+      );
+      return {
+        ...page,
+        items: (page.items || []).map(resource => ({
+          ...resource,
+          id: resource.id ?? resource.resourceId
+        }))
+      };
+    },
     slots: resourceId => {
       const from = new Date().toISOString();
       const to = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
