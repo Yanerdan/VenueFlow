@@ -6,22 +6,22 @@ Define bounded application context and review conclusions owned by Booking Servi
 
 ## Requirements
 
-### Requirement: Booking owns bounded application details
+### Requirement: Booking stores complete application details
 
-Booking Service SHALL own a bounded activity title, purpose, contact name, contact phone, and
-optional note for each new reservation application. Required fields MUST be nonblank and all
-fields MUST be trimmed and length-bounded. Existing reservations without these additive fields
-MUST remain readable without invented details.
+Booking Service SHALL persist bounded application title, purpose, contact name, contact phone,
+attendee quantity, optional note, resource responsibility snapshot, approval-chain snapshot, and
+ordered approval actions with each reservation while preserving the existing booking state
+machine and idempotency behavior.
 
 #### Scenario: An applicant submits complete application details
 
-- **WHEN** a valid reservation request includes all required application fields
-- **THEN** Booking persists and returns those details with the reservation
+- **WHEN** an authenticated applicant creates a booking with valid required fields
+- **THEN** Booking persists and returns the application, responsibility, and approval stage, while its approval-action API returns an empty history
 
-#### Scenario: A historical reservation is read
+#### Scenario: Applicant omits a required detail
 
-- **WHEN** a reservation created before the additive migration is retrieved
-- **THEN** Booking returns it successfully with absent optional application details
+- **WHEN** the application title, purpose, contact name, or contact phone is blank
+- **THEN** Booking returns a bounded invalid-request response without creating a reservation
 
 ### Requirement: Booking records a bounded review conclusion
 

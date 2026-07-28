@@ -134,12 +134,18 @@ public class HttpResourceCapacityClient implements ResourceCapacityClient {
           body.path("approverExternalUserId").isTextual()
               ? body.path("approverExternalUserId").asText()
               : null;
+      String approvalMode =
+          body.path("approvalMode").isTextual() ? body.path("approvalMode").asText() : "DIRECT";
+      String finalApproverId =
+          body.path("finalApproverExternalUserId").isTextual()
+              ? body.path("finalApproverExternalUserId").asText()
+              : null;
       if (returnedId != slotId || startAt == null || endAt == null) {
         throw invalidSlot();
       }
       return new ResourceSlot(
-          returnedId, resourceId, ownerDepartment, approverId, Instant.parse(startAt),
-          Instant.parse(endAt));
+          returnedId, resourceId, ownerDepartment, approverId, approvalMode, finalApproverId,
+          Instant.parse(startAt), Instant.parse(endAt));
     } catch (InterruptedException exception) {
       Thread.currentThread().interrupt();
       throw unavailable(exception);

@@ -31,6 +31,7 @@ public class BookingRepository {
   private final OutboxEventMapper outboxMapper;
   private final OutboxEventFactory outboxFactory;
   private final BookingStatusLogMapper statusLogMapper;
+  private final BookingApprovalActionMapper approvalActionMapper;
   private final ReconciliationIntentRepository reconciliationIntents;
 
   public BookingRepository(
@@ -39,12 +40,14 @@ public class BookingRepository {
       OutboxEventMapper outboxMapper,
       OutboxEventFactory outboxFactory,
       BookingStatusLogMapper statusLogMapper,
+      BookingApprovalActionMapper approvalActionMapper,
       ReconciliationIntentRepository reconciliationIntents) {
     this.reservationMapper = reservationMapper;
     this.idempotencyMapper = idempotencyMapper;
     this.outboxMapper = outboxMapper;
     this.outboxFactory = outboxFactory;
     this.statusLogMapper = statusLogMapper;
+    this.approvalActionMapper = approvalActionMapper;
     this.reconciliationIntents = reconciliationIntents;
   }
 
@@ -125,6 +128,26 @@ public class BookingRepository {
       Long resourceId,
       String ownerDepartment,
       String assignedApproverExternalUserId) {
+    return complete(
+        requestId, userId, slotId, quantity, allocationId, releaseId, expireAt, details,
+        resourceId, ownerDepartment, assignedApproverExternalUserId, "DIRECT", null);
+  }
+
+  @Transactional
+  public BookingReservation complete(
+      String requestId,
+      long userId,
+      long slotId,
+      int quantity,
+      String allocationId,
+      String releaseId,
+      LocalDateTime expireAt,
+      BookingApplicationDetails details,
+      Long resourceId,
+      String ownerDepartment,
+      String assignedApproverExternalUserId,
+      String approvalMode,
+      String finalAssignedApproverExternalUserId) {
     LocalDateTime now = LocalDateTime.now();
     BookingReservationEntity entity = new BookingReservationEntity();
     entity.setBookingNo(UUID.randomUUID().toString());
@@ -134,6 +157,9 @@ public class BookingRepository {
     entity.setResourceId(resourceId);
     entity.setOwnerDepartment(ownerDepartment);
     entity.setAssignedApproverExternalUserId(assignedApproverExternalUserId);
+    entity.setApprovalMode("TWO_STAGE".equals(approvalMode) ? "TWO_STAGE" : "DIRECT");
+    entity.setFinalAssignedApproverExternalUserId(finalAssignedApproverExternalUserId);
+    entity.setCurrentApprovalStep(1);
     entity.setQuantity(quantity);
     entity.setActivityTitle(details.activityTitle());
     entity.setApplicationPurpose(details.purpose());
@@ -174,6 +200,11 @@ public class BookingRepository {
       throw new IllegalStateException("Allocation recovery intent finalization failed");
     }
     return reservation;
+  }
+
+  @Transactional(readOnly = true)
+  public List<BookingApprovalAction> approvalActions(String bookingNo) {
+    return List.copyOf(approvalActionMapper.findByBookingNo(bookingNo));
   }
 
   @Transactional
@@ -255,6 +286,15 @@ public class BookingRepository {
 
   @Transactional
   public BookingReservation confirm(String bookingNo, String reviewNote, String reviewerRole) {
+    return confirm(bookingNo, reviewNote, reviewerRole, null);
+  }
+
+  @Transactional
+  public BookingReservation confirm(
+      String bookingNo,
+      String reviewNote,
+      String reviewerRole,
+      String actorExternalUserId) {
     BookingReservationEntity current = findEntity(bookingNo);
     if (current == null) return null;
     if (current.getStatus() == BookingStatus.CONFIRMED) return current.toDomain();
@@ -264,6 +304,31 @@ public class BookingRepository {
     }
     if (current.getExpireAt() == null || !now.isBefore(current.getExpireAt())) {
       throw new IllegalArgumentException("Reservation confirmation deadline expired");
+    }
+    if ("TWO_STAGE".equals(current.getApprovalMode())
+        && current.getCurrentApprovalStep() == 1) {
+      int advanced =
+          reservationMapper.update(
+              null,
+              new LambdaUpdateWrapper<BookingReservationEntity>()
+                  .eq(BookingReservationEntity::getId, current.getId())
+                  .eq(BookingReservationEntity::getStatus, BookingStatus.PENDING_CONFIRMATION)
+                  .eq(BookingReservationEntity::getVersion, current.getVersion())
+                  .eq(BookingReservationEntity::getCurrentApprovalStep, 1)
+                  .gt(BookingReservationEntity::getExpireAt, now)
+                  .and(
+                      wrapper ->
+                          wrapper
+                              .isNull(BookingReservationEntity::getTimeoutLeaseOwner)
+                              .or()
+                              .le(BookingReservationEntity::getTimeoutLeaseExpiresAt, now))
+                  .set(BookingReservationEntity::getCurrentApprovalStep, 2)
+                  .set(BookingReservationEntity::getUpdatedAt, now)
+                  .setSql("version = version + 1"));
+      if (advanced != 1) return findEntity(bookingNo).toDomain();
+      approvalActionMapper.insertAction(
+          current.getId(), 1, actorExternalUserId, reviewerRole, "APPROVED", reviewNote, now);
+      return findEntity(bookingNo).toDomain();
     }
     int updated =
         reservationMapper.update(
@@ -291,6 +356,9 @@ public class BookingRepository {
                 .setSql("version = version + 1"));
     if (updated != 1) return findEntity(bookingNo).toDomain();
     BookingReservationEntity confirmed = findEntity(bookingNo);
+    approvalActionMapper.insertAction(
+        confirmed.getId(), current.getCurrentApprovalStep(), actorExternalUserId, reviewerRole,
+        "APPROVED", reviewNote, now);
     statusLogMapper.insertLog(
         confirmed.getId(),
         BookingStatus.PENDING_CONFIRMATION.name(),
@@ -300,6 +368,22 @@ public class BookingRepository {
         now);
     outboxMapper.insert(OutboxEventEntity.from(outboxFactory.create(confirmed.toDomain())));
     return confirmed.toDomain();
+  }
+
+  @Transactional
+  public void recordApprovalAction(
+      String bookingNo,
+      int step,
+      String actorExternalUserId,
+      String actorRole,
+      String decision,
+      String note) {
+    BookingReservationEntity entity = findEntity(bookingNo);
+    if (entity != null) {
+      approvalActionMapper.insertAction(
+          entity.getId(), step, actorExternalUserId, actorRole, decision, note,
+          LocalDateTime.now());
+    }
   }
 
   @Transactional

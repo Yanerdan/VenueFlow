@@ -214,6 +214,35 @@ test("resource ownership update sends department, approver and version", async (
   assert.deepEqual(JSON.parse(captured.options.body), {
     ownerDepartment: "学生工作处",
     approverExternalUserId: "approver-12",
+    approvalMode: "DIRECT",
+    finalApproverExternalUserId: null,
     expectedVersion: 3
   });
+});
+
+test("approval workflow policy and action history use bounded APIs", async () => {
+  const calls = [];
+  const api = createApi({
+    baseUrl: "http://gateway",
+    storage: storage({ "venueflow.access": "token" }),
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return response(200, calls.length === 1
+        ? { id: 9 }
+        : { data: [{ approvalStep: 1, decision: "APPROVED" }] });
+    }
+  });
+  await api.changeResourceOwnership(
+    9, "校团委", "approver-1", "TWO_STAGE", "approver-2", 4
+  );
+  const actions = await api.approvalActions("VF-9");
+  assert.deepEqual(JSON.parse(calls[0].options.body), {
+    ownerDepartment: "校团委",
+    approverExternalUserId: "approver-1",
+    approvalMode: "TWO_STAGE",
+    finalApproverExternalUserId: "approver-2",
+    expectedVersion: 4
+  });
+  assert.equal(calls[1].url, "http://gateway/api/v1/bookings/VF-9/approval-actions");
+  assert.equal(actions[0].approvalStep, 1);
 });

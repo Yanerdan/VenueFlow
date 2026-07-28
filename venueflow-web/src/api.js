@@ -116,15 +116,28 @@ export function createApi({
       }
     ),
     changeResourceOwnership: (
-      resourceId, ownerDepartment, approverExternalUserId, expectedVersion
-    ) => request(`/api/v1/resources/${resourceId}/ownership`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        ownerDepartment: ownerDepartment || null,
-        approverExternalUserId: approverExternalUserId || null,
-        expectedVersion
+      resourceId, ownerDepartment, approverExternalUserId, approvalMode,
+      finalApproverExternalUserId, expectedVersion
+    ) => {
+      if (typeof approvalMode === "number") {
+        expectedVersion = approvalMode;
+        approvalMode = "DIRECT";
+        finalApproverExternalUserId = null;
+      }
+      return request(`/api/v1/resources/${resourceId}/ownership`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          ownerDepartment: ownerDepartment || null,
+          approverExternalUserId: approverExternalUserId || null,
+          approvalMode: approvalMode || "DIRECT",
+          finalApproverExternalUserId: finalApproverExternalUserId || null,
+          expectedVersion
+        })
       })
-    }),
+    },
+    approvalActions: bookingNo => request(
+      `/api/v1/bookings/${encodeURIComponent(bookingNo)}/approval-actions`
+    ),
     async search(text) {
       const page = await request(
         `/api/v1/search/resources?text=${encodeURIComponent(text)}&page=0&size=50`
@@ -156,9 +169,11 @@ export function createApi({
     ),
     operationalReport: () => request("/api/v1/bookings/management/report"),
     bookingAction: (bookingNo, action, note) => {
-      const body = note
-        ? JSON.stringify(action === "rejection" ? { reason: note } : { reviewNote: note })
-        : undefined;
+      const body = action === "confirmation"
+        ? JSON.stringify({ reviewNote: note || "" })
+        : note
+          ? JSON.stringify(action === "rejection" ? { reason: note } : { reviewNote: note })
+          : undefined;
       return request(`/api/v1/bookings/${encodeURIComponent(bookingNo)}/${action}`, {
         method: "POST", ...(body ? { body } : {})
       });

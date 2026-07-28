@@ -32,7 +32,10 @@ public record BookingReservation(
     LocalDateTime reviewedAt,
     Long resourceId,
     String ownerDepartment,
-    String assignedApproverExternalUserId) {
+    String assignedApproverExternalUserId,
+    String approvalMode,
+    String finalAssignedApproverExternalUserId,
+    int currentApprovalStep) {
   public BookingReservation(
       Long id,
       String bookingNo,
@@ -56,7 +59,7 @@ public record BookingReservation(
         id, bookingNo, requestId, userId, slotId, quantity, status, allocationOperationId,
         releaseOperationId, version, createdAt, expireAt, confirmedAt, cancelledAt, expiredAt,
         completedAt, terminalReason, updatedAt, null, null, null, null, null, null, null, null,
-        null, null, null, null);
+        null, null, null, null, "DIRECT", null, 1);
   }
 
   public BookingReservation(
@@ -104,7 +107,7 @@ public record BookingReservation(
         null,
         null,
         null,
-        null, null, null, null);
+        null, null, null, null, "DIRECT", null, 1);
   }
 
   public BookingReservation(
@@ -149,6 +152,6 @@ public record BookingReservation(
         null,
         null,
         null,
-        null, null, null, null);
+        null, null, null, null, "DIRECT", null, 1);
   }
 }

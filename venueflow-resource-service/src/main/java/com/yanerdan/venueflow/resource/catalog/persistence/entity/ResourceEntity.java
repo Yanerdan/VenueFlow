@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.yanerdan.venueflow.resource.catalog.domain.ResourceStatus;
+import com.yanerdan.venueflow.resource.catalog.domain.ApprovalMode;
 import java.time.LocalDateTime;
 
 @TableName("resource")
@@ -36,6 +37,12 @@ public class ResourceEntity {
 
   @TableField("approver_external_user_id")
   private String approverExternalUserId;
+
+  @TableField("approval_mode")
+  private ApprovalMode approvalMode;
+
+  @TableField("final_approver_external_user_id")
+  private String finalApproverExternalUserId;
 
   @TableField("status")
   private ResourceStatus status;
@@ -121,6 +128,16 @@ public class ResourceEntity {
 
   public void setApproverExternalUserId(String approverExternalUserId) {
     this.approverExternalUserId = approverExternalUserId;
+  }
+
+  public ApprovalMode getApprovalMode() { return approvalMode; }
+
+  public void setApprovalMode(ApprovalMode approvalMode) { this.approvalMode = approvalMode; }
+
+  public String getFinalApproverExternalUserId() { return finalApproverExternalUserId; }
+
+  public void setFinalApproverExternalUserId(String value) {
+    this.finalApproverExternalUserId = value;
   }
 
   public ResourceStatus getStatus() {

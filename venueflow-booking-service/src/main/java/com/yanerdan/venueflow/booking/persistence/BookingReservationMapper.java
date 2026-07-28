@@ -130,7 +130,11 @@ public interface BookingReservationMapper extends BaseMapper<BookingReservationE
       SELECT *
       FROM booking_reservation
       WHERE (#{status} IS NULL OR status = #{status})
-        AND assigned_approver_external_user_id = #{approverId}
+        AND (
+          (current_approval_step = 1 AND assigned_approver_external_user_id = #{approverId})
+          OR (current_approval_step = 2
+              AND final_assigned_approver_external_user_id = #{approverId})
+        )
       ORDER BY created_at DESC, id DESC
       LIMIT #{limit} OFFSET #{offset}
       """)
@@ -145,7 +149,11 @@ public interface BookingReservationMapper extends BaseMapper<BookingReservationE
       SELECT COUNT(*)
       FROM booking_reservation
       WHERE (#{status} IS NULL OR status = #{status})
-        AND assigned_approver_external_user_id = #{approverId}
+        AND (
+          (current_approval_step = 1 AND assigned_approver_external_user_id = #{approverId})
+          OR (current_approval_step = 2
+              AND final_assigned_approver_external_user_id = #{approverId})
+        )
       """)
   long countAssignedManagementHistory(
       @Param("status") String status, @Param("approverId") String approverId);

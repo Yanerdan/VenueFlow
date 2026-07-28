@@ -84,7 +84,7 @@ public class FeignResourceCapacityClient implements ResourceCapacityClient {
       }
       return new ResourceSlot(
           value.id(), value.resourceId(), value.ownerDepartment(), value.approverExternalUserId(),
-          value.startAt(), value.endAt());
+          value.approvalMode(), value.finalApproverExternalUserId(), value.startAt(), value.endAt());
     } catch (BookingException exception) {
       throw exception;
     } catch (IllegalArgumentException exception) {

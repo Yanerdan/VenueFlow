@@ -286,7 +286,7 @@ public class CatalogApplicationService {
     try {
       updated = resourceMapper.updateOwnershipIfVersionMatches(
           command.resourceId(), command.ownerDepartment(), command.approverExternalUserId(),
-          command.expectedVersion());
+          command.approvalMode(), command.finalApproverExternalUserId(), command.expectedVersion());
     } catch (DataAccessException exception) {
       throw persistenceFailure("Resource ownership could not be updated", exception);
     }

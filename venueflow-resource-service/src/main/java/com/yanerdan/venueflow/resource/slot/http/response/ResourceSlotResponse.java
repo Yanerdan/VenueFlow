@@ -2,6 +2,7 @@ package com.yanerdan.venueflow.resource.slot.http.response;
 
 import com.yanerdan.venueflow.resource.slot.application.ResourceSlotResult;
 import com.yanerdan.venueflow.resource.slot.domain.ResourceSlotStatus;
+import com.yanerdan.venueflow.resource.catalog.domain.ApprovalMode;
 import java.time.Instant;
 import java.time.LocalDateTime;
 
@@ -10,6 +11,8 @@ public record ResourceSlotResponse(
     Long resourceId,
     String ownerDepartment,
     String approverExternalUserId,
+    ApprovalMode approvalMode,
+    String finalApproverExternalUserId,
     Instant startAt,
     Instant endAt,
     ResourceSlotStatus status,
@@ -23,6 +26,8 @@ public record ResourceSlotResponse(
         result.resourceId(),
         result.ownerDepartment(),
         result.approverExternalUserId(),
+        result.approvalMode(),
+        result.finalApproverExternalUserId(),
         result.startAt(),
         result.endAt(),
         result.status(),

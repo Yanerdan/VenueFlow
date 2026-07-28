@@ -6,6 +6,7 @@ import com.yanerdan.venueflow.booking.domain.BookingReservation;
 import com.yanerdan.venueflow.booking.domain.BookingApplicationDetails;
 import com.yanerdan.venueflow.booking.domain.BookingStatus;
 import com.yanerdan.venueflow.booking.persistence.BookingRepository;
+import com.yanerdan.venueflow.booking.persistence.BookingApprovalAction;
 import com.yanerdan.venueflow.booking.persistence.BookingRepository.BookingHistoryPage;
 import com.yanerdan.venueflow.booking.persistence.ClaimResult;
 import com.yanerdan.venueflow.booking.reconciliation.domain.ReconciliationOutcomeCode;
@@ -18,6 +19,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -200,7 +202,9 @@ public class BookingReservationService {
                   details,
                   responsibility.resourceId(),
                   responsibility.ownerDepartment(),
-                  responsibility.approverExternalUserId());
+                  responsibility.approverExternalUserId(),
+                  responsibility.approvalMode(),
+                  responsibility.finalApproverExternalUserId());
       return new CreateResult(completed, false);
     } catch (RuntimeException persistenceFailure) {
       try {
@@ -266,8 +270,11 @@ public class BookingReservationService {
       return;
     }
     BookingReservation reservation = get(bookingNo);
-    if (reservation.assignedApproverExternalUserId() == null
-        || !reservation.assignedApproverExternalUserId().equals(trustedUserId)) {
+    String currentApprover =
+        reservation.currentApprovalStep() == 2
+            ? reservation.finalAssignedApproverExternalUserId()
+            : reservation.assignedApproverExternalUserId();
+    if (currentApprover == null || !currentApprover.equals(trustedUserId)) {
       throw error(BookingErrorCode.BOOKING_FORBIDDEN, "Booking is assigned to another approver");
     }
   }
@@ -288,16 +295,25 @@ public class BookingReservationService {
   }
 
   public BookingReservation reject(String bookingNo, String reason, String reviewerRole) {
+    return reject(bookingNo, reason, reviewerRole, null);
+  }
+
+  public BookingReservation reject(
+      String bookingNo, String reason, String reviewerRole, String actorExternalUserId) {
     if (reason == null || reason.isBlank()) {
       throw error(BookingErrorCode.BOOKING_VALIDATION_FAILED, "Rejection reason is required");
     }
-    return cancelInternal(
+    BookingReservation result = cancelInternal(
         bookingNo,
         "MANAGEMENT_REJECTED",
         "REJECTED",
         normalizeRequired(reason),
         reviewerRole,
         false);
+    repository.recordApprovalAction(
+        bookingNo, result.currentApprovalStep(), actorExternalUserId, reviewerRole, "REJECTED",
+        normalizeRequired(reason));
+    return result;
   }
 
   private BookingReservation cancelInternal(
@@ -342,11 +358,25 @@ public class BookingReservationService {
   }
 
   public BookingReservation confirm(String bookingNo, String note, String reviewerRole) {
-    return confirmInternal(bookingNo, note, reviewerRole, false);
+    return confirm(bookingNo, note, reviewerRole, null);
+  }
+
+  public BookingReservation confirm(
+      String bookingNo, String note, String reviewerRole, String actorExternalUserId) {
+    return confirmInternal(bookingNo, note, reviewerRole, actorExternalUserId, false);
   }
 
   private BookingReservation confirmInternal(
       String bookingNo, String note, String reviewerRole, boolean legacyAction) {
+    return confirmInternal(bookingNo, note, reviewerRole, null, legacyAction);
+  }
+
+  private BookingReservation confirmInternal(
+      String bookingNo,
+      String note,
+      String reviewerRole,
+      String actorExternalUserId,
+      boolean legacyAction) {
     BookingReservation current = get(bookingNo);
     if (current.status() == BookingStatus.CONFIRMED) return current;
     if (current.status() != BookingStatus.PENDING_CONFIRMATION) {
@@ -364,14 +394,25 @@ public class BookingReservationService {
       BookingReservation result =
           legacyAction
               ? repository.confirm(bookingNo)
-              : repository.confirm(bookingNo, normalizeOptional(note), reviewerRole);
-      if (result != null && result.status() == BookingStatus.CONFIRMED) return result;
+              : repository.confirm(
+                  bookingNo, normalizeOptional(note), reviewerRole, actorExternalUserId);
+      if (result != null
+          && (result.status() == BookingStatus.CONFIRMED
+              || (result.status() == BookingStatus.PENDING_CONFIRMATION
+                  && result.currentApprovalStep() == 2))) {
+        return result;
+      }
     } catch (IllegalArgumentException exception) {
       throw error(
           BookingErrorCode.BOOKING_CONFIRMATION_DEADLINE_EXPIRED,
           "Booking confirmation deadline expired");
     }
     throw error(BookingErrorCode.BOOKING_STATE_CONFLICT, "Booking state changed concurrently");
+  }
+
+  public List<BookingApprovalAction> approvalActions(String bookingNo) {
+    get(bookingNo);
+    return repository.approvalActions(bookingNo);
   }
 
   public BookingReservation checkIn(String bookingNo) {

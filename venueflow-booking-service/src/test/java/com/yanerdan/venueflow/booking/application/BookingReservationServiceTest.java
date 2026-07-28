@@ -260,6 +260,34 @@ class BookingReservationServiceTest {
     verify(repository, never()).managementHistory(null, 0, 20);
   }
 
+  @Test
+  void finalApproverOwnsSecondStageScope() {
+    when(repository.find("booking-1")).thenReturn(twoStageReservation(2));
+
+    service.requireApprovalScope("booking-1", "final-approver", "APPROVER");
+
+    assertThatThrownBy(
+            () -> service.requireApprovalScope("booking-1", "initial-approver", "APPROVER"))
+        .isInstanceOfSatisfying(
+            BookingException.class,
+            exception ->
+                assertThat(exception.getCode()).isEqualTo(BookingErrorCode.BOOKING_FORBIDDEN));
+  }
+
+  @Test
+  void initialApprovalMayAdvanceWithoutConfirming() {
+    BookingReservation pending = twoStageReservation(1);
+    BookingReservation advanced = twoStageReservation(2);
+    when(repository.find("booking-1")).thenReturn(pending);
+    when(repository.hasLiveTimeoutLease("booking-1")).thenReturn(false);
+    when(repository.confirm("booking-1", "初审通过", "APPROVER", "initial-approver"))
+        .thenReturn(advanced);
+
+    assertThat(service.confirm("booking-1", "初审通过", "APPROVER", "initial-approver"))
+        .extracting(BookingReservation::status, BookingReservation::currentApprovalStep)
+        .containsExactly(BookingStatus.PENDING_CONFIRMATION, 2);
+  }
+
   private static ClaimResult owner() {
     return new ClaimResult(ClaimResult.Kind.OWNER, "request-1", null, null);
   }
@@ -281,6 +309,16 @@ class BookingReservationServiceTest {
         now,
         status == BookingStatus.CANCELLED ? now : null,
         now);
+  }
+
+  private static BookingReservation twoStageReservation(int step) {
+    LocalDateTime now = LocalDateTime.now();
+    return new BookingReservation(
+        1L, "booking-1", "request-1", 1L, 2L, 1, BookingStatus.PENDING_CONFIRMATION,
+        "allocate:request-1", "release:request-1", step - 1L, now, now.plusMinutes(10), null,
+        null, null, null, null, now, "活动", "用途", "联系人", "13800000000", null, null,
+        null, null, null, 9L, "校团委", "initial-approver", "TWO_STAGE",
+        "final-approver", step);
   }
 
   private static String hash() {

@@ -19,6 +19,9 @@ public class BookingReservationEntity {
   private Long resourceId;
   private String ownerDepartment;
   private String assignedApproverExternalUserId;
+  private String approvalMode;
+  private String finalAssignedApproverExternalUserId;
+  private int currentApprovalStep;
   private int quantity;
   private String activityTitle;
   private String applicationPurpose;
@@ -79,7 +82,10 @@ public class BookingReservationEntity {
         reviewedAt,
         resourceId,
         ownerDepartment,
-        assignedApproverExternalUserId);
+        assignedApproverExternalUserId,
+        approvalMode,
+        finalAssignedApproverExternalUserId,
+        currentApprovalStep);
   }
 
   public Long getId() {
@@ -135,6 +141,22 @@ public class BookingReservationEntity {
   public void setAssignedApproverExternalUserId(String value) {
     this.assignedApproverExternalUserId = value;
   }
+
+  public String getApprovalMode() { return approvalMode; }
+
+  public void setApprovalMode(String value) { approvalMode = value; }
+
+  public String getFinalAssignedApproverExternalUserId() {
+    return finalAssignedApproverExternalUserId;
+  }
+
+  public void setFinalAssignedApproverExternalUserId(String value) {
+    finalAssignedApproverExternalUserId = value;
+  }
+
+  public int getCurrentApprovalStep() { return currentApprovalStep; }
+
+  public void setCurrentApprovalStep(int value) { currentApprovalStep = value; }
 
   public int getQuantity() {
     return quantity;

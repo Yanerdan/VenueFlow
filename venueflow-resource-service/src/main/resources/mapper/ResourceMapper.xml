@@ -17,6 +17,8 @@
     <result column="capacity" property="capacity"/>
     <result column="owner_department" property="ownerDepartment"/>
     <result column="approver_external_user_id" property="approverExternalUserId"/>
+    <result column="approval_mode" property="approvalMode"/>
+    <result column="final_approver_external_user_id" property="finalApproverExternalUserId"/>
     <result column="status" property="status"/>
     <result column="version" property="version"/>
     <result column="created_at" property="createdAt"/>
@@ -33,6 +35,8 @@
     capacity,
     owner_department,
     approver_external_user_id,
+    approval_mode,
+    final_approver_external_user_id,
     status,
     version,
     created_at,
@@ -85,6 +89,8 @@
     UPDATE `resource`
     SET owner_department = #{ownerDepartment},
     approver_external_user_id = #{approverExternalUserId},
+    approval_mode = #{approvalMode},
+    final_approver_external_user_id = #{finalApproverExternalUserId},
     version = version + 1,
     updated_at = CURRENT_TIMESTAMP(6)
     WHERE id = #{resourceId}

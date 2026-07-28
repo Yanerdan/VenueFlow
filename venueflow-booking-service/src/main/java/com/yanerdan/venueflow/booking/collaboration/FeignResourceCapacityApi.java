@@ -31,6 +31,8 @@ interface FeignResourceCapacityApi {
       Long resourceId,
       String ownerDepartment,
       String approverExternalUserId,
+      String approvalMode,
+      String finalApproverExternalUserId,
       Instant startAt,
       Instant endAt) {}
 }

@@ -1,4 +1,4 @@
-import { createApi } from "./api.js?v=20260728-capacity";
+import { createApi } from "./api.js?v=20260728-c31";
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -113,13 +113,16 @@ async function loadBookings() {
   if (!profile) return;
   $("#booking-list").innerHTML = skeletons();
   const page = await api.bookings(profile.id);
-  const items = page.items || [];
+  const items = await Promise.all((page.items || []).map(async item => ({
+    ...item,
+    approvalActions: await api.approvalActions(item.bookingNo)
+  })));
   $("#booking-list").innerHTML = items.length ? items.map(b => `
     <article class="booking-card">
       <div><p class="booking-label">申请编号</p><div class="booking-id">${escapeHtml(b.bookingNo)}</div><strong class="activity-name">${escapeHtml(b.activityTitle || "历史场地申请")}</strong><span class="status ${b.status.toLowerCase()}">${labels[b.status] || b.status}</span></div>
       <div><p class="booking-label">资源时段</p><div class="booking-value">#${b.slotId}</div></div>
       <div><p class="booking-label">使用人数</p><div class="booking-value">${b.quantity} 人</div></div>
-      <details class="booking-detail"><summary>申请详情</summary><div><span>用途</span><p>${escapeHtml(b.purpose || "历史申请未记录")}</p><span>联系人</span><p>${escapeHtml(b.contactName || "待完善")} · ${escapeHtml(b.contactPhone || "待完善")}</p>${b.note ? `<span>补充说明</span><p>${escapeHtml(b.note)}</p>` : ""}${b.reviewNote ? `<span>处理意见</span><p>${escapeHtml(b.reviewNote)}</p>` : ""}</div></details>
+      <details class="booking-detail"><summary>申请详情</summary><div><span>用途</span><p>${escapeHtml(b.purpose || "历史申请未记录")}</p><span>联系人</span><p>${escapeHtml(b.contactName || "待完善")} · ${escapeHtml(b.contactPhone || "待完善")}</p><span>审批进度</span><p>第 ${b.currentApprovalStep || 1} / ${b.totalApprovalSteps || 1} 级 · ${b.approvalMode === "TWO_STAGE" ? "两级审批" : "直接审批"}</p>${b.approvalActions.length ? `<ul>${b.approvalActions.map(action => `<li>第 ${action.approvalStep} 级 ${action.decision === "APPROVED" ? "已通过" : "已驳回"}${action.reviewNote ? ` · ${escapeHtml(action.reviewNote)}` : ""}</li>`).join("")}</ul>` : ""}${b.note ? `<span>补充说明</span><p>${escapeHtml(b.note)}</p>` : ""}${b.reviewNote ? `<span>处理意见</span><p>${escapeHtml(b.reviewNote)}</p>` : ""}</div></details>
       <div class="card-actions">${["PENDING_CONFIRMATION", "CONFIRMED"].includes(b.status) ? `<button data-booking="${escapeHtml(b.bookingNo)}" data-action="cancellation">撤回申请</button>` : ""}</div>
     </article>`).join("") : empty("还没有申请记录", "在空间大厅选择开放时段即可提交第一份申请。");
 }

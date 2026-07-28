@@ -2,6 +2,7 @@ package com.yanerdan.venueflow.resource.catalog.http.response;
 
 import com.yanerdan.venueflow.resource.catalog.application.ResourceResult;
 import com.yanerdan.venueflow.resource.catalog.domain.ResourceStatus;
+import com.yanerdan.venueflow.resource.catalog.domain.ApprovalMode;
 import java.time.LocalDateTime;
 
 public record ResourceResponse(
@@ -14,6 +15,8 @@ public record ResourceResponse(
     Integer capacity,
     String ownerDepartment,
     String approverExternalUserId,
+    ApprovalMode approvalMode,
+    String finalApproverExternalUserId,
     ResourceStatus status,
     Long version,
     LocalDateTime createdAt,
@@ -30,6 +33,8 @@ public record ResourceResponse(
         result.capacity(),
         result.ownerDepartment(),
         result.approverExternalUserId(),
+        result.approvalMode(),
+        result.finalApproverExternalUserId(),
         result.status(),
         result.version(),
         result.createdAt(),

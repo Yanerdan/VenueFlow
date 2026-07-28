@@ -84,6 +84,29 @@ if (-not (@($directory.items) | Where-Object { $_.id -eq $profile.id })) {
     throw "Created profile did not appear in the management user directory"
 }
 
+$accounts = Invoke-Json "Get" "$gateway/api/v1/auth/management/accounts" $null $adminHeaders
+$candidate = @($accounts.data) |
+    Where-Object { [string]$_.userId -eq [string]$registration.data.userId } |
+    Select-Object -First 1
+if (-not $candidate) { throw "Registered account did not appear in role management" }
+$promoted = Invoke-Json "Patch" `
+    "$gateway/api/v1/auth/management/accounts/$($candidate.userId)/role" @{
+        role = "APPROVER"
+        expectedVersion = $candidate.version
+    } $adminHeaders
+if ($promoted.data.role -ne "APPROVER") { throw "Account was not promoted to approver" }
+$approvers = Invoke-Json "Get" `
+    "$gateway/api/v1/auth/management/accounts/approvers" $null $adminHeaders
+if (-not (@($approvers.data) | Where-Object { [string]$_.userId -eq [string]$candidate.userId })) {
+    throw "Promoted account did not appear in the eligible approver directory"
+}
+$approverLogin = Invoke-Json "Post" "$gateway/api/v1/auth/login" @{
+    username = $username
+    password = $password
+}
+$token = $approverLogin.data.accessToken
+$headers = @{ Authorization = "Bearer $token" }
+
 $resources = Invoke-RestMethod -Uri "$gateway/api/v1/resources?page=0&size=100" -Headers $headers
 $resource = @($resources.items) |
     Where-Object { $_.resourceNo -eq "VF-DEMO-001" } |
@@ -92,7 +115,9 @@ if (-not $resource) { throw "Demo resource VF-DEMO-001 is missing" }
 
 $resource = Invoke-Json "Patch" "$gateway/api/v1/resources/$($resource.id)/ownership" @{
     ownerDepartment = "Campus Operations"
-    approverExternalUserId = $adminExternalUserId
+    approverExternalUserId = [string]$candidate.userId
+    approvalMode = "TWO_STAGE"
+    finalApproverExternalUserId = $adminExternalUserId
     expectedVersion = $resource.version
 } $adminHeaders
 
@@ -126,16 +151,28 @@ if ($created.data.ownerDepartment -ne "Campus Operations") {
 
 $managementPage = Invoke-Json "Get" `
     "$gateway/api/v1/bookings/management?status=PENDING_CONFIRMATION&pageNumber=0&pageSize=20" `
-    $null $adminHeaders
+    $null $headers
 if (-not (@($managementPage.data.items) | Where-Object { $_.bookingNo -eq $bookingNo })) {
     throw "Booking did not appear in the management approval queue"
 }
+$advanced = Invoke-Json "Post" "$gateway/api/v1/bookings/$bookingNo/confirmation" @{
+    reviewNote = "Initial responsibility review passed"
+} $headers
+if ($advanced.data.status -ne "PENDING_CONFIRMATION" -or
+    $advanced.data.currentApprovalStep -ne 2) {
+    throw "Initial approval did not advance to the final stage"
+}
 $confirmed = Invoke-Json "Post" "$gateway/api/v1/bookings/$bookingNo/confirmation" @{
-    reviewNote = "Application details verified"
+    reviewNote = "Final administration review passed"
 } $adminHeaders
 if ($confirmed.data.status -ne "CONFIRMED") { throw "Booking was not confirmed" }
-if ($confirmed.data.reviewNote -ne "Application details verified") {
+if ($confirmed.data.reviewNote -ne "Final administration review passed") {
     throw "Booking review note was not persisted"
+}
+$approvalActions = Invoke-Json "Get" `
+    "$gateway/api/v1/bookings/$bookingNo/approval-actions" $null $headers
+if (@($approvalActions.data).Count -ne 2) {
+    throw "Two-stage approval history was not persisted"
 }
 $report = Invoke-Json "Get" "$gateway/api/v1/bookings/management/report" $null $adminHeaders
 if ($report.data.summary.totalBookings -lt 1 -or $report.data.summary.totalAttendees -lt 1) {
@@ -163,29 +200,13 @@ do {
 if (-not $notificationFound) { throw "Booking notification did not arrive within 20 seconds" }
 
 $refreshed = Invoke-Json "Post" "$gateway/api/v1/auth/refresh" @{
-    refreshToken = $login.data.refreshToken
+    refreshToken = $approverLogin.data.refreshToken
 }
 if (-not $refreshed.data.accessToken) { throw "Token refresh returned no access token" }
 $null = Invoke-Json "Post" "$gateway/api/v1/auth/logout" @{
     refreshToken = $refreshed.data.refreshToken
 }
 
-$accounts = Invoke-Json "Get" "$gateway/api/v1/auth/management/accounts" $null $adminHeaders
-$candidate = @($accounts.data) |
-    Where-Object { [string]$_.userId -eq [string]$registration.data.userId } |
-    Select-Object -First 1
-if (-not $candidate) { throw "Registered account did not appear in role management" }
-$promoted = Invoke-Json "Patch" `
-    "$gateway/api/v1/auth/management/accounts/$($candidate.userId)/role" @{
-        role = "APPROVER"
-        expectedVersion = $candidate.version
-    } $adminHeaders
-if ($promoted.data.role -ne "APPROVER") { throw "Account was not promoted to approver" }
-$approvers = Invoke-Json "Get" `
-    "$gateway/api/v1/auth/management/accounts/approvers" $null $adminHeaders
-if (-not (@($approvers.data) | Where-Object { [string]$_.userId -eq [string]$candidate.userId })) {
-    throw "Promoted account did not appear in the eligible approver directory"
-}
 $restored = Invoke-Json "Patch" `
     "$gateway/api/v1/auth/management/accounts/$($candidate.userId)/role" @{
         role = "APPLICANT"
@@ -202,6 +223,7 @@ if ($restored.data.role -ne "APPLICANT") { throw "Acceptance account role was no
     Booking = "CONFIRMED"
     OperationalReport = "PASS"
     RoleManagement = "PASS"
+    TwoStageApproval = "PASS"
     Search = "PASS"
     Notification = "PASS"
     RefreshAndLogout = "PASS"

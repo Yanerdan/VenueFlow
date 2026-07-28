@@ -4,6 +4,7 @@ import com.yanerdan.venueflow.booking.application.BookingReservationService;
 import com.yanerdan.venueflow.booking.domain.BookingReservation;
 import com.yanerdan.venueflow.booking.domain.BookingStatus;
 import com.yanerdan.venueflow.booking.persistence.BookingRepository;
+import com.yanerdan.venueflow.booking.persistence.BookingApprovalAction;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -69,6 +70,12 @@ public class BookingReservationController {
     return SuccessEnvelope.of(BookingResponse.from(service.get(bookingNo)));
   }
 
+  @GetMapping("/{bookingNo}/approval-actions")
+  public SuccessEnvelope<List<BookingApprovalAction>> approvalActions(
+      @PathVariable @NotBlank String bookingNo) {
+    return SuccessEnvelope.of(service.approvalActions(bookingNo));
+  }
+
   @GetMapping
   public SuccessEnvelope<BookingPageResponse> history(
       @RequestParam @Positive long userId,
@@ -105,7 +112,7 @@ public class BookingReservationController {
     BookingReservation result =
         request == null || request.reviewNote() == null
             ? service.confirm(bookingNo)
-            : service.confirm(bookingNo, request.reviewNote(), role);
+            : service.confirm(bookingNo, request.reviewNote(), role, trustedUserId);
     return SuccessEnvelope.of(BookingResponse.from(result));
   }
 
@@ -118,7 +125,7 @@ public class BookingReservationController {
     BookingRoleGuard.requireApprover(role);
     service.requireApprovalScope(bookingNo, trustedUserId, role);
     return SuccessEnvelope.of(
-        BookingResponse.from(service.reject(bookingNo, request.reason(), role)));
+        BookingResponse.from(service.reject(bookingNo, request.reason(), role, trustedUserId)));
   }
 
   @PostMapping("/{bookingNo}/check-in")
@@ -195,7 +202,11 @@ public class BookingReservationController {
       LocalDateTime reviewedAt,
       Long resourceId,
       String ownerDepartment,
-      String assignedApproverExternalUserId) {
+      String assignedApproverExternalUserId,
+      String approvalMode,
+      String finalAssignedApproverExternalUserId,
+      int currentApprovalStep,
+      int totalApprovalSteps) {
     static BookingResponse from(BookingReservation reservation) {
       return new BookingResponse(
           reservation.bookingNo(),
@@ -222,7 +233,11 @@ public class BookingReservationController {
           reservation.reviewedAt(),
           reservation.resourceId(),
           reservation.ownerDepartment(),
-          reservation.assignedApproverExternalUserId());
+          reservation.assignedApproverExternalUserId(),
+          reservation.approvalMode(),
+          reservation.finalAssignedApproverExternalUserId(),
+          reservation.currentApprovalStep(),
+          "TWO_STAGE".equals(reservation.approvalMode()) ? 2 : 1);
     }
   }
 

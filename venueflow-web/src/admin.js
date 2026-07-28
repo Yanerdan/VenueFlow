@@ -1,4 +1,4 @@
-import { createApi } from "./api.js?v=20260728-c30";
+import { createApi } from "./api.js?v=20260728-c31";
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -128,9 +128,13 @@ function approvalActions(item) {
   if (item.status === "CONFIRMED") return `<button data-approval="${item.bookingNo}" data-action="check-in">签到核销</button><button class="danger" data-approval="${item.bookingNo}" data-action="cancellation">取消</button>`;
   return "—";
 }
-function openReview(item) {
+async function openReview(item) {
   selectedBooking = item;
   const applicant = userFor(item.userId);
+  const actions = await api.approvalActions(item.bookingNo);
+  const trajectory = actions.length
+    ? actions.map(action => `<li>第 ${action.approvalStep} 级 · ${action.decision === "APPROVED" ? "通过" : "驳回"} · ${statusLabel(action.actorRole)}${action.reviewNote ? ` · ${escapeHtml(action.reviewNote)}` : ""} · ${dateTime(action.createdAt)}</li>`).join("")
+    : "<li>尚无审批动作</li>";
   $("#review-title").textContent = item.activityTitle || "历史场地申请";
   $("#review-detail").innerHTML = `
     <div><span>申请人</span><strong>${applicantLabel(item.userId)}</strong></div>
@@ -138,6 +142,7 @@ function openReview(item) {
     <div><span>活动用途</span><p>${escapeHtml(item.purpose || "历史申请未记录")}</p></div>
     <div><span>联系人</span><p>${escapeHtml(item.contactName || applicant?.displayName || "待完善")} · ${escapeHtml(item.contactPhone || applicant?.phone || "待完善")}</p></div>
     <div><span>资源归属</span><p>${escapeHtml(item.ownerDepartment || "未分配部门")} · ${item.assignedApproverExternalUserId ? `审批人 #${item.assignedApproverExternalUserId}` : "未指定审批人"}</p></div>
+    <div><span>审批进度</span><p>第 ${item.currentApprovalStep || 1} / ${item.totalApprovalSteps || 1} 级 · ${item.approvalMode === "TWO_STAGE" ? "两级审批" : "直接审批"}</p><ul>${trajectory}</ul></div>
     ${item.note ? `<div><span>补充说明</span><p>${escapeHtml(item.note)}</p></div>` : ""}
     ${item.reviewNote ? `<div><span>已有处理意见</span><p>${escapeHtml(item.reviewNote)}</p></div>` : ""}`;
   $("#review-note").value = item.reviewNote || "";
@@ -196,7 +201,9 @@ function renderResources() {
       <h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(item.location || "位置待完善")} · 容量 ${item.capacity} 人</p>
       <form class="ownership-form" data-resource-ownership="${item.id}" data-version="${item.version}">
         <input name="ownerDepartment" maxlength="160" placeholder="归属部门" value="${escapeHtml(item.ownerDepartment || "")}">
-        <select name="approverExternalUserId" aria-label="${escapeHtml(item.name)}的审批人">${approverOptions(item.approverExternalUserId)}</select>
+        <select name="approvalMode" aria-label="${escapeHtml(item.name)}的审批模式"><option value="DIRECT" ${item.approvalMode !== "TWO_STAGE" ? "selected" : ""}>直接审批</option><option value="TWO_STAGE" ${item.approvalMode === "TWO_STAGE" ? "selected" : ""}>两级审批</option></select>
+        <select name="approverExternalUserId" aria-label="${escapeHtml(item.name)}的初审人">${approverOptions(item.approverExternalUserId)}</select>
+        <select name="finalApproverExternalUserId" aria-label="${escapeHtml(item.name)}的终审人">${approverOptions(item.finalApproverExternalUserId)}</select>
         <button type="submit">保存归属</button>
       </form>
       <footer><span>分类 #${item.categoryId}</span>${next ? `<button data-resource-status="${item.id}" data-target="${next[0]}" data-version="${item.version}">${next[1]}</button>` : ""}</footer></article>`;
@@ -276,7 +283,7 @@ document.addEventListener("click", event => {
   const review = event.target.closest("[data-review-booking]");
   if (review) {
     const item = bookings.find(value => value.bookingNo === review.dataset.reviewBooking);
-    if (item) openReview(item);
+    if (item) openReview(item).catch(fail);
   }
   const close = event.target.closest("[data-close-form]");
   if (close) close.closest("form").classList.add("hidden");
@@ -314,11 +321,14 @@ $("#resource-admin-list").addEventListener("submit", async event => {
   event.preventDefault();
   const data = new FormData(form);
   const approver = data.get("approverExternalUserId");
+  const finalApprover = data.get("finalApproverExternalUserId");
   try {
     await api.changeResourceOwnership(
       Number(form.dataset.resourceOwnership),
       data.get("ownerDepartment").trim(),
       approver || null,
+      data.get("approvalMode"),
+      finalApprover || null,
       Number(form.dataset.version)
     );
     await loadData(); notify("资源归属已更新");

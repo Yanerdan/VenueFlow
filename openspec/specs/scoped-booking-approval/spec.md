@@ -17,23 +17,18 @@ MUST remain readable.
 - **WHEN** Resource returns responsibility for the selected slot
 - **THEN** Booking persists and returns the same assignment with the reservation
 
-### Requirement: Approval access is assignment-scoped
+### Requirement: Approval access is scoped by resource assignment
 
-Booking Service MUST restrict `APPROVER` management queries, confirmation, rejection, and check-in
-to reservations assigned to the trusted caller external user ID. `SYSTEM_ADMIN` SHALL retain
-global access. A forbidden action MUST preserve reservation state.
+Booking management listing, approval, and rejection SHALL scope an `APPROVER` to
+bookings whose current approval step is assigned to the trusted external user ID. `SYSTEM_ADMIN`
+SHALL retain global management access. Other roles SHALL be forbidden.
 
-#### Scenario: An assigned approver loads pending work
+#### Scenario: Current-stage approver acts
 
-- **WHEN** an approver requests the management queue with trusted identity
-- **THEN** Booking returns only reservations assigned to that identity
+- **WHEN** an approver requests or processes a booking assigned to them at its current stage
+- **THEN** Booking permits the scoped operation
 
-#### Scenario: Another approver attempts approval
+#### Scenario: Earlier-stage approver acts again
 
-- **WHEN** an approver acts on a reservation assigned to someone else
-- **THEN** Booking returns the established forbidden response and preserves its state
-
-#### Scenario: A system administrator loads pending work
-
-- **WHEN** a system administrator requests the management queue
-- **THEN** Booking returns the bounded global result
+- **WHEN** an initial approver requests a booking after it advanced to another assigned final approver
+- **THEN** Booking returns a bounded forbidden response and preserves the current stage
