@@ -1,4 +1,4 @@
-import { createApi } from "./api.js?v=20260728-c27";
+import { createApi } from "./api.js?v=20260728-capacity";
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -27,7 +27,11 @@ function notify(text, error = false) {
   messageTimer = setTimeout(() => $("#message").classList.add("hidden"), 4500);
 }
 function fail(error) {
-  notify(`${error.message}${error.traceId ? ` · 追踪号 ${error.traceId}` : ""}`, true);
+  const friendlyMessages = {
+    BOOKING_CAPACITY_UNAVAILABLE: "该时段剩余容量不足，请减少使用人数或选择其他时段"
+  };
+  const message = friendlyMessages[error.code] || error.message;
+  notify(`${message}${error.traceId ? ` · 追踪号 ${error.traceId}` : ""}`, true);
 }
 function resetApi() {
   const value = gateway.value.trim() || "http://127.0.0.1:8080";
@@ -92,9 +96,17 @@ async function loadSlots(resourceId, name) {
   $("#booking-form").classList.add("hidden");
   $("#slot-panel").classList.add("open");
   const page = await api.slots(resourceId);
-  const items = (page.items || []).filter(slot => slot.status === "OPEN");
+  const openSlots = (page.items || []).filter(slot => slot.status === "OPEN");
+  const items = await Promise.all(openSlots.map(async slot => ({
+    ...slot,
+    capacity: await api.slotCapacity(slot.id).catch(() => null)
+  })));
   $("#slot-list").innerHTML = items.length ? items.map(slot => `
-    <button class="slot" data-slot-id="${slot.id}"><strong>${dateTime(slot.startAt)}</strong><span>至 ${dateTime(slot.endAt)} · 可提交申请</span></button>
+    <button class="slot" data-slot-id="${slot.id}" data-remaining="${slot.capacity?.availableQuantity ?? ""}"
+      ${slot.capacity?.availableQuantity === 0 ? "disabled" : ""}>
+      <strong>${dateTime(slot.startAt)}</strong>
+      <span>至 ${dateTime(slot.endAt)} · ${slot.capacity ? `剩余 ${slot.capacity.availableQuantity} / ${slot.capacity.staticCapacity} 人` : "可提交申请"}</span>
+    </button>
   `).join("") : empty("暂无开放时段", "该空间未来 90 天暂未发布可申请时段。");
 }
 async function loadBookings() {
@@ -165,6 +177,15 @@ $("#slot-list").addEventListener("click", event => {
   const button = event.target.closest("[data-slot-id]"); if (!button) return;
   $$(".slot").forEach(item => item.classList.toggle("selected", item === button));
   $("#booking-form").elements.slotId.value = button.dataset.slotId;
+  const quantity = $("#booking-form").elements.quantity;
+  const remaining = Number(button.dataset.remaining);
+  if (button.dataset.remaining !== "" && Number.isFinite(remaining)) {
+    quantity.max = String(remaining);
+    if (Number(quantity.value) > remaining) quantity.value = String(Math.max(1, remaining));
+    $("#slot-hint").textContent = `该时段当前剩余 ${remaining} 人，请填写不超过剩余容量的预计人数。`;
+  } else {
+    quantity.removeAttribute("max");
+  }
   $("#booking-form").classList.remove("hidden");
 });
 $("#booking-form").addEventListener("submit", async event => {

@@ -64,6 +64,23 @@ test("booking creation sends a generated idempotency key", async () => {
   assert.deepEqual(JSON.parse(captured.body), { userId: 1, slotId: 2, quantity: 3 });
 });
 
+test("slot capacity is queried through the resource gateway route", async () => {
+  let requestedUrl;
+  const api = createApi({
+    baseUrl: "http://gateway",
+    storage: storage({ "venueflow.access": "token" }),
+    fetchImpl: async url => {
+      requestedUrl = url;
+      return response(200, {
+        data: { slotId: 2, staticCapacity: 16, occupiedQuantity: 3, availableQuantity: 13 }
+      });
+    }
+  });
+  const capacity = await api.slotCapacity(2);
+  assert.equal(requestedUrl, "http://gateway/api/v1/resource-slots/2/capacity");
+  assert.equal(capacity.availableQuantity, 13);
+});
+
 test("search results expose the resource id used by slot navigation", async () => {
   const api = createApi({
     baseUrl: "http://gateway",

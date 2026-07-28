@@ -137,6 +137,7 @@ export function createApi({
         `/api/v1/resources/${resourceId}/slots?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&page=0&size=50`
       );
     },
+    slotCapacity: slotId => request(`/api/v1/resource-slots/${slotId}/capacity`),
     createBooking: (userId, slotId, quantity, details = {}) => request("/api/v1/bookings", {
       method: "POST",
       headers: { "Idempotency-Key": uuid() },
