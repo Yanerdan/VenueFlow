@@ -218,9 +218,17 @@ $("#show-resource-form").addEventListener("click", async () => {
 });
 $("#show-slot-form").addEventListener("click", () => $("#slot-form").classList.remove("hidden"));
 $("#resource-form").addEventListener("submit", async event => {
-  event.preventDefault(); const data = Object.fromEntries(new FormData(event.currentTarget));
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = Object.fromEntries(new FormData(form));
   data.categoryId = Number(data.categoryId); data.capacity = Number(data.capacity);
-  try { await api.createResource(data); event.currentTarget.reset(); event.currentTarget.classList.add("hidden"); await loadData(); notify("资源草稿已创建"); } catch (error) { fail(error); }
+  try {
+    await api.createResource(data);
+    form.reset();
+    form.classList.add("hidden");
+    await loadData();
+    notify("资源草稿已创建");
+  } catch (error) { fail(error); }
 });
 $("#resource-admin-list").addEventListener("click", async event => {
   const button = event.target.closest("[data-resource-status]"); if (!button) return;
@@ -242,10 +250,14 @@ $("#resource-admin-list").addEventListener("submit", async event => {
   } catch (error) { fail(error); }
 });
 $("#slot-form").addEventListener("submit", async event => {
-  event.preventDefault(); const data = new FormData(event.currentTarget);
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = new FormData(form);
   try {
     await api.createSlot(Number(data.get("resourceId")), new Date(data.get("startAt")).toISOString(), new Date(data.get("endAt")).toISOString());
-    event.currentTarget.reset(); event.currentTarget.classList.add("hidden"); notify("开放时段已发布");
+    form.reset();
+    form.classList.add("hidden");
+    notify("开放时段已发布");
   } catch (error) { fail(error); }
 });
 $("#slot-resource-list").addEventListener("click", event => {
