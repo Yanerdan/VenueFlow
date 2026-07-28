@@ -110,7 +110,9 @@ public class UserProfileController {
       @RequestParam(required = false) @Size(max = 80) String keyword,
       @RequestParam(defaultValue = "0") @Min(0) int pageNumber,
       @RequestParam(defaultValue = "50") @Min(1) @Max(100) int pageSize) {
-    if (!role.equals("APPROVER") && !role.equals("SYSTEM_ADMIN")) {
+    if (!role.equals("APPROVER")
+        && !role.equals("RESOURCE_MANAGER")
+        && !role.equals("SYSTEM_ADMIN")) {
       throw new UserDirectoryAccessDeniedException();
     }
     return UserProfilePageResponse.from(service.findDirectory(keyword, pageNumber, pageSize));

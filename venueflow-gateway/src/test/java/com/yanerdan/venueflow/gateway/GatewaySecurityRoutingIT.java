@@ -88,6 +88,26 @@ class GatewaySecurityRoutingIT {
   }
 
   @Test
+  void authManagementRequiresAuthentication() throws Exception {
+    client()
+        .get()
+        .uri("/api/v1/auth/management/accounts")
+        .exchange()
+        .expectStatus()
+        .isUnauthorized();
+    assertThat(CALLS).hasValue(0);
+
+    client()
+        .get()
+        .uri("/api/v1/auth/management/accounts")
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token(ISSUER))
+        .exchange()
+        .expectStatus()
+        .isOk();
+    assertThat(CALLS).hasValue(1);
+  }
+
+  @Test
   void missingAndWrongIssuerTokensNeverReachDownstream() throws Exception {
     client()
         .get()

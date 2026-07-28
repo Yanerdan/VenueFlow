@@ -56,7 +56,14 @@ public class GatewaySecurityConfiguration {
         .authorizeExchange(
             exchanges ->
                 exchanges
-                    .pathMatchers("/api/v1/auth/**", "/actuator/health/**")
+                    .pathMatchers("/api/v1/auth/management/**")
+                    .authenticated()
+                    .pathMatchers(
+                        "/api/v1/auth/register",
+                        "/api/v1/auth/login",
+                        "/api/v1/auth/refresh",
+                        "/api/v1/auth/logout",
+                        "/actuator/health/**")
                     .permitAll()
                     .pathMatchers(
                         "/api/v1/users/**",

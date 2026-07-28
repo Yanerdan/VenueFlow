@@ -95,6 +95,13 @@ export function createApi({
     managementUsers: (keyword = "") => request(
       `/api/v1/users/management?pageNumber=0&pageSize=100${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""}`
     ),
+    authAccounts: () => request("/api/v1/auth/management/accounts"),
+    approverAccounts: () => request("/api/v1/auth/management/accounts/approvers"),
+    changeAccountRole: (userId, role, expectedVersion) => request(
+      `/api/v1/auth/management/accounts/${encodeURIComponent(userId)}/role`, {
+        method: "PATCH", body: JSON.stringify({ role, expectedVersion })
+      }
+    ),
     resources: () => request("/api/v1/resources?page=0&size=50"),
     categories: () => request("/api/v1/resource-categories"),
     createCategory: payload => request("/api/v1/resource-categories", {

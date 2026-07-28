@@ -283,6 +283,9 @@ select, textarea { width: 100%; padding: 11px 13px; color: var(--ink); backgroun
 .report-list > div:last-child { border-bottom: 0; }
 .report-list span { color: var(--ink-soft); }
 .report-audit { margin-top: 16px; }
+.role-form { display: flex; gap: 6px; min-width: 210px; }
+.role-form select { min-width: 125px; }
+.role-form button { white-space: nowrap; }
 .compact-row { padding: 13px 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line-soft); }
 .compact-row div { display: grid; gap: 3px; }
 .compact-row span { color: var(--muted); font-size: .72rem; }

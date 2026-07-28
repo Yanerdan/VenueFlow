@@ -21,6 +21,9 @@ public class AuthExceptionHandler {
         switch (exception.code()) {
           case AUTH_USERNAME_EXISTS -> HttpStatus.CONFLICT;
           case AUTH_INVALID_CREDENTIALS, AUTH_INVALID_REFRESH_TOKEN -> HttpStatus.UNAUTHORIZED;
+          case AUTH_FORBIDDEN -> HttpStatus.FORBIDDEN;
+          case AUTH_ACCOUNT_NOT_FOUND -> HttpStatus.NOT_FOUND;
+          case AUTH_ROLE_CONFLICT -> HttpStatus.CONFLICT;
           case AUTH_PERSISTENCE_FAILURE -> HttpStatus.SERVICE_UNAVAILABLE;
         };
     return error(status, exception.code().name(), exception.getMessage());

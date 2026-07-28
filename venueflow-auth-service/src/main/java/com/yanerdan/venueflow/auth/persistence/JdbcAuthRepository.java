@@ -2,6 +2,7 @@ package com.yanerdan.venueflow.auth.persistence;
 
 import com.yanerdan.venueflow.auth.application.AuthRepository;
 import com.yanerdan.venueflow.auth.domain.AuthCredential;
+import com.yanerdan.venueflow.auth.domain.AuthAccount;
 import com.yanerdan.venueflow.auth.domain.CampusRole;
 import com.yanerdan.venueflow.auth.domain.RefreshSession;
 import java.sql.ResultSet;
@@ -73,6 +74,50 @@ public class JdbcAuthRepository implements AuthRepository {
         now,
         username,
         role.name());
+  }
+
+  @Override
+  public List<AuthAccount> listAccounts(int limit) {
+    return jdbc.query(
+        """
+        SELECT user_id, username, role, token_version, version, updated_at
+        FROM auth_credentials
+        ORDER BY username, id
+        LIMIT ?
+        """,
+        JdbcAuthRepository::account,
+        limit);
+  }
+
+  @Override
+  public Optional<AuthAccount> findAccount(UUID userId) {
+    return first(
+        jdbc.query(
+            """
+            SELECT user_id, username, role, token_version, version, updated_at
+            FROM auth_credentials
+            WHERE user_id = ?
+            """,
+            JdbcAuthRepository::account,
+            userId.toString()));
+  }
+
+  @Override
+  public boolean changeRole(
+      UUID userId, CampusRole role, long expectedVersion, LocalDateTime now) {
+    return jdbc.update(
+            """
+            UPDATE auth_credentials
+            SET role = ?, token_version = token_version + 1,
+                version = version + 1, updated_at = ?
+            WHERE user_id = ? AND version = ? AND role <> ?
+            """,
+            role.name(),
+            now,
+            userId.toString(),
+            expectedVersion,
+            role.name())
+        == 1;
   }
 
   @Override
@@ -181,6 +226,16 @@ public class JdbcAuthRepository implements AuthRepository {
         result.getLong("token_version"),
         result.getObject("expires_at", LocalDateTime.class),
         result.getObject("revoked_at", LocalDateTime.class));
+  }
+
+  private static AuthAccount account(ResultSet result, int row) throws SQLException {
+    return new AuthAccount(
+        UUID.fromString(result.getString("user_id")),
+        result.getString("username"),
+        CampusRole.valueOf(result.getString("role")),
+        result.getLong("token_version"),
+        result.getLong("version"),
+        result.getObject("updated_at", LocalDateTime.class));
   }
 
   private static <T> Optional<T> first(List<T> values) {

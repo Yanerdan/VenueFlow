@@ -21,7 +21,9 @@ import com.yanerdan.venueflow.user.profile.domain.DuplicateExternalUserIdExcepti
 import com.yanerdan.venueflow.user.profile.domain.ExternalUserId;
 import com.yanerdan.venueflow.user.profile.domain.UserProfile;
 import com.yanerdan.venueflow.user.profile.domain.UserProfileId;
+import com.yanerdan.venueflow.user.profile.domain.UserProfilePage;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -101,6 +103,19 @@ class UserProfileControllerTest {
         .andExpect(jsonPath("$.externalUserId").value("customer-123"));
 
     verify(service).getByExternalUserId("customer-123");
+  }
+
+  @Test
+  void resourceManagerCanBrowseManagementDirectory() throws Exception {
+    when(service.findDirectory(null, 0, 50))
+        .thenReturn(new UserProfilePage(List.of(profile()), 0, 50, 1));
+
+    mockMvc
+        .perform(get("/api/v1/users/management").header("X-Role", "RESOURCE_MANAGER"))
+        .andExpectAll(
+            status().isOk(),
+            jsonPath("$.items[0].externalUserId").value("customer-123"),
+            jsonPath("$.totalElements").value(1));
   }
 
   @Test

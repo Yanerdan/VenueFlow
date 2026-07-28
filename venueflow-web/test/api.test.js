@@ -141,6 +141,26 @@ test("operational report uses the scoped management endpoint", async () => {
   assert.equal(report.summary.totalBookings, 4);
 });
 
+test("account directory and role update use authenticated management endpoints", async () => {
+  const calls = [];
+  const api = createApi({
+    baseUrl: "http://gateway",
+    storage: storage({ "venueflow.access": "token" }),
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return response(200, { data: [] });
+    }
+  });
+  await api.authAccounts();
+  await api.approverAccounts();
+  await api.changeAccountRole("user-1", "APPROVER", 3);
+  assert.equal(calls[0].url, "http://gateway/api/v1/auth/management/accounts");
+  assert.equal(calls[1].url, "http://gateway/api/v1/auth/management/accounts/approvers");
+  assert.equal(calls[2].url, "http://gateway/api/v1/auth/management/accounts/user-1/role");
+  assert.deepEqual(JSON.parse(calls[2].options.body), { role: "APPROVER", expectedVersion: 3 });
+  assert.equal(calls[2].options.headers.Authorization, "Bearer token");
+});
+
 test("campus profile and user directory use bounded management endpoints", async () => {
   const calls = [];
   const api = createApi({

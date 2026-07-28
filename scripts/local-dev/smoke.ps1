@@ -170,6 +170,29 @@ $null = Invoke-Json "Post" "$gateway/api/v1/auth/logout" @{
     refreshToken = $refreshed.data.refreshToken
 }
 
+$accounts = Invoke-Json "Get" "$gateway/api/v1/auth/management/accounts" $null $adminHeaders
+$candidate = @($accounts.data) |
+    Where-Object { [string]$_.userId -eq [string]$registration.data.userId } |
+    Select-Object -First 1
+if (-not $candidate) { throw "Registered account did not appear in role management" }
+$promoted = Invoke-Json "Patch" `
+    "$gateway/api/v1/auth/management/accounts/$($candidate.userId)/role" @{
+        role = "APPROVER"
+        expectedVersion = $candidate.version
+    } $adminHeaders
+if ($promoted.data.role -ne "APPROVER") { throw "Account was not promoted to approver" }
+$approvers = Invoke-Json "Get" `
+    "$gateway/api/v1/auth/management/accounts/approvers" $null $adminHeaders
+if (-not (@($approvers.data) | Where-Object { [string]$_.userId -eq [string]$candidate.userId })) {
+    throw "Promoted account did not appear in the eligible approver directory"
+}
+$restored = Invoke-Json "Patch" `
+    "$gateway/api/v1/auth/management/accounts/$($candidate.userId)/role" @{
+        role = "APPLICANT"
+        expectedVersion = $promoted.data.version
+    } $adminHeaders
+if ($restored.data.role -ne "APPLICANT") { throw "Acceptance account role was not restored" }
+
 [pscustomobject]@{
     Gateway = "UP"
     Registration = "PASS"
@@ -178,6 +201,7 @@ $null = Invoke-Json "Post" "$gateway/api/v1/auth/logout" @{
     ResourceAndSlot = "PASS"
     Booking = "CONFIRMED"
     OperationalReport = "PASS"
+    RoleManagement = "PASS"
     Search = "PASS"
     Notification = "PASS"
     RefreshAndLogout = "PASS"

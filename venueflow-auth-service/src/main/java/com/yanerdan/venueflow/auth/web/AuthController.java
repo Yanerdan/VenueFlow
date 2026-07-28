@@ -62,7 +62,7 @@ public class AuthController {
         tokens.accessToken(), tokens.refreshToken(), tokens.tokenType(), tokens.expiresInSeconds());
   }
 
-  private static <T> SuccessResponse<T> success(T data, String message) {
+  static <T> SuccessResponse<T> success(T data, String message) {
     return new SuccessResponse<>("OK", message, data, traceId());
   }
 

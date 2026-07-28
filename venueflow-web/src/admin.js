@@ -1,4 +1,4 @@
-import { createApi } from "./api.js?v=20260728-c29";
+import { createApi } from "./api.js?v=20260728-c30";
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -9,6 +9,8 @@ const approvalRoles = ["APPROVER", "SYSTEM_ADMIN"];
 let resources = [];
 let bookings = [];
 let users = [];
+let accounts = [];
+let approvers = [];
 let report;
 let selectedBooking;
 let messageTimer;
@@ -47,20 +49,31 @@ function guard() {
   return true;
 }
 async function loadData() {
-  const tasks = [api.resources()];
-  if (approvalRoles.includes(api.role())) {
-    tasks.push(api.managementBookings());
-    tasks.push(api.managementUsers());
-    tasks.push(api.operationalReport());
-  }
-  const [resourcePage, bookingPage, userPage, reportData] = await Promise.all(tasks);
+  const role = api.role();
+  const [resourcePage, bookingPage, userPage, reportData, accountData, approverData] =
+    await Promise.all([
+      api.resources(),
+      approvalRoles.includes(role) ? api.managementBookings() : Promise.resolve(null),
+      api.managementUsers(),
+      approvalRoles.includes(role) ? api.operationalReport() : Promise.resolve(null),
+      role === "SYSTEM_ADMIN" ? api.authAccounts() : Promise.resolve([]),
+      ["RESOURCE_MANAGER", "SYSTEM_ADMIN"].includes(role)
+        ? api.approverAccounts()
+        : Promise.resolve([])
+    ]);
   resources = resourcePage.items || [];
   bookings = bookingPage?.items || [];
   users = userPage?.items || [];
   report = reportData || null;
+  accounts = accountData || [];
+  approvers = approverData || [];
   renderDashboard(); renderReports(); renderApprovals(); renderResources(); renderResourceOptions(); renderResourcePicker(); renderUsers();
 }
 const userFor = userId => users.find(user => Number(user.id) === Number(userId));
+const profileForExternalId = externalId =>
+  users.find(user => user.externalUserId === externalId);
+const accountFor = externalId =>
+  accounts.find(account => account.userId === externalId);
 const applicantLabel = userId => {
   const user = userFor(userId);
   return user
@@ -141,10 +154,34 @@ function renderApprovals() {
 function renderUsers() {
   $("#user-table").innerHTML = users.length ? users.map(user => `
     <tr><td><strong>${escapeHtml(user.displayName)}</strong></td><td>${escapeHtml(user.campusId || "待完善")}</td>
-      <td>${statusLabel(user.identityType)}</td><td>${escapeHtml(user.department || "待完善")}</td>
+      <td>${statusLabel(user.identityType)}</td><td>${roleEditor(user)}</td><td>${escapeHtml(user.department || "待完善")}</td>
       <td>${escapeHtml(user.phone || "待完善")}</td><td>${escapeHtml(user.email || "待完善")}</td>
       <td><span class="status ${user.accountStatus.toLowerCase()}">${user.accountStatus === "ACTIVE" ? "正常" : "停用"}</span></td></tr>
-  `).join("") : `<tr><td colspan="7">${empty("暂无人员资料", approvalRoles.includes(api.role()) ? "没有符合条件的平台用户。" : "当前角色不可查看人员目录。")}</td></tr>`;
+  `).join("") : `<tr><td colspan="8">${empty("暂无人员资料", "没有符合条件的平台用户。")}</td></tr>`;
+}
+function roleEditor(user) {
+  const account = accountFor(user.externalUserId);
+  if (!account) return "—";
+  if (api.role() !== "SYSTEM_ADMIN") return statusLabel(account.role);
+  const options = ["APPLICANT", "APPROVER", "RESOURCE_MANAGER", "SYSTEM_ADMIN"]
+    .map(role => `<option value="${role}" ${role === account.role ? "selected" : ""}>${statusLabel(role)}</option>`)
+    .join("");
+  return `<form class="role-form" data-role-user="${account.userId}" data-version="${account.version}">
+    <select name="role" aria-label="${escapeHtml(user.displayName)}的平台角色">${options}</select>
+    <button type="submit">保存</button>
+  </form>`;
+}
+function approverOptions(selectedId) {
+  const options = approvers.map(account => {
+    const profile = profileForExternalId(account.userId);
+    const name = profile?.displayName || account.username;
+    const department = profile?.department || "部门待完善";
+    return `<option value="${account.userId}" ${account.userId === selectedId ? "selected" : ""}>${escapeHtml(name)} · ${escapeHtml(department)} · ${escapeHtml(account.username)}</option>`;
+  }).join("");
+  const legacy = selectedId && !approvers.some(account => account.userId === selectedId)
+    ? `<option value="${escapeHtml(selectedId)}" selected>历史审批人 · ${escapeHtml(selectedId)}</option>`
+    : "";
+  return `<option value="">未指定审批人</option>${legacy}${options}`;
 }
 function nextResourceStatus(item) {
   if (item.status === "DRAFT") return ["ACTIVE", "发布"];
@@ -159,7 +196,7 @@ function renderResources() {
       <h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(item.location || "位置待完善")} · 容量 ${item.capacity} 人</p>
       <form class="ownership-form" data-resource-ownership="${item.id}" data-version="${item.version}">
         <input name="ownerDepartment" maxlength="160" placeholder="归属部门" value="${escapeHtml(item.ownerDepartment || "")}">
-        <input name="approverExternalUserId" maxlength="64" placeholder="审批人账号 ID" value="${escapeHtml(item.approverExternalUserId || "")}">
+        <select name="approverExternalUserId" aria-label="${escapeHtml(item.name)}的审批人">${approverOptions(item.approverExternalUserId)}</select>
         <button type="submit">保存归属</button>
       </form>
       <footer><span>分类 #${item.categoryId}</span>${next ? `<button data-resource-status="${item.id}" data-target="${next[0]}" data-version="${item.version}">${next[1]}</button>` : ""}</footer></article>`;
@@ -218,6 +255,19 @@ $("#user-search-form").addEventListener("submit", async event => {
     const page = await api.managementUsers(new FormData(event.currentTarget).get("keyword").trim());
     users = page.items || [];
     renderUsers();
+  } catch (error) { fail(error); }
+});
+$("#user-table").addEventListener("submit", async event => {
+  const form = event.target.closest("[data-role-user]"); if (!form) return;
+  event.preventDefault();
+  try {
+    await api.changeAccountRole(
+      form.dataset.roleUser,
+      new FormData(form).get("role"),
+      Number(form.dataset.version)
+    );
+    await loadData();
+    notify("平台角色已更新，目标用户重新登录后生效");
   } catch (error) { fail(error); }
 });
 document.addEventListener("click", event => {
