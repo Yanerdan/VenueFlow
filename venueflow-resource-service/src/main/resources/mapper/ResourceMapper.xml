@@ -117,6 +117,19 @@
     AND version = #{expectedVersion}
   </update>
 
+  <update id="updateFactsIfVersionMatches">
+    UPDATE `resource`
+    SET category_id = #{categoryId},
+    name = #{name},
+    description = #{description},
+    location = #{location},
+    capacity = #{capacity},
+    version = version + 1,
+    updated_at = CURRENT_TIMESTAMP(6)
+    WHERE id = #{resourceId}
+    AND version = #{expectedVersion}
+  </update>
+
   <select id="selectByIdForUpdate" resultMap="ResourceEntityResultMap">
     SELECT <include refid="ResourceColumns"/>
     FROM `resource`

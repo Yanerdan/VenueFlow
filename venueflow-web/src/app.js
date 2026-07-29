@@ -1,4 +1,4 @@
-import { createApi } from "./api.js?v=20260729-c34b";
+import { createApi } from "./api.js?v=20260729-c35";
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -13,6 +13,7 @@ let bookingHistory = [];
 let notificationItems = [];
 let currentResource;
 let selectedSlot;
+let availableResourceIds = null;
 const categoryCodes = new Map();
 const slotCache = new Map();
 const resourceCache = new Map();
@@ -38,6 +39,14 @@ const skeletons = (count = 3) => Array.from({ length: count }, () => '<div class
 const ruleSummary = resource =>
   `至少提前 ${resource.minAdvanceHours ?? 0} 小时 · 最多提前 ${resource.maxAdvanceDays ?? 90} 天 · 单次不超过 ${resource.maxDurationMinutes ?? 480} 分钟`;
 const approvalLabel = resource => resource?.approvalMode === "TWO_STAGE" ? "院系初审 + 校级终审" : "管理部门直接审批";
+const draftFields = ["activityTitle", "purpose", "contactName", "contactPhone", "note", "quantity"];
+const identityKey = suffix => `venueflow.${suffix}.${profile?.externalUserId || profile?.id || "anonymous"}`;
+const localDate = value => {
+  const date = new Date(value);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+};
+const publicComplete = resource =>
+  Boolean(resource.name?.trim() && resource.location?.trim() && Number(resource.capacity) > 0 && resource.ownerDepartment?.trim());
 
 let messageTimer;
 function notify(text, error = false) {
@@ -90,7 +99,8 @@ function renderPersonalSummary() {
   const approved = bookingHistory.filter(item => item.status === "CONFIRMED").length;
   $("#summary-active").textContent = String(active);
   $("#summary-approved").textContent = String(approved);
-  $("#summary-messages").textContent = String(notificationItems.length);
+  const read = notificationReadIds();
+  $("#summary-messages").textContent = String(notificationItems.filter(item => !read.has(String(item.id))).length);
   const missing = profileMissingFields();
   $("#summary-next").textContent = missing.length
     ? `先完善 ${missing.slice(0, 2).join("、")}`
@@ -107,6 +117,7 @@ async function enter(registration) {
   $("#profile-initial").textContent = profile.displayName.trim().charAt(0);
   $("#welcome-name").textContent = `${profile.displayName}，欢迎回来`;
   renderProfile();
+  restoreDraft();
   renderPersonalSummary();
   if (["APPROVER", "RESOURCE_MANAGER", "SYSTEM_ADMIN"].includes(api.role())) $("#admin-entry").classList.remove("hidden");
   await Promise.allSettled([loadResources(), loadBookings(), loadNotifications()]);
@@ -120,9 +131,13 @@ function exit() {
   ["#logout", "#profile-chip", "#desktop-nav", "#mobile-nav", "#admin-entry"].forEach(id => $(id).classList.add("hidden"));
 }
 function filteredResources() {
-  if (!activeCategory) return resourceCatalog;
-  const accepted = activeCategory.split(",");
-  return resourceCatalog.filter(resource => accepted.includes(categoryCodes.get(resource.categoryId)));
+  const data = new FormData($("#search-form"));
+  const requiredCapacity = Number(data.get("capacity")) || 0;
+  const accepted = activeCategory ? activeCategory.split(",") : null;
+  return resourceCatalog.filter(resource =>
+    (!accepted || accepted.includes(categoryCodes.get(resource.categoryId))) &&
+    Number(resource.capacity) >= requiredCapacity &&
+    (!availableResourceIds || availableResourceIds.has(Number(resource.id))));
 }
 function renderResources() {
   const items = filteredResources();
@@ -139,17 +154,30 @@ function renderResources() {
       </div>
     </article>`).join("") : empty("没有匹配的空间", "请切换分类、更换关键词或稍后刷新。");
 }
-async function loadResources(text = "") {
+async function loadResources() {
   $("#resource-list").innerHTML = skeletons(4);
+  const filters = new FormData($("#search-form"));
+  const text = String(filters.get("text") || "").trim();
+  const intendedDate = String(filters.get("date") || "");
   const [page, categories] = await Promise.all([
     text ? api.search(text) : api.resources(),
     categoryCodes.size ? Promise.resolve([]) : api.categories().catch(() => [])
   ]);
   (categories.items || categories || []).forEach(category => categoryCodes.set(category.id, category.code));
   resourceCatalog = (page.items || [])
-    .filter(item => !item.status || item.status === "ACTIVE")
+    .filter(item => (!item.status || item.status === "ACTIVE") && publicComplete(item))
     .sort((a, b) => Number(!String(a.resourceNo).startsWith("VF-CAMPUS-")) - Number(!String(b.resourceNo).startsWith("VF-CAMPUS-")));
   resourceCatalog.forEach(resource => resourceCache.set(Number(resource.id), resource));
+  availableResourceIds = null;
+  if (intendedDate) {
+    const checks = await Promise.all(resourceCatalog.map(async resource => {
+      const page = await api.slots(resource.id).catch(() => ({ items: [] }));
+      const usable = (page.items || []).some(slot =>
+        slot.status === "OPEN" && localDate(slot.startAt) === intendedDate);
+      return usable ? Number(resource.id) : null;
+    }));
+    availableResourceIds = new Set(checks.filter(Boolean));
+  }
   renderResources();
 }
 async function loadSlots(resourceId, name) {
@@ -172,11 +200,18 @@ async function loadSlots(resourceId, name) {
     ...slot, capacity: await api.slotCapacity(slot.id).catch(() => null)
   })));
   items.forEach(slot => slotCache.set(Number(slot.id), slot));
-  $("#slot-list").innerHTML = items.length ? items.map(slot => `
-    <button class="slot" data-slot-id="${slot.id}" data-remaining="${slot.capacity?.availableQuantity ?? ""}" ${slot.capacity?.availableQuantity <= 0 ? "disabled" : ""}>
-      <strong>${dateTime(slot.startAt)}</strong>
-      <span>至 ${dateTime(slot.endAt)} · ${slot.capacity ? `剩余 ${slot.capacity.availableQuantity} / ${slot.capacity.staticCapacity} 人` : "可提交申请"}</span>
-    </button>
+  const grouped = items.reduce((map, slot) => {
+    const day = localDate(slot.startAt);
+    if (!map.has(day)) map.set(day, []);
+    map.get(day).push(slot);
+    return map;
+  }, new Map());
+  $("#slot-list").innerHTML = items.length ? [...grouped.entries()].map(([day, slots]) => `
+    <div class="slot-day"><strong>${new Intl.DateTimeFormat("zh-CN", { month: "long", day: "numeric", weekday: "short" }).format(new Date(`${day}T12:00:00`))}</strong>
+      ${slots.map(slot => `<button class="slot" data-slot-id="${slot.id}" data-remaining="${slot.capacity?.availableQuantity ?? ""}" ${slot.capacity?.availableQuantity <= 0 ? "disabled" : ""}>
+        <strong>${new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit" }).format(new Date(slot.startAt))} — ${new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit" }).format(new Date(slot.endAt))}</strong>
+        <span>${slot.capacity ? `剩余 ${slot.capacity.availableQuantity} / ${slot.capacity.staticCapacity} 人` : "可提交申请"}</span>
+      </button>`).join("")}</div>
   `).join("") : empty("暂无开放时段", "该空间未来 90 天暂未发布可申请时段，可联系负责单位了解后续安排。");
 }
 async function cachedSlot(slotId) {
@@ -200,31 +235,82 @@ async function enrichBooking(item) {
   const resource = await cachedResource(item.resourceId || slot?.resourceId).catch(() => null);
   return { ...item, approvalActions, slot, resource };
 }
+function bookingMatchesFilters(booking) {
+  const filters = new FormData($("#booking-filter-form"));
+  const text = String(filters.get("text") || "").trim().toLowerCase();
+  const status = String(filters.get("status") || "");
+  const haystack = `${booking.bookingNo} ${booking.activityTitle || ""} ${booking.resource?.name || ""}`.toLowerCase();
+  return (!status || booking.status === status) && (!text || haystack.includes(text));
+}
+function renderBookings(focusBookingNo) {
+  const items = bookingHistory.filter(bookingMatchesFilters);
+  $("#booking-list").innerHTML = items.length ? items.map(booking => `
+    <article class="booking-card${booking.bookingNo === focusBookingNo ? " focused" : ""}" data-booking-card="${escapeHtml(booking.bookingNo)}">
+      <div><p class="booking-label">${escapeHtml(booking.bookingNo)}</p><strong class="activity-name">${escapeHtml(booking.activityTitle || "历史场地申请")}</strong><span class="status ${statusClasses[booking.status] || ""}">${escapeHtml(bookingLabel(booking))}</span></div>
+      <div><p class="booking-label">使用空间</p><div class="booking-value">${escapeHtml(booking.resource?.name || `资源记录 ${booking.resourceId || "待恢复"}`)}</div><small>${escapeHtml(booking.resource?.location || booking.ownerDepartment || "位置记录暂不可用")}</small></div>
+      <div><p class="booking-label">使用时间</p><div class="booking-value">${escapeHtml(dateRange(booking.slot?.startAt, booking.slot?.endAt))}</div><small>${booking.quantity} 人 · ${escapeHtml(booking.ownerDepartment || booking.resource?.ownerDepartment || "管理部门待确认")}</small></div>
+      <details class="booking-detail"><summary>查看申请与审批详情</summary><div><span>用途</span><p>${escapeHtml(booking.purpose || "历史申请未记录")}</p><span>联系人</span><p>${escapeHtml(booking.contactName || "待完善")} · ${escapeHtml(booking.contactPhone || "待完善")}</p><span>审批路径</span><p>第 ${booking.currentApprovalStep || 1} / ${booking.totalApprovalSteps || 1} 级 · ${booking.approvalMode === "TWO_STAGE" ? "院系初审 + 校级终审" : "管理部门直接审批"}</p>${booking.approvalActions.length ? `<ul>${booking.approvalActions.map(action => `<li>第 ${action.approvalStep} 级 ${action.decision === "APPROVED" ? "已通过" : "未通过"}${action.reviewNote ? ` · ${escapeHtml(action.reviewNote)}` : ""}</li>`).join("")}</ul>` : ""}${booking.note ? `<span>补充说明</span><p>${escapeHtml(booking.note)}</p>` : ""}${booking.reviewNote ? `<span>处理意见</span><p>${escapeHtml(booking.reviewNote)}</p>` : ""}</div></details>
+      <div class="card-actions"><button data-repeat-booking="${escapeHtml(booking.bookingNo)}">再次申请</button>${["PENDING_CONFIRMATION", "CONFIRMED"].includes(booking.status) ? `<button data-booking="${escapeHtml(booking.bookingNo)}" data-action="cancellation">撤回申请</button>` : ""}</div>
+    </article>`).join("") : empty(
+      bookingHistory.length ? "没有符合筛选条件的申请" : "还没有申请记录",
+      bookingHistory.length ? "请清除筛选条件后查看全部申请。" : "在空间大厅选择开放时段即可提交第一份申请。"
+    );
+  if (focusBookingNo) {
+    $("#booking-list").querySelector(`[data-booking-card="${CSS.escape(focusBookingNo)}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+}
 async function loadBookings() {
   if (!profile) return;
   $("#booking-list").innerHTML = skeletons();
   const page = await api.bookings(profile.id);
   bookingHistory = await Promise.all((page.items || []).map(enrichBooking));
   renderPersonalSummary();
-  $("#booking-list").innerHTML = bookingHistory.length ? bookingHistory.map(booking => `
-    <article class="booking-card">
-      <div><p class="booking-label">${escapeHtml(booking.bookingNo)}</p><strong class="activity-name">${escapeHtml(booking.activityTitle || "历史场地申请")}</strong><span class="status ${statusClasses[booking.status] || ""}">${escapeHtml(bookingLabel(booking))}</span></div>
-      <div><p class="booking-label">使用空间</p><div class="booking-value">${escapeHtml(booking.resource?.name || `资源记录 ${booking.resourceId || "待恢复"}`)}</div><small>${escapeHtml(booking.resource?.location || booking.ownerDepartment || "位置记录暂不可用")}</small></div>
-      <div><p class="booking-label">使用时间</p><div class="booking-value">${escapeHtml(dateRange(booking.slot?.startAt, booking.slot?.endAt))}</div><small>${booking.quantity} 人 · ${escapeHtml(booking.ownerDepartment || booking.resource?.ownerDepartment || "管理部门待确认")}</small></div>
-      <details class="booking-detail"><summary>查看申请与审批详情</summary><div><span>用途</span><p>${escapeHtml(booking.purpose || "历史申请未记录")}</p><span>联系人</span><p>${escapeHtml(booking.contactName || "待完善")} · ${escapeHtml(booking.contactPhone || "待完善")}</p><span>审批路径</span><p>第 ${booking.currentApprovalStep || 1} / ${booking.totalApprovalSteps || 1} 级 · ${booking.approvalMode === "TWO_STAGE" ? "院系初审 + 校级终审" : "管理部门直接审批"}</p>${booking.approvalActions.length ? `<ul>${booking.approvalActions.map(action => `<li>第 ${action.approvalStep} 级 ${action.decision === "APPROVED" ? "已通过" : "未通过"}${action.reviewNote ? ` · ${escapeHtml(action.reviewNote)}` : ""}</li>`).join("")}</ul>` : ""}${booking.note ? `<span>补充说明</span><p>${escapeHtml(booking.note)}</p>` : ""}${booking.reviewNote ? `<span>处理意见</span><p>${escapeHtml(booking.reviewNote)}</p>` : ""}</div></details>
-      <div class="card-actions">${["PENDING_CONFIRMATION", "CONFIRMED"].includes(booking.status) ? `<button data-booking="${escapeHtml(booking.bookingNo)}" data-action="cancellation">撤回申请</button>` : ""}</div>
-    </article>`).join("") : empty("还没有申请记录", "在空间大厅选择开放时段即可提交第一份申请。");
+  renderBookings();
+}
+function notificationReadIds() {
+  try { return new Set(JSON.parse(localStorage.getItem(identityKey("notification-read")) || "[]")); }
+  catch { return new Set(); }
+}
+function markNotificationRead(id) {
+  const read = notificationReadIds();
+  read.add(String(id));
+  localStorage.setItem(identityKey("notification-read"), JSON.stringify([...read].slice(-200)));
+}
+function renderNotifications() {
+  const read = notificationReadIds();
+  const unread = notificationItems.filter(item => !read.has(String(item.id))).length;
+  $("#notification-count").textContent = notificationItems.length ? `${unread} 条未读` : "";
+  $("#notification-list").innerHTML = notificationItems.length ? notificationItems.map(notification => `
+    <button class="notification-card${read.has(String(notification.id)) ? " read" : ""}" data-notification-id="${notification.id}" data-notification-booking="${escapeHtml(notification.bookingNo || "")}">
+      <h3>${escapeHtml(notification.title || notification.type || "预约状态更新")}</h3><p>${escapeHtml(notification.body || notification.message || "预约状态已发生变化，请查看申请记录。")}</p>
+      <div class="notification-meta"><span>${dateTime(notification.createdAt)}</span><span>${notification.bookingNo ? `${escapeHtml(notification.bookingNo)} · 查看申请 →` : "站内服务通知"}</span></div>
+    </button>
+  `).join("") : empty("暂无服务消息", "申请提交后，审批结果和预约变化会显示在这里。");
 }
 async function loadNotifications() {
   if (!profile) return;
   $("#notification-list").innerHTML = skeletons(2);
   const page = await api.notifications(profile.id);
   notificationItems = page.items || [];
-  $("#notification-count").textContent = notificationItems.length ? `${notificationItems.length} 条` : "";
   renderPersonalSummary();
-  $("#notification-list").innerHTML = notificationItems.length ? notificationItems.map(notification => `
-    <article class="notification-card"><h3>${escapeHtml(notification.title || notification.eventType || "预约状态更新")}</h3><p>${escapeHtml(notification.content || notification.body || notification.message || "预约状态已发生变化，请查看申请记录。")}</p><div class="notification-meta"><span>${dateTime(notification.createdAt)}</span><span>站内服务通知</span></div></article>
-  `).join("") : empty("暂无服务消息", "申请提交后，审批结果和预约变化会显示在这里。");
+  renderNotifications();
+}
+function saveDraft() {
+  if (!profile) return;
+  const form = $("#booking-form");
+  const draft = Object.fromEntries(draftFields.map(name => [name, form.elements[name]?.value || ""]));
+  localStorage.setItem(identityKey("booking-draft"), JSON.stringify(draft));
+}
+function restoreDraft() {
+  if (!profile) return;
+  try {
+    const draft = JSON.parse(localStorage.getItem(identityKey("booking-draft")) || "null");
+    if (!draft) return;
+    const form = $("#booking-form");
+    draftFields.forEach(name => { if (form.elements[name] && draft[name] != null) form.elements[name].value = draft[name]; });
+  } catch {
+    localStorage.removeItem(identityKey("booking-draft"));
+  }
 }
 async function refreshAll() {
   await Promise.all([loadResources(), loadBookings(), loadNotifications()]);
@@ -234,6 +320,7 @@ function showView(view) {
   $$(".view").forEach(section => section.classList.toggle("hidden", section.id !== view));
   $$(`[data-view]`).forEach(item => item.classList.toggle("active", item.dataset.view === view));
   if (view !== "discover") $("#slot-panel").classList.remove("open");
+  $("#app-view").classList.toggle("task-view", view !== "discover");
   globalThis.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -277,7 +364,13 @@ $("#refresh-all").addEventListener("click", () => refreshAll().catch(fail));
 $("#refresh-bookings").addEventListener("click", () => loadBookings().catch(fail));
 $("#refresh-notifications").addEventListener("click", () => loadNotifications().catch(fail));
 $("#search-form").addEventListener("submit", event => {
-  event.preventDefault(); loadResources(new FormData(event.currentTarget).get("text").trim()).catch(fail);
+  event.preventDefault(); loadResources().catch(fail);
+});
+$("#clear-search").addEventListener("click", () => {
+  $("#search-form").reset();
+  activeCategory = "";
+  $$('[data-category]').forEach(item => item.classList.toggle("active", item.dataset.category === ""));
+  loadResources().catch(fail);
 });
 $$('[data-category]').forEach(button => button.addEventListener("click", () => {
   activeCategory = button.dataset.category;
@@ -317,19 +410,51 @@ $("#booking-form").addEventListener("submit", async event => {
       activityTitle: data.get("activityTitle"), purpose: data.get("purpose"),
       contactName: data.get("contactName"), contactPhone: data.get("contactPhone"), note: data.get("note") || null
     });
-    form.reset(); form.classList.add("hidden"); selectedSlot = null;
+    form.reset(); localStorage.removeItem(identityKey("booking-draft")); form.classList.add("hidden"); selectedSlot = null;
     await Promise.all([loadBookings(), loadNotifications()]);
     showView("bookings");
     notify("申请已提交，可在此查看审批进度和管理部门意见");
   } catch (error) { fail(error); }
   finally { form.dataset.submitting = "false"; button.disabled = false; button.firstChild.textContent = "提交使用申请 "; }
 });
+$("#booking-form").addEventListener("input", saveDraft);
 $("#booking-list").addEventListener("click", async event => {
+  const repeat = event.target.closest("[data-repeat-booking]");
+  if (repeat) {
+    const booking = bookingHistory.find(item => item.bookingNo === repeat.dataset.repeatBooking);
+    if (!booking) return;
+    const form = $("#booking-form");
+    draftFields.forEach(name => {
+      if (form.elements[name]) form.elements[name].value = booking[name] ?? (name === "quantity" ? 1 : "");
+    });
+    saveDraft();
+    showView("discover");
+    if (booking.resource) await loadSlots(booking.resource.id, booking.resource.name);
+    notify("已带入上次申请信息，请选择新的开放时段");
+    return;
+  }
   const button = event.target.closest("[data-booking]"); if (!button) return;
   if (!globalThis.confirm("确认撤回这份申请？撤回后如需使用须重新提交。")) return;
   try { button.disabled = true; await api.bookingAction(button.dataset.booking, button.dataset.action); await loadBookings(); notify("申请已撤回"); }
   catch (error) { fail(error); }
   finally { button.disabled = false; }
+});
+$("#booking-filter-form").addEventListener("input", () => renderBookings());
+$("#booking-filter-form").addEventListener("reset", () => setTimeout(renderBookings));
+$("#notification-list").addEventListener("click", event => {
+  const card = event.target.closest("[data-notification-id]"); if (!card) return;
+  markNotificationRead(card.dataset.notificationId);
+  renderNotifications(); renderPersonalSummary();
+  if (card.dataset.notificationBooking) {
+    $("#booking-filter-form").elements.text.value = "";
+    $("#booking-filter-form").elements.status.value = "";
+    showView("bookings");
+    renderBookings(card.dataset.notificationBooking);
+  }
+});
+$("#mark-notifications-read").addEventListener("click", () => {
+  notificationItems.forEach(item => markNotificationRead(item.id));
+  renderNotifications(); renderPersonalSummary(); notify("消息已全部标记为已读");
 });
 $("#profile-form").addEventListener("submit", async event => {
   event.preventDefault(); const form = event.currentTarget;

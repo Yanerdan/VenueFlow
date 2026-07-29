@@ -288,3 +288,27 @@ test("resource booking rules use the focused optimistic endpoint", async () => {
     expectedVersion: 4
   });
 });
+
+test("resource public facts use the focused optimistic endpoint", async () => {
+  let captured;
+  const api = createApi({
+    baseUrl: "http://gateway",
+    storage: storage({ "venueflow.access": "token" }),
+    fetchImpl: async (url, options) => {
+      captured = { url, options };
+      return response(200, { id: 7, version: 6 });
+    }
+  });
+  await api.changeResourceFacts(
+    7, 3, "创新研讨室", "适合项目讨论", "图书馆三层", 24, 5
+  );
+  assert.equal(captured.url, "http://gateway/api/v1/resources/7/facts");
+  assert.deepEqual(JSON.parse(captured.options.body), {
+    categoryId: 3,
+    name: "创新研讨室",
+    description: "适合项目讨论",
+    location: "图书馆三层",
+    capacity: 24,
+    expectedVersion: 5
+  });
+});

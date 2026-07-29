@@ -22,6 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.yanerdan.venueflow.resource.catalog.application.CatalogApplicationService;
 import com.yanerdan.venueflow.resource.catalog.application.CategoryResult;
 import com.yanerdan.venueflow.resource.catalog.application.ChangeResourceBookingRulesCommand;
+import com.yanerdan.venueflow.resource.catalog.application.ChangeResourceFactsCommand;
 import com.yanerdan.venueflow.resource.catalog.application.ChangeResourceStatusCommand;
 import com.yanerdan.venueflow.resource.catalog.application.CreateCategoryCommand;
 import com.yanerdan.venueflow.resource.catalog.application.CreateResourceCommand;
@@ -274,6 +275,35 @@ class CatalogHttpApiTest {
     verify(catalogApplicationService).changeResourceBookingRules(captor.capture());
     assertThat(captor.getValue().bookingNotice()).isEqualTo("Bring a campus card");
     assertThat(captor.getValue().maxDurationMinutes()).isEqualTo(120);
+  }
+
+  @Test
+  void changesResourceFactsThroughCommandBoundary() throws Exception {
+    when(catalogApplicationService.changeResourceFacts(any(ChangeResourceFactsCommand.class)))
+        .thenReturn(resourceResult(ResourceStatus.ACTIVE, 3L));
+
+    mockMvc
+        .perform(
+            patch("/api/v1/resources/{resourceId}/facts", 100L)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "categoryId": 10,
+                      "name": "Room A101",
+                      "description": "Meeting room",
+                      "location": "Building A",
+                      "capacity": 20,
+                      "expectedVersion": 2
+                    }
+                    """))
+        .andExpectAll(status().isOk(), jsonPath("$.id").value(100), jsonPath("$.version").value(3));
+
+    ArgumentCaptor<ChangeResourceFactsCommand> captor =
+        ArgumentCaptor.forClass(ChangeResourceFactsCommand.class);
+    verify(catalogApplicationService).changeResourceFacts(captor.capture());
+    assertThat(captor.getValue().capacity()).isEqualTo(20);
+    assertThat(captor.getValue().location()).isEqualTo("Building A");
   }
 
   @Test

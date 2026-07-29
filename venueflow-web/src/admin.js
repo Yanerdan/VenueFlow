@@ -1,4 +1,4 @@
-import { createApi } from "./api.js?v=20260729-c34b";
+import { createApi } from "./api.js?v=20260729-c35";
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -16,6 +16,7 @@ let bookings = [];
 let users = [];
 let accounts = [];
 let approvers = [];
+let categories = [];
 let report;
 let selectedBooking;
 let messageTimer;
@@ -60,7 +61,7 @@ function guard() {
 }
 async function loadData() {
   const role = api.role();
-  const [resourcePage, bookingPage, userPage, reportData, accountData, approverData] =
+  const [resourcePage, bookingPage, userPage, reportData, accountData, approverData, categoryData] =
     await Promise.all([
       api.resources(),
       approvalRoles.includes(role) ? api.managementBookings() : Promise.resolve(null),
@@ -69,7 +70,8 @@ async function loadData() {
       role === "SYSTEM_ADMIN" ? api.authAccounts() : Promise.resolve([]),
       ["RESOURCE_MANAGER", "SYSTEM_ADMIN"].includes(role)
         ? api.approverAccounts()
-        : Promise.resolve([])
+        : Promise.resolve([]),
+      api.categories()
     ]);
   resources = (resourcePage.items || []).filter(item => item.status !== "ARCHIVED");
   bookings = bookingPage?.items || [];
@@ -77,6 +79,7 @@ async function loadData() {
   report = reportData || null;
   accounts = accountData || [];
   approvers = approverData || [];
+  categories = categoryData?.items || categoryData || [];
   renderDashboard(); renderReports(); renderApprovals(); renderResources(); renderResourceOptions(); renderResourcePicker(); renderUsers();
 }
 const userFor = userId => users.find(user => Number(user.id) === Number(userId));
@@ -209,11 +212,26 @@ function nextResourceStatus(item) {
   if (item.status === "SUSPENDED") return ["ACTIVE", "恢复"];
   return null;
 }
+function categoryOptions(selectedId) {
+  return categories.map(category =>
+    `<option value="${category.id}" ${Number(category.id) === Number(selectedId) ? "selected" : ""}>${escapeHtml(category.name)}</option>`
+  ).join("");
+}
 function renderResources() {
   $("#resource-admin-list").innerHTML = resources.length ? resources.map(item => {
     const next = nextResourceStatus(item);
     return `<article class="resource-admin-card"><div><span class="status ${item.status.toLowerCase()}">${statusLabel(item.status)}</span><small>${escapeHtml(item.resourceNo)}</small></div>
       <h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(item.location || "位置待完善")} · 容量 ${item.capacity} 人</p>
+      <details class="resource-editor"><summary>编辑公开资料</summary>
+        <form data-resource-facts="${item.id}" data-version="${item.version}">
+          <label>资源名称<input name="name" maxlength="128" required value="${escapeHtml(item.name)}"></label>
+          <label>资源分类<select name="categoryId" required>${categoryOptions(item.categoryId)}</select></label>
+          <label>校内位置<input name="location" maxlength="255" required value="${escapeHtml(item.location || "")}"></label>
+          <label>容量<input name="capacity" type="number" min="1" required value="${item.capacity}"></label>
+          <label class="wide">用途说明<textarea name="description" maxlength="1000" rows="2">${escapeHtml(item.description || "")}</textarea></label>
+          <button class="wide" type="submit">保存公开资料</button>
+        </form>
+      </details>
       <div class="policy-summary"><strong>预约规则</strong><span>提前 ${item.minAdvanceHours ?? 0} 小时至 ${item.maxAdvanceDays ?? 90} 天 · 最长 ${item.maxDurationMinutes ?? 480} 分钟</span>${item.bookingNotice ? `<p>${escapeHtml(item.bookingNotice)}</p>` : ""}</div>
       <form class="ownership-form" data-resource-ownership="${item.id}" data-version="${item.version}">
         <input name="ownerDepartment" maxlength="160" placeholder="归属部门" value="${escapeHtml(item.ownerDepartment || "")}">
@@ -279,6 +297,29 @@ $("#admin-logout").addEventListener("click", async () => { await api.logout(); l
 $("#approval-filter").addEventListener("change", async event => {
   try { const page = await api.managementBookings(event.target.value); bookings = page.items || []; renderApprovals(); } catch (error) { fail(error); }
 });
+$("#export-bookings").addEventListener("click", () => {
+  const safe = value => {
+    let text = String(value ?? "");
+    if (/^[=+\-@]/.test(text)) text = `'${text}`;
+    return `"${text.replaceAll('"', '""')}"`;
+  };
+  const resourceName = item =>
+    resources.find(resource => Number(resource.id) === Number(item.resourceId))?.name || `资源 #${item.resourceId || ""}`;
+  const rows = [
+    ["申请编号", "活动名称", "资源", "申请人", "状态", "人数", "审批意见"],
+    ...bookings.map(item => [
+      item.bookingNo, item.activityTitle || "", resourceName(item),
+      userFor(item.userId)?.displayName || `用户 #${item.userId}`,
+      statusLabel(item.status), item.quantity, item.reviewNote || ""
+    ])
+  ];
+  const blob = new Blob([`\uFEFF${rows.map(row => row.map(safe).join(",")).join("\r\n")}`], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url; link.download = `venueflow-bookings-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click(); URL.revokeObjectURL(url);
+  notify(`已导出当前列表，共 ${bookings.length} 条申请`);
+});
 $("#user-search-form").addEventListener("submit", async event => {
   event.preventDefault();
   try {
@@ -340,6 +381,23 @@ $("#resource-admin-list").addEventListener("click", async event => {
   try { await api.changeResourceStatus(button.dataset.resourceStatus, button.dataset.target, Number(button.dataset.version)); await loadData(); notify("资源状态已更新"); } catch (error) { fail(error); }
 });
 $("#resource-admin-list").addEventListener("submit", async event => {
+  const form = event.target.closest("[data-resource-facts]"); if (!form) return;
+  event.preventDefault();
+  const data = new FormData(form);
+  try {
+    await api.changeResourceFacts(
+      Number(form.dataset.resourceFacts),
+      Number(data.get("categoryId")),
+      data.get("name").trim(),
+      data.get("description").trim(),
+      data.get("location").trim(),
+      Number(data.get("capacity")),
+      Number(form.dataset.version)
+    );
+    await loadData(); notify("资源公开资料已更新");
+  } catch (error) { fail(error); }
+});
+$("#resource-admin-list").addEventListener("submit", async event => {
   const form = event.target.closest("[data-resource-ownership]"); if (!form) return;
   event.preventDefault();
   const data = new FormData(form);
@@ -381,12 +439,23 @@ $("#slot-form").addEventListener("submit", async event => {
   event.preventDefault();
   const form = event.currentTarget;
   const data = new FormData(form);
+  const repeatCount = Math.min(12, Math.max(1, Number(data.get("repeatCount")) || 1));
+  const firstStart = new Date(data.get("startAt"));
+  const firstEnd = new Date(data.get("endAt"));
+  let created = 0;
   try {
-    await api.createSlot(Number(data.get("resourceId")), new Date(data.get("startAt")).toISOString(), new Date(data.get("endAt")).toISOString());
+    for (let index = 0; index < repeatCount; index += 1) {
+      const start = new Date(firstStart); start.setDate(start.getDate() + index * 7);
+      const end = new Date(firstEnd); end.setDate(end.getDate() + index * 7);
+      await api.createSlot(Number(data.get("resourceId")), start.toISOString(), end.toISOString());
+      created += 1;
+    }
     form.reset();
     form.classList.add("hidden");
-    notify("开放时段已发布");
-  } catch (error) { fail(error); }
+    notify(`已发布 ${created} 个开放时段`);
+  } catch (error) {
+    fail(new Error(`第 ${created + 1} 个时段发布失败，已保留此前成功的 ${created} 个 · ${error.message}`));
+  }
 });
 $("#slot-resource-list").addEventListener("click", event => {
   const button = event.target.closest("[data-slot-resource]"); if (button) selectSlots(button.dataset.slotResource, button.dataset.name).catch(fail);

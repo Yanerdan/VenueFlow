@@ -338,6 +338,38 @@ public class CatalogApplicationService {
     return result;
   }
 
+  @Transactional
+  public ResourceResult changeResourceFacts(ChangeResourceFactsCommand command) {
+    ResourceEntity current = findResourceForStatusChange(command.resourceId());
+    validateExpectedVersion(current, command.expectedVersion());
+    validateCategoryExists(command.categoryId());
+    int updated;
+    try {
+      updated =
+          resourceMapper.updateFactsIfVersionMatches(
+              command.resourceId(),
+              command.categoryId(),
+              command.name(),
+              command.description(),
+              command.location(),
+              command.capacity(),
+              command.expectedVersion());
+    } catch (DataAccessException exception) {
+      throw persistenceFailure("Resource facts could not be updated", exception);
+    }
+    if (updated != 1) {
+      throw resolveFailedConditionalUpdate(command.resourceId(), command.expectedVersion());
+    }
+    ResourceEntity persisted = resourceMapper.selectById(command.resourceId());
+    if (persisted == null) {
+      throw resourceNotFound(command.resourceId());
+    }
+    ResourceResult result = ResourceResult.from(persisted);
+    changeRecorder.record(result);
+    resourceCache.evictAfterCommit(result.id());
+    return result;
+  }
+
   private ResourceEntity findResourceForStatusChange(Long resourceId) {
     ResourceEntity entity;
 

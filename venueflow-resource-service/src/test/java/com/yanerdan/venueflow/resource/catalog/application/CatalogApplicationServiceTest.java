@@ -361,6 +361,34 @@ class CatalogApplicationServiceTest {
   }
 
   @Test
+  void changesCoreFactsWithExpectedVersion() {
+    LocalDateTime now = LocalDateTime.of(2026, 7, 29, 14, 0);
+    ResourceEntity current =
+        resource(100L, "ROOM-A-101", 10L, "Room A101", 10, ResourceStatus.ACTIVE, 2L, now);
+    ResourceEntity updated =
+        resource(100L, "ROOM-A-101", 20L, "Innovation Room", 30, ResourceStatus.ACTIVE, 3L, now);
+    updated.setDescription("Project collaboration");
+    updated.setLocation("Building B");
+    when(resourceMapper.selectById(100L)).thenReturn(current, updated);
+    when(categoryMapper.selectById(20L))
+        .thenReturn(category(20L, "ACTIVITY", "Activity Room", now));
+    when(resourceMapper.updateFactsIfVersionMatches(
+            100L, 20L, "Innovation Room", "Project collaboration", "Building B", 30, 2L))
+        .thenReturn(1);
+
+    ResourceResult result =
+        service.changeResourceFacts(
+            new ChangeResourceFactsCommand(
+                100L, 20L, " Innovation Room ", " Project collaboration ", " Building B ", 30, 2L));
+
+    assertThat(result.name()).isEqualTo("Innovation Room");
+    assertThat(result.categoryId()).isEqualTo(20L);
+    assertThat(result.location()).isEqualTo("Building B");
+    assertThat(result.capacity()).isEqualTo(30);
+    assertThat(result.version()).isEqualTo(3L);
+  }
+
+  @Test
   void rejectsStaleExpectedVersionBeforeUpdate() {
     LocalDateTime now = LocalDateTime.of(2026, 7, 21, 19, 30);
 

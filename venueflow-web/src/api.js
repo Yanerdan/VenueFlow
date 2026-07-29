@@ -149,6 +149,14 @@ export function createApi({
         expectedVersion
       })
     }),
+    changeResourceFacts: (
+      resourceId, categoryId, name, description, location, capacity, expectedVersion
+    ) => request(`/api/v1/resources/${resourceId}/facts`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        categoryId, name, description: description || null, location, capacity, expectedVersion
+      })
+    }),
     approvalActions: bookingNo => request(
       `/api/v1/bookings/${encodeURIComponent(bookingNo)}/approval-actions`
     ),

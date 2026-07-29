@@ -39,5 +39,14 @@ public interface ResourceMapper extends BaseMapper<ResourceEntity> {
       @Param("maxDurationMinutes") Integer maxDurationMinutes,
       @Param("expectedVersion") Long expectedVersion);
 
+  int updateFactsIfVersionMatches(
+      @Param("resourceId") Long resourceId,
+      @Param("categoryId") Long categoryId,
+      @Param("name") String name,
+      @Param("description") String description,
+      @Param("location") String location,
+      @Param("capacity") Integer capacity,
+      @Param("expectedVersion") Long expectedVersion);
+
   ResourceEntity selectByIdForUpdate(@Param("resourceId") Long resourceId);
 }
