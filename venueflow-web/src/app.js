@@ -1,4 +1,5 @@
-import { createApi } from "./api.js?v=20260729-c35";
+import { createApi } from "./api.js?v=20260729-c36";
+import { buildCalendarEvent, safeCalendarFilename } from "./self-service.js?v=20260729-c36";
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -9,6 +10,7 @@ let api = createApi({ baseUrl: gateway.value });
 let profile;
 let resourceCatalog = [];
 let activeCategory = "";
+let favoritesOnly = false;
 let bookingHistory = [];
 let notificationItems = [];
 let currentResource;
@@ -47,6 +49,20 @@ const localDate = value => {
 };
 const publicComplete = resource =>
   Boolean(resource.name?.trim() && resource.location?.trim() && Number(resource.capacity) > 0 && resource.ownerDepartment?.trim());
+
+function favoriteResourceIds() {
+  try { return new Set(JSON.parse(localStorage.getItem(identityKey("favorite-resources")) || "[]").map(Number)); }
+  catch { return new Set(); }
+}
+function saveFavoriteResourceIds(ids) {
+  localStorage.setItem(identityKey("favorite-resources"), JSON.stringify([...ids]));
+}
+function renderFavoriteFilter() {
+  const ids = favoriteResourceIds();
+  $("#favorite-count").textContent = String(ids.size);
+  $("#favorites-filter").classList.toggle("active", favoritesOnly);
+  $("#favorites-filter").setAttribute("aria-pressed", String(favoritesOnly));
+}
 
 let messageTimer;
 function notify(text, error = false) {
@@ -117,6 +133,7 @@ async function enter(registration) {
   $("#profile-initial").textContent = profile.displayName.trim().charAt(0);
   $("#welcome-name").textContent = `${profile.displayName}，欢迎回来`;
   renderProfile();
+  renderFavoriteFilter();
   restoreDraft();
   renderPersonalSummary();
   if (["APPROVER", "RESOURCE_MANAGER", "SYSTEM_ADMIN"].includes(api.role())) $("#admin-entry").classList.remove("hidden");
@@ -134,17 +151,20 @@ function filteredResources() {
   const data = new FormData($("#search-form"));
   const requiredCapacity = Number(data.get("capacity")) || 0;
   const accepted = activeCategory ? activeCategory.split(",") : null;
+  const favorites = favoriteResourceIds();
   return resourceCatalog.filter(resource =>
     (!accepted || accepted.includes(categoryCodes.get(resource.categoryId))) &&
+    (!favoritesOnly || favorites.has(Number(resource.id))) &&
     Number(resource.capacity) >= requiredCapacity &&
     (!availableResourceIds || availableResourceIds.has(Number(resource.id))));
 }
 function renderResources() {
   const items = filteredResources();
+  const favorites = favoriteResourceIds();
   $("#resource-count").textContent = `${items.length} 个空间`;
   $("#resource-list").innerHTML = items.length ? items.map((resource, index) => `
     <article class="venue-card">
-      <div class="venue-cover"><span class="availability">开放申请</span><span class="venue-index">${String(index + 1).padStart(2, "0")}</span></div>
+      <div class="venue-cover"><span class="availability">开放申请</span><button class="favorite-button${favorites.has(Number(resource.id)) ? " active" : ""}" data-favorite-resource="${resource.id}" aria-pressed="${favorites.has(Number(resource.id))}" aria-label="${favorites.has(Number(resource.id)) ? "取消收藏" : "收藏"} ${escapeHtml(resource.name)}">${favorites.has(Number(resource.id)) ? "★" : "☆"}</button><span class="venue-index">${String(index + 1).padStart(2, "0")}</span></div>
       <div class="venue-content"><p class="resource-no">${escapeHtml(resource.resourceNo || `RESOURCE-${resource.id}`)}</p><h3>${escapeHtml(resource.name)}</h3>
         <div class="venue-meta"><span>位置 · ${escapeHtml(resource.location || "校内")}</span><span>容量 · ${escapeHtml(resource.capacity || "—")} 人</span><span>负责单位 · ${escapeHtml(resource.ownerDepartment || "校级资源中心")}</span></div>
         <p class="venue-description">${escapeHtml(resource.description || "校园共享空间，具体使用要求以管理部门审批为准。")}</p>
@@ -250,7 +270,7 @@ function renderBookings(focusBookingNo) {
       <div><p class="booking-label">使用空间</p><div class="booking-value">${escapeHtml(booking.resource?.name || `资源记录 ${booking.resourceId || "待恢复"}`)}</div><small>${escapeHtml(booking.resource?.location || booking.ownerDepartment || "位置记录暂不可用")}</small></div>
       <div><p class="booking-label">使用时间</p><div class="booking-value">${escapeHtml(dateRange(booking.slot?.startAt, booking.slot?.endAt))}</div><small>${booking.quantity} 人 · ${escapeHtml(booking.ownerDepartment || booking.resource?.ownerDepartment || "管理部门待确认")}</small></div>
       <details class="booking-detail"><summary>查看申请与审批详情</summary><div><span>用途</span><p>${escapeHtml(booking.purpose || "历史申请未记录")}</p><span>联系人</span><p>${escapeHtml(booking.contactName || "待完善")} · ${escapeHtml(booking.contactPhone || "待完善")}</p><span>审批路径</span><p>第 ${booking.currentApprovalStep || 1} / ${booking.totalApprovalSteps || 1} 级 · ${booking.approvalMode === "TWO_STAGE" ? "院系初审 + 校级终审" : "管理部门直接审批"}</p>${booking.approvalActions.length ? `<ul>${booking.approvalActions.map(action => `<li>第 ${action.approvalStep} 级 ${action.decision === "APPROVED" ? "已通过" : "未通过"}${action.reviewNote ? ` · ${escapeHtml(action.reviewNote)}` : ""}</li>`).join("")}</ul>` : ""}${booking.note ? `<span>补充说明</span><p>${escapeHtml(booking.note)}</p>` : ""}${booking.reviewNote ? `<span>处理意见</span><p>${escapeHtml(booking.reviewNote)}</p>` : ""}</div></details>
-      <div class="card-actions"><button data-repeat-booking="${escapeHtml(booking.bookingNo)}">再次申请</button>${["PENDING_CONFIRMATION", "CONFIRMED"].includes(booking.status) ? `<button data-booking="${escapeHtml(booking.bookingNo)}" data-action="cancellation">撤回申请</button>` : ""}</div>
+      <div class="card-actions"><button data-repeat-booking="${escapeHtml(booking.bookingNo)}">再次申请</button>${booking.status === "CONFIRMED" && booking.slot ? `<button data-calendar-booking="${escapeHtml(booking.bookingNo)}">加入日历</button>` : ""}${["PENDING_CONFIRMATION", "CONFIRMED"].includes(booking.status) && booking.resource ? `<button data-reschedule-booking="${escapeHtml(booking.bookingNo)}">改期</button>` : ""}${["PENDING_CONFIRMATION", "CONFIRMED"].includes(booking.status) ? `<button data-booking="${escapeHtml(booking.bookingNo)}" data-action="cancellation">撤回申请</button>` : ""}</div>
     </article>`).join("") : empty(
       bookingHistory.length ? "没有符合筛选条件的申请" : "还没有申请记录",
       bookingHistory.length ? "请清除筛选条件后查看全部申请。" : "在空间大厅选择开放时段即可提交第一份申请。"
@@ -300,6 +320,22 @@ function saveDraft() {
   const form = $("#booking-form");
   const draft = Object.fromEntries(draftFields.map(name => [name, form.elements[name]?.value || ""]));
   localStorage.setItem(identityKey("booking-draft"), JSON.stringify(draft));
+}
+function prefillBooking(booking) {
+  const form = $("#booking-form");
+  draftFields.forEach(name => {
+    if (form.elements[name]) form.elements[name].value = booking[name] ?? (name === "quantity" ? 1 : "");
+  });
+  saveDraft();
+}
+function downloadCalendar(booking) {
+  const blob = new Blob([buildCalendarEvent(booking)], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = safeCalendarFilename(`${booking.activityTitle || "校园资源预约"}-${booking.bookingNo}`);
+  link.click();
+  URL.revokeObjectURL(url);
 }
 function restoreDraft() {
   if (!profile) return;
@@ -372,12 +408,29 @@ $("#clear-search").addEventListener("click", () => {
   $$('[data-category]').forEach(item => item.classList.toggle("active", item.dataset.category === ""));
   loadResources().catch(fail);
 });
+$("#favorites-filter").addEventListener("click", () => {
+  favoritesOnly = !favoritesOnly;
+  renderFavoriteFilter();
+  renderResources();
+});
 $$('[data-category]').forEach(button => button.addEventListener("click", () => {
   activeCategory = button.dataset.category;
   $$('[data-category]').forEach(item => item.classList.toggle("active", item === button));
   renderResources();
 }));
 $("#resource-list").addEventListener("click", event => {
+  const favorite = event.target.closest("[data-favorite-resource]");
+  if (favorite) {
+    const id = Number(favorite.dataset.favoriteResource);
+    const ids = favoriteResourceIds();
+    const adding = !ids.has(id);
+    if (adding) ids.add(id); else ids.delete(id);
+    saveFavoriteResourceIds(ids);
+    renderFavoriteFilter();
+    renderResources();
+    notify(adding ? "已加入我的收藏" : "已取消收藏");
+    return;
+  }
   const button = event.target.closest("[data-resource-id]");
   if (button) loadSlots(button.dataset.resourceId, button.dataset.resourceName).catch(fail);
 });
@@ -419,15 +472,35 @@ $("#booking-form").addEventListener("submit", async event => {
 });
 $("#booking-form").addEventListener("input", saveDraft);
 $("#booking-list").addEventListener("click", async event => {
+  const calendar = event.target.closest("[data-calendar-booking]");
+  if (calendar) {
+    const booking = bookingHistory.find(item => item.bookingNo === calendar.dataset.calendarBooking);
+    if (!booking) return;
+    try { downloadCalendar(booking); notify("日历文件已导出"); }
+    catch (error) { fail(error); }
+    return;
+  }
+  const reschedule = event.target.closest("[data-reschedule-booking]");
+  if (reschedule) {
+    const booking = bookingHistory.find(item => item.bookingNo === reschedule.dataset.rescheduleBooking);
+    if (!booking || !globalThis.confirm("改期会先撤回当前申请并释放原时段，再由你选择新的开放时段。是否继续？")) return;
+    try {
+      reschedule.disabled = true;
+      await api.bookingAction(booking.bookingNo, "cancellation");
+      prefillBooking(booking);
+      await loadBookings();
+      showView("discover");
+      await loadSlots(booking.resource.id, booking.resource.name);
+      notify("原申请已撤回，信息已保留，请选择新的开放时段");
+    } catch (error) { fail(error); }
+    finally { reschedule.disabled = false; }
+    return;
+  }
   const repeat = event.target.closest("[data-repeat-booking]");
   if (repeat) {
     const booking = bookingHistory.find(item => item.bookingNo === repeat.dataset.repeatBooking);
     if (!booking) return;
-    const form = $("#booking-form");
-    draftFields.forEach(name => {
-      if (form.elements[name]) form.elements[name].value = booking[name] ?? (name === "quantity" ? 1 : "");
-    });
-    saveDraft();
+    prefillBooking(booking);
     showView("discover");
     if (booking.resource) await loadSlots(booking.resource.id, booking.resource.name);
     notify("已带入上次申请信息，请选择新的开放时段");

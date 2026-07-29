@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#073d3a">
   <title>VenueFlow · 校园空间预约</title>
-  <link rel="stylesheet" href="./styles.css?v=20260729-c35">
+  <link rel="stylesheet" href="./styles.css?v=20260729-c36">
 </head>
 <body>
   <header class="site-header">
@@ -91,6 +91,7 @@
         </form>
         <div class="filter-row" aria-label="空间分类">
           <button type="button" class="active" data-category="">全部空间</button>
+          <button type="button" id="favorites-filter" aria-pressed="false">☆ 我的收藏 <span id="favorite-count">0</span></button>
           <button type="button" data-category="SHOW-TEACHING">教学空间</button>
           <button type="button" data-category="SHOW-MEETING">会议研讨</button>
           <button type="button" data-category="SHOW-ACTIVITY,SHOW-SPORT">文体活动</button>
@@ -163,6 +164,6 @@
   <nav id="mobile-nav" class="mobile-nav hidden">
     <button data-view="discover" class="active">空间</button><button data-view="bookings">申请</button><button data-view="notifications">消息</button><button data-view="profile">我的</button>
   </nav>
-  <script type="module" src="./src/app.js?v=20260729-c35"></script>
+  <script type="module" src="./src/app.js?v=20260729-c36"></script>
 </body>
 </html>

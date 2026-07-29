@@ -1,4 +1,5 @@
-import { createApi } from "./api.js?v=20260729-c35";
+import { createApi } from "./api.js?v=20260729-c36";
+import { transitionCandidates } from "./self-service.js?v=20260729-c36";
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -19,6 +20,8 @@ let approvers = [];
 let categories = [];
 let report;
 let selectedBooking;
+let selectedSlotResource;
+let loadedSlots = [];
 let messageTimer;
 
 const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, char =>
@@ -26,6 +29,13 @@ const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, char =>
 const dateTime = value => value ? new Intl.DateTimeFormat("zh-CN", {
   year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit"
 }).format(new Date(value)) : "—";
+const localDate = value => {
+  const date = new Date(value);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+};
+const timeOnly = value => new Intl.DateTimeFormat("zh-CN", {
+  hour: "2-digit", minute: "2-digit"
+}).format(new Date(value));
 const statusLabel = value => ({
   APPLICANT: "申请人", APPROVER: "审批人员", RESOURCE_MANAGER: "资源管理员",
   SYSTEM_ADMIN: "系统管理员",
@@ -261,11 +271,42 @@ function renderResourcePicker() {
 }
 async function selectSlots(id, name) {
   $("#slot-admin-list").innerHTML = '<div class="skeleton"></div>';
-  const page = await api.slots(id); const items = page.items || [];
+  selectedSlotResource = { id: Number(id), name };
+  const page = await api.slots(id);
+  loadedSlots = page.items || [];
+  const grouped = loadedSlots.reduce((map, slot) => {
+    const day = localDate(slot.startAt);
+    if (!map.has(day)) map.set(day, []);
+    map.get(day).push(slot);
+    return map;
+  }, new Map());
+  const open = loadedSlots.filter(item => item.status === "OPEN").length;
   $("#slot-admin-list").innerHTML = `<div class="panel-title"><div><p class="eyebrow">OPEN WINDOWS</p><h2>${escapeHtml(name)}</h2></div></div>` +
-    (items.length ? `<div class="slot-manage-list">${items.map(item => `<div><div><strong>${dateTime(item.startAt)}</strong><span>至 ${dateTime(item.endAt)}</span></div>
-      <span class="status ${item.status.toLowerCase()}">${statusLabel(item.status)}</span><button data-slot-status="${item.id}" data-target="${item.status === "OPEN" ? "CLOSED" : "OPEN"}" data-version="${item.version}">${item.status === "OPEN" ? "关闭" : "开放"}</button></div>`).join("")}</div>` :
+    (loadedSlots.length ? `<div class="schedule-summary"><div><strong>${loadedSlots.length}</strong><span>当前页时段</span></div><div><strong>${open}</strong><span>开放</span></div><div><strong>${loadedSlots.length - open}</strong><span>关闭</span></div><div class="schedule-bulk-actions"><button data-bulk-slot-status="OPEN">全部开放</button><button data-bulk-slot-status="CLOSED">全部关闭</button></div></div>
+      <div class="slot-day-groups">${[...grouped.entries()].map(([day, slots]) => `<section class="slot-day-group"><header><strong>${new Intl.DateTimeFormat("zh-CN", { month: "long", day: "numeric", weekday: "short" }).format(new Date(`${day}T12:00:00`))}</strong><span>${slots.length} 个时段 · ${slots.filter(item => item.status === "OPEN").length} 个开放</span></header><div class="slot-manage-list">${slots.map(item => `<div><div><strong>${timeOnly(item.startAt)} — ${timeOnly(item.endAt)}</strong><span>${dateTime(item.startAt)}</span></div>
+      <span class="status ${item.status.toLowerCase()}">${statusLabel(item.status)}</span><button data-slot-status="${item.id}" data-target="${item.status === "OPEN" ? "CLOSED" : "OPEN"}" data-version="${item.version}">${item.status === "OPEN" ? "关闭" : "开放"}</button></div>`).join("")}</div></section>`).join("")}</div>` :
       empty("暂无开放时段", "使用上方按钮为该资源新增开放时段。"));
+}
+async function bulkChangeSlotStatus(targetStatus) {
+  const candidates = transitionCandidates(loadedSlots, targetStatus);
+  if (!candidates.length) {
+    notify(targetStatus === "OPEN" ? "当前时段已全部开放" : "当前时段已全部关闭");
+    return;
+  }
+  const action = targetStatus === "OPEN" ? "开放" : "关闭";
+  if (!globalThis.confirm(`将当前列表中的 ${candidates.length} 个时段全部${action}，是否继续？`)) return;
+  let updated = 0;
+  try {
+    for (const item of candidates) {
+      await api.changeSlotStatus(item.id, targetStatus, Number(item.version));
+      updated += 1;
+    }
+    await selectSlots(selectedSlotResource.id, selectedSlotResource.name);
+    notify(`已${action} ${updated} 个时段`);
+  } catch (error) {
+    await selectSlots(selectedSlotResource.id, selectedSlotResource.name).catch(() => {});
+    notify(`已更新 ${updated} 个，第 ${updated + 1} 个处理失败 · ${error.message}`, true);
+  }
 }
 async function actBooking(button) {
   await api.bookingAction(button.dataset.approval, button.dataset.action, button.dataset.note);
@@ -452,6 +493,9 @@ $("#slot-form").addEventListener("submit", async event => {
     }
     form.reset();
     form.classList.add("hidden");
+    if (selectedSlotResource?.id === Number(data.get("resourceId"))) {
+      await selectSlots(selectedSlotResource.id, selectedSlotResource.name);
+    }
     notify(`已发布 ${created} 个开放时段`);
   } catch (error) {
     fail(new Error(`第 ${created + 1} 个时段发布失败，已保留此前成功的 ${created} 个 · ${error.message}`));
@@ -461,8 +505,19 @@ $("#slot-resource-list").addEventListener("click", event => {
   const button = event.target.closest("[data-slot-resource]"); if (button) selectSlots(button.dataset.slotResource, button.dataset.name).catch(fail);
 });
 $("#slot-admin-list").addEventListener("click", async event => {
+  const bulk = event.target.closest("[data-bulk-slot-status]");
+  if (bulk) {
+    bulk.disabled = true;
+    try { await bulkChangeSlotStatus(bulk.dataset.bulkSlotStatus); }
+    finally { bulk.disabled = false; }
+    return;
+  }
   const button = event.target.closest("[data-slot-status]"); if (!button) return;
-  try { await api.changeSlotStatus(button.dataset.slotStatus, button.dataset.target, Number(button.dataset.version)); notify("时段状态已更新"); } catch (error) { fail(error); }
+  try {
+    await api.changeSlotStatus(button.dataset.slotStatus, button.dataset.target, Number(button.dataset.version));
+    await selectSlots(selectedSlotResource.id, selectedSlotResource.name);
+    notify("时段状态已更新");
+  } catch (error) { fail(error); }
 });
 
 if (guard()) loadData().catch(fail);

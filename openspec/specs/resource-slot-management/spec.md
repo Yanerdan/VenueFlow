@@ -3,9 +3,7 @@
 Define Resource Service-owned, time-bounded ResourceSlot facts that establish the
 availability foundation for a later Booking capability without creating reservations or
 capacity allocation behavior.
-
 ## Requirements
-
 ### Requirement: Resource Service persists an isolated resource-slot model
 
 When its explicit persistence profile is enabled, Resource Service SHALL own
@@ -195,3 +193,14 @@ for every occurrence.
 
 - **WHEN** one recurring occurrence is rejected by Resource Service
 - **THEN** the workspace stops further creation, preserves prior successful occurrences, and identifies the failed occurrence
+
+### Requirement: Browser bulk transitions remain bounded and optimistic
+The management browser SHALL orchestrate bulk availability changes only over a selected resource's bounded loaded slot page and SHALL call the existing versioned status transition once per eligible slot.
+
+#### Scenario: Loaded page is bulk transitioned
+- **WHEN** an authorized operator confirms a target status
+- **THEN** only loaded slots not already in that status are submitted with their individual expected versions
+
+#### Scenario: One optimistic transition conflicts
+- **WHEN** Resource Service rejects one submitted slot version
+- **THEN** the browser stops the remaining sequence and reloads the selected resource's slot page
