@@ -7,7 +7,7 @@
 python -m http.server 3000 --directory venueflow-web
 ```
 
-脚本会启动 MySQL、Redis、RabbitMQ、Elasticsearch、七个应用服务，执行 Flyway 迁移，写入演示资源，并创建本地管理员 `campus.admin / Campus-Admin-2026!`。
+脚本会启动 MySQL、Redis、RabbitMQ、Elasticsearch、七个应用服务，执行 Flyway 迁移，写入演示资源，并创建本地申请人 `campus.user / Campus-User-2026!` 与管理员 `campus.admin / Campus-Admin-2026!`。
 
 如果此前已有 `secrets/local-dev/local-dev.env`，启动脚本也会补充本地管理员配置。修改管理员配置后需要重启 Auth Service，并重新登录以获得包含新角色的 JWT。
 
@@ -54,6 +54,7 @@ python -m http.server 3000 --directory venueflow-web
 `start.ps1` 默认调用 `seed.ps1`，装载一套合成的 2026 春季学期运营数据：
 
 - 16 名分布在学院和职能部门的合成人员；
+- 1 个绑定代表性申请、审批和消息历史的可登录申请人；
 - 10 个教学、会议、活动、体育艺术和公共服务资源；
 - 每个在用资源未来一个月的多个开放时段；
 - 72 条跨约四个月的申请，覆盖已完成、已通过、待审批、驳回/撤回和超时；
@@ -66,6 +67,8 @@ python -m http.server 3000 --directory venueflow-web
 ```
 
 会稳定重建这些演示记录，同时保留其他用户、资源和预约。脚本还会触发搜索索引重建。
+
+推荐从申请人账号开始验收：登录后应看到 6 条跨不同状态的个人申请、对应服务消息、完整校园资料，以及已解析为资源名称和使用时间的历史卡片。登录页的“快速体验本地演示”按钮只负责填入凭据，仍会经过正常 Auth 登录。
 
 资源预约规则位于管理工作台的“资源管理”卡片中：
 

@@ -81,6 +81,27 @@ test("slot capacity is queried through the resource gateway route", async () => 
   assert.equal(capacity.availableQuantity, 13);
 });
 
+test("applicant history can resolve slot and resource details", async () => {
+  const calls = [];
+  const api = createApi({
+    baseUrl: "http://gateway",
+    storage: storage({ "venueflow.access": "token" }),
+    fetchImpl: async url => {
+      calls.push(url);
+      return response(200, url.includes("resource-slots")
+        ? { id: 900001, resourceId: 7, startAt: "2026-03-02T14:00:00Z" }
+        : { id: 7, name: "图书馆研讨室 A" });
+    }
+  });
+  const slot = await api.slot(900001);
+  const resource = await api.resource(slot.resourceId);
+  assert.deepEqual(calls, [
+    "http://gateway/api/v1/resource-slots/900001",
+    "http://gateway/api/v1/resources/7"
+  ]);
+  assert.equal(resource.name, "图书馆研讨室 A");
+});
+
 test("search results expose the resource id used by slot navigation", async () => {
   const api = createApi({
     baseUrl: "http://gateway",

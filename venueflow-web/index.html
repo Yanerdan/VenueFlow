@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#073d3a">
   <title>VenueFlow · 校园空间预约</title>
-  <link rel="stylesheet" href="./styles.css?v=20260728-c33">
+  <link rel="stylesheet" href="./styles.css?v=20260729-c34b">
 </head>
 <body>
   <header class="site-header">
@@ -44,6 +44,11 @@
           <label>密码<input name="password" type="password" autocomplete="current-password" required placeholder="请输入密码"></label>
           <button class="primary-button" type="submit">进入平台 <span>→</span></button>
         </form>
+        <div class="demo-accounts">
+          <p>快速体验本地演示</p>
+          <button type="button" data-demo-login="applicant"><strong>申请人</strong><span>查看个人申请、审批进度与消息</span></button>
+          <button type="button" data-demo-login="admin"><strong>管理人员</strong><span>进入后可切换至运营工作台</span></button>
+        </div>
         <form id="register-form" class="hidden">
           <label>姓名<input name="displayName" maxlength="80" autocomplete="name" required placeholder="用于申请单展示"></label>
           <div class="form-pair">
@@ -69,9 +74,22 @@
         <button id="refresh-all" class="outline-button">刷新数据</button>
       </div>
 
+      <section class="applicant-summary" aria-label="个人服务概览">
+        <article><span>进行中申请</span><strong id="summary-active">—</strong><small>等待处理或已通过</small></article>
+        <article><span>已通过</span><strong id="summary-approved">—</strong><small>可按审批结果使用</small></article>
+        <article><span>服务消息</span><strong id="summary-messages">—</strong><small>预约状态与处理结果</small></article>
+        <article class="summary-guidance"><span>下一步</span><strong id="summary-next">正在同步个人服务状态…</strong><button type="button" data-view="discover">查看可申请空间 →</button></article>
+      </section>
+
       <section id="discover" class="view">
         <form id="search-form" class="search"><span>⌕</span><input name="text" maxlength="100" placeholder="搜索空间名称、位置或用途"><button>搜索</button></form>
-        <div class="filter-row"><span class="filter-label">统一目录</span><span>教学空间</span><span>会议研讨</span><span>文体活动</span><span>公共服务</span></div>
+        <div class="filter-row" aria-label="空间分类">
+          <button type="button" class="active" data-category="">全部空间</button>
+          <button type="button" data-category="SHOW-TEACHING">教学空间</button>
+          <button type="button" data-category="SHOW-MEETING">会议研讨</button>
+          <button type="button" data-category="SHOW-ACTIVITY,SHOW-SPORT">文体活动</button>
+          <button type="button" data-category="SHOW-SERVICE">公共服务</button>
+        </div>
         <div class="split">
           <div>
             <div class="section-title"><div><p class="eyebrow">AVAILABLE RESOURCES</p><h2>可申请空间</h2></div><span id="resource-count" class="result-count"></span></div>
@@ -83,6 +101,7 @@
             <div id="slot-list" class="slots"></div>
             <form id="booking-form" class="booking-form hidden">
               <input name="slotId" type="hidden">
+              <div id="selected-slot-summary" class="selected-slot-summary"></div>
               <label>活动名称<input name="activityTitle" maxlength="160" required placeholder="如 学生创新项目讨论会"></label>
               <label>申请用途<textarea name="purpose" maxlength="500" rows="3" required placeholder="说明活动内容和场地需求"></textarea></label>
               <div class="form-pair">
@@ -91,6 +110,7 @@
               </div>
               <label>补充说明<textarea name="note" maxlength="1000" rows="2" placeholder="设备、布置或其他说明（选填）"></textarea></label>
               <label>预计使用人数<input name="quantity" type="number" min="1" value="1" required></label>
+              <div id="approval-summary" class="approval-summary"></div>
               <button class="primary-button" type="submit">提交使用申请 <span>→</span></button>
             </form>
           </aside>
@@ -103,12 +123,13 @@
       </section>
 
       <section id="notifications" class="view hidden">
-        <div class="section-title page-section-title"><div><p class="eyebrow">MESSAGE CENTER</p><h2>消息中心</h2><p>集中接收预约状态变化和服务通知。</p></div><button id="refresh-notifications" class="outline-button">刷新</button></div>
+        <div class="section-title page-section-title"><div><p class="eyebrow">MESSAGE CENTER</p><h2>消息中心 <span id="notification-count" class="title-count"></span></h2><p>集中接收预约状态变化和服务通知；正式使用时以校内通知渠道为准。</p></div><button id="refresh-notifications" class="outline-button">刷新</button></div>
         <div id="notification-list" class="notification-list"></div>
       </section>
 
       <section id="profile" class="view hidden">
         <div class="section-title page-section-title"><div><p class="eyebrow">CAMPUS IDENTITY</p><h2>个人资料</h2><p>这些信息会用于申请审核与校内联络。</p></div></div>
+        <div id="profile-completeness" class="profile-completeness"></div>
         <form id="profile-form" class="profile-form">
           <label>姓名<input name="displayName" maxlength="120" required></label>
           <label>学工号<input name="campusId" maxlength="64" placeholder="待完善"></label>
@@ -119,6 +140,11 @@
           <button class="primary-button span-2" type="submit">保存资料 <span>→</span></button>
         </form>
       </section>
+
+      <footer class="service-help">
+        <div><p class="eyebrow">SERVICE GUIDE</p><strong>申请前请确认活动规模、设备需求与管理部门规则</strong><span>资源卡片会标明负责单位；审批结果、驳回原因和状态变化均可在“我的申请”与“消息中心”查看。</span></div>
+        <div><strong>本地演示支持</strong><span>服务异常时可刷新页面并保留追踪号。本环境不连接真实学校统一身份、短信或邮件系统。</span></div>
+      </footer>
     </section>
     <div id="message" class="message hidden" role="status"></div>
   </main>
@@ -126,6 +152,6 @@
   <nav id="mobile-nav" class="mobile-nav hidden">
     <button data-view="discover" class="active">空间</button><button data-view="bookings">申请</button><button data-view="notifications">消息</button><button data-view="profile">我的</button>
   </nav>
-  <script type="module" src="./src/app.js?v=20260728-c33"></script>
+  <script type="module" src="./src/app.js?v=20260729-c34b"></script>
 </body>
 </html>

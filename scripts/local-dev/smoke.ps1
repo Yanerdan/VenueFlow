@@ -11,10 +11,11 @@ function Invoke-Json([string]$Method, [string]$Uri, $Body, $Headers = @{}) {
         Method = $Method
         Uri = $Uri
         Headers = $Headers
-        ContentType = "application/json"
+        ContentType = "application/json; charset=utf-8"
     }
     if ($null -ne $Body) {
-        $parameters.Body = $Body | ConvertTo-Json -Depth 6 -Compress
+        $json = $Body | ConvertTo-Json -Depth 6 -Compress
+        $parameters.Body = [Text.Encoding]::UTF8.GetBytes($json)
     }
     try {
         return Invoke-RestMethod @parameters
@@ -237,6 +238,7 @@ $resource = Invoke-Json "Patch" "$gateway/api/v1/resources/$($resource.id)/owner
     finalApproverExternalUserId = $originalResource.finalApproverExternalUserId
     expectedVersion = $resource.version
 } $adminHeaders
+$resource = Invoke-Json "Get" "$gateway/api/v1/resources/$($resource.id)" $null $adminHeaders
 $null = Invoke-Json "Patch" "$gateway/api/v1/resources/$($resource.id)/booking-rules" @{
     bookingNotice = $originalResource.bookingNotice
     minAdvanceHours = $originalResource.minAdvanceHours

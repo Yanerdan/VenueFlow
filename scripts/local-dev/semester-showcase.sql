@@ -1,8 +1,23 @@
 SET NAMES utf8mb4;
 SET time_zone = '+00:00';
+USE venueflow_resource;
 START TRANSACTION;
 
 -- This fixture is synthetic. Reserved identifiers make it safe to reseed without touching user data.
+INSERT INTO venueflow_user.user_profile
+  (external_user_id, display_name, campus_id, identity_type, department, phone, email,
+   account_status, booking_eligibility, version, created_at, updated_at)
+SELECT credentials.user_id, '陈安（申请人演示）', 'DEMO-S2026099', 'STUDENT', '计算机学院',
+       '13800001999', 'demo.applicant@example.edu.cn', 'ACTIVE', 'ELIGIBLE', 2,
+       NOW() - INTERVAL 168 DAY, NOW() - INTERVAL 2 DAY
+FROM venueflow_auth.auth_credentials credentials
+WHERE credentials.username = 'campus.user'
+ON DUPLICATE KEY UPDATE
+  display_name = VALUES(display_name), campus_id = VALUES(campus_id),
+  identity_type = VALUES(identity_type), department = VALUES(department),
+  phone = VALUES(phone), email = VALUES(email), account_status = 'ACTIVE',
+  booking_eligibility = 'ELIGIBLE', updated_at = VALUES(updated_at);
+
 INSERT INTO venueflow_user.user_profile
   (external_user_id, display_name, campus_id, identity_type, department, phone, email,
    account_status, booking_eligibility, version, created_at, updated_at)
@@ -103,6 +118,19 @@ ON DUPLICATE KEY UPDATE
   max_advance_days = VALUES(max_advance_days), max_duration_minutes = VALUES(max_duration_minutes),
   status = VALUES(status), version = VALUES(version), updated_at = VALUES(updated_at);
 
+-- Remove only unreferenced generated slots so advancing the calendar does not accumulate stale choices.
+DELETE slot
+FROM venueflow_resource.resource_slot slot
+JOIN venueflow_resource.resource resource ON resource.id = slot.resource_id
+WHERE resource.resource_no LIKE 'VF-CAMPUS-%'
+  AND slot.id < 900000
+  AND NOT EXISTS (
+    SELECT 1 FROM venueflow_booking.booking_reservation booking WHERE booking.slot_id = slot.id
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM venueflow_resource.resource_slot_allocation allocation WHERE allocation.slot_id = slot.id
+  );
+
 INSERT IGNORE INTO venueflow_resource.resource_slot
   (resource_id, start_at, end_at, status, allocated_quantity, version, created_at, updated_at)
 WITH RECURSIVE days(day_offset) AS (
@@ -110,13 +138,39 @@ WITH RECURSIVE days(day_offset) AS (
 )
 SELECT r.id,
        DATE_ADD(DATE_ADD(UTC_DATE(), INTERVAL days.day_offset DAY),
-                INTERVAL (CASE WHEN MOD(r.id, 2)=0 THEN 9 ELSE 14 END) HOUR),
+                INTERVAL (CASE WHEN MOD(r.id, 2)=0 THEN 1 ELSE 6 END) HOUR),
        DATE_ADD(DATE_ADD(UTC_DATE(), INTERVAL days.day_offset DAY),
-                INTERVAL (CASE WHEN MOD(r.id, 2)=0 THEN 11 ELSE 16 END) HOUR),
+                INTERVAL (CASE WHEN MOD(r.id, 2)=0 THEN 3 ELSE 8 END) HOUR),
        'OPEN', 0, 1, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)
 FROM venueflow_resource.resource r
 CROSS JOIN days
 WHERE r.resource_no LIKE 'VF-CAMPUS-%' AND r.status = 'ACTIVE';
+
+-- Materialize the use periods referenced by semester history so applicant cards can resolve them.
+INSERT INTO venueflow_resource.resource_slot
+  (id, resource_id, start_at, end_at, status, allocated_quantity, version, created_at, updated_at)
+WITH RECURSIVE seq(n) AS (
+  SELECT 1 UNION ALL SELECT n + 1 FROM seq WHERE n < 72
+),
+resources AS (
+  SELECT id, ROW_NUMBER() OVER (ORDER BY resource_no) rn
+  FROM venueflow_resource.resource
+  WHERE resource_no LIKE 'VF-CAMPUS-%' AND status = 'ACTIVE'
+)
+SELECT 900000 + n, resource.id,
+       CASE WHEN n <= 58
+            THEN DATE_ADD(DATE_ADD(DATE_SUB(UTC_DATE(), INTERVAL (122 - FLOOR(n * 116 / 72)) DAY), INTERVAL 2 DAY), INTERVAL 6 HOUR)
+            ELSE DATE_ADD(DATE_ADD(UTC_DATE(), INTERVAL (3 + (n - 59) * 2) DAY), INTERVAL 5 HOUR) END,
+       CASE WHEN n <= 58
+            THEN DATE_ADD(DATE_ADD(DATE_SUB(UTC_DATE(), INTERVAL (122 - FLOOR(n * 116 / 72)) DAY), INTERVAL 2 DAY), INTERVAL 8 HOUR)
+            ELSE DATE_ADD(DATE_ADD(UTC_DATE(), INTERVAL (3 + (n - 59) * 2) DAY), INTERVAL 7 HOUR) END,
+       'CLOSED', 0,
+       1, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)
+FROM seq
+JOIN resources resource ON resource.rn = 1 + MOD(n * n + 2 * n, 9)
+ON DUPLICATE KEY UPDATE
+  resource_id = VALUES(resource_id), start_at = VALUES(start_at), end_at = VALUES(end_at),
+  status = VALUES(status), allocated_quantity = VALUES(allocated_quantity), updated_at = VALUES(updated_at);
 
 -- Recreate only the reserved semester history.
 DELETE FROM venueflow_booking.booking_approval_action
@@ -204,6 +258,20 @@ FROM seq
 JOIN applicants a ON a.rn = 1 + MOD(n - 1, 12)
 JOIN resources r ON r.rn = 1 + MOD(n * n + 2 * n, 9);
 
+-- Bind one persona's representative history to the real login-ready applicant account.
+UPDATE venueflow_booking.booking_reservation booking
+JOIN venueflow_user.user_profile source_profile
+  ON source_profile.id = booking.user_id
+ AND source_profile.external_user_id = 'showcase-applicant-01'
+JOIN venueflow_auth.auth_credentials credentials
+  ON credentials.username = 'campus.user'
+JOIN venueflow_user.user_profile demo_profile
+  ON demo_profile.external_user_id = credentials.user_id
+SET booking.user_id = demo_profile.id,
+    booking.contact_name = demo_profile.display_name,
+    booking.contact_phone = demo_profile.phone
+WHERE booking.booking_no LIKE 'VF-SHOW-%';
+
 INSERT INTO venueflow_booking.booking_approval_action
   (booking_id, approval_step, actor_external_user_id, actor_role, decision, review_note, created_at)
 SELECT b.id, 1, b.assigned_approver_external_user_id, 'APPROVER',
@@ -264,4 +332,10 @@ JOIN venueflow_booking.booking_reservation b ON b.id=a.booking_id
 WHERE b.booking_no LIKE 'VF-SHOW-%'
 UNION ALL
 SELECT 'showcase_notifications', COUNT(*)
-FROM venueflow_notification.notification_record WHERE booking_no LIKE 'VF-SHOW-%';
+FROM venueflow_notification.notification_record WHERE booking_no LIKE 'VF-SHOW-%'
+UNION ALL
+SELECT 'demo_applicant_history', COUNT(*)
+FROM venueflow_booking.booking_reservation booking
+JOIN venueflow_user.user_profile profile ON profile.id = booking.user_id
+JOIN venueflow_auth.auth_credentials credentials ON credentials.user_id = profile.external_user_id
+WHERE credentials.username = 'campus.user' AND booking.booking_no LIKE 'VF-SHOW-%';
