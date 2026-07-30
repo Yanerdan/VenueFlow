@@ -1,5 +1,5 @@
-import { createApi } from "./api.js?v=20260730-c37";
-import { transitionCandidates } from "./self-service.js?v=20260730-c37";
+import { createApi } from "./api.js?v=20260730-c38";
+import { transitionCandidates } from "./self-service.js?v=20260730-c38";
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -26,6 +26,9 @@ let selectedBooking;
 let selectedSlotResource;
 let loadedSlots = [];
 let messageTimer;
+let approvalPage = 0;
+let userPage = 0;
+const tablePageSize = 20;
 
 const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, char =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
@@ -48,6 +51,22 @@ const statusLabel = value => ({
   SUSPENDED: "已暂停", ARCHIVED: "已归档", OPEN: "开放", CLOSED: "关闭"
 })[value] || value;
 const empty = (title, copy) => `<div class="empty"><strong>${title}</strong>${copy}</div>`;
+const resourceFor = resourceId => resources.find(item => Number(item.id) === Number(resourceId));
+const resourceName = resourceId => resourceFor(resourceId)?.name || `资源 #${resourceId || "待恢复"}`;
+const dateRange = (startAt, endAt) => startAt
+  ? `${dateTime(startAt)} — ${timeOnly(endAt)}`
+  : "时段记录暂不可用";
+async function allPages(loader) {
+  const first = await loader(0, 100);
+  const items = [...(first.items || [])];
+  const total = Number(first.totalElements ?? items.length);
+  for (let page = 1; items.length < total; page += 1) {
+    const next = await loader(page, 100);
+    if (!(next.items || []).length) break;
+    items.push(...next.items);
+  }
+  return items;
+}
 
 function notify(text, error = false) {
   clearTimeout(messageTimer); $("#message").textContent = text;
@@ -74,11 +93,13 @@ function guard() {
 }
 async function loadData() {
   const role = api.role();
-  const [resourcePage, bookingPage, userPage, reportData, accountData, approverData, categoryData] =
+  const [resourcePage, bookingPage, userItems, reportData, accountData, approverData, categoryData] =
     await Promise.all([
       api.resources(),
-      approvalRoles.includes(role) ? api.managementBookings() : Promise.resolve(null),
-      api.managementUsers(),
+      approvalRoles.includes(role)
+        ? allPages((page, size) => api.managementBookings("", page, size))
+        : Promise.resolve(null),
+      allPages((page, size) => api.managementUsers("", page, size)),
       approvalRoles.includes(role) ? api.operationalReport() : Promise.resolve(null),
       role === "SYSTEM_ADMIN" ? api.authAccounts() : Promise.resolve([]),
       ["RESOURCE_MANAGER", "SYSTEM_ADMIN"].includes(role)
@@ -86,9 +107,13 @@ async function loadData() {
         : Promise.resolve([]),
       api.categories()
     ]);
-  resources = (resourcePage.items || []).filter(item => item.status !== "ARCHIVED");
-  bookings = bookingPage?.items || [];
-  users = userPage?.items || [];
+  resources = (resourcePage.items || [])
+    .filter(item => item.status !== "ARCHIVED")
+    .sort((a, b) => Number(!String(a.resourceNo).startsWith("VF-CAMPUS-")) - Number(!String(b.resourceNo).startsWith("VF-CAMPUS-")));
+  bookings = bookingPage || [];
+  users = (userItems || []).sort((a, b) =>
+    Number(!String(a.externalUserId).startsWith("showcase-")) -
+    Number(!String(b.externalUserId).startsWith("showcase-")));
   report = reportData || null;
   accounts = accountData || [];
   approvers = approverData || [];
@@ -113,8 +138,10 @@ function renderGovernance() {
     ? identityProviders.map(provider => `<div><span class="status ${provider.ready ? "confirmed" : "cancelled"}">${provider.ready ? "已就绪" : "未就绪"}</span><strong>${escapeHtml(provider.displayName)}</strong><small>${escapeHtml(provider.status)}</small></div>`).join("")
     : empty("尚未配置身份提供方", "设置 OIDC 环境变量并重启 Auth Service 后将在这里显示就绪状态。");
   const latest = directoryRuns[0];
+  const syncStatus = { SUCCEEDED: "同步成功", FAILED: "同步失败", RUNNING: "同步中" };
+  const syncMode = { FULL: "全量同步", PARTIAL: "增量更新" };
   $("#directory-run-status").innerHTML = latest
-    ? `<div><span class="status ${latest.status === "SUCCEEDED" ? "completed" : latest.status === "FAILED" ? "cancelled" : "pending"}">${escapeHtml(latest.status)}</span><strong>${escapeHtml(latest.source)} · ${escapeHtml(latest.mode)}</strong><small>${latest.organizationCount} 个组织 · ${latest.membershipCount} 个成员 · ${dateTime(latest.completedAt || latest.startedAt)}</small>${latest.errorSummary ? `<p>${escapeHtml(latest.errorSummary)}</p>` : ""}</div>`
+    ? `<div><span class="status ${latest.status === "SUCCEEDED" ? "completed" : latest.status === "FAILED" ? "cancelled" : "pending"}">${escapeHtml(syncStatus[latest.status] || latest.status)}</span><strong>${escapeHtml(latest.source)} · ${escapeHtml(syncMode[latest.mode] || latest.mode)}</strong><small>${latest.organizationCount} 个组织 · ${latest.membershipCount} 个成员 · ${dateTime(latest.completedAt || latest.startedAt)}</small>${latest.errorSummary ? `<p>${escapeHtml(latest.errorSummary)}</p>` : ""}</div>`
     : empty("还没有同步记录", "导入首个规范化组织批次后，这里会显示结果和处理数量。");
   $("#organization-count").textContent = `${organizations.filter(item => item.active).length} 个在用`;
   $("#organization-tree").innerHTML = organizations.length
@@ -140,7 +167,7 @@ function renderDashboard() {
   $("#metric-confirmed").textContent = bookings.filter(item => item.status === "CONFIRMED").length;
   $("#metric-completed").textContent = bookings.filter(item => item.status === "COMPLETED").length;
   $("#dashboard-pending").innerHTML = pending.length ? pending.slice(0, 5).map(item => `
-    <div class="compact-row"><div><strong>${escapeHtml(item.bookingNo)}</strong><span>${applicantLabel(item.userId)} · 时段 #${item.slotId} · ${item.quantity} 人</span></div>
+    <div class="compact-row"><div><strong>${escapeHtml(item.activityTitle || "校园资源使用申请")}</strong><span>${applicantLabel(item.userId)} · ${escapeHtml(resourceName(item.resourceId))} · ${item.quantity} 人</span></div>
       <button data-approval="${escapeHtml(item.bookingNo)}" data-action="confirmation">通过</button></div>`).join("") :
     empty("待办已清空", approvalRoles.includes(api.role()) ? "当前没有需要处理的申请。" : "该角色不承担预约审批。");
   const active = resources.filter(item => item.status === "ACTIVE").length;
@@ -161,7 +188,6 @@ function renderReports() {
   $("#report-pending").textContent = summary.pendingBookings;
   $("#report-rate").textContent = `${summary.approvalRate}%`;
   $("#report-attendees").textContent = summary.totalAttendees;
-  const resourceName = id => resources.find(item => Number(item.id) === Number(id))?.name || `资源 #${id}`;
   const rankedResources = report.resources.filter(item =>
     resources.some(resource => Number(resource.id) === Number(item.resourceId)));
   const recentReviews = report.recentReviews.some(item => String(item.bookingNo).startsWith("VF-SHOW-"))
@@ -188,7 +214,12 @@ function approvalActions(item) {
 async function openReview(item) {
   selectedBooking = item;
   const applicant = userFor(item.userId);
-  const actions = await api.approvalActions(item.bookingNo);
+  const [actions, slot] = await Promise.all([
+    api.approvalActions(item.bookingNo),
+    api.slot(item.slotId).catch(() => null)
+  ]);
+  const resource = resourceFor(item.resourceId || slot?.resourceId);
+  const approver = profileForExternalId(item.assignedApproverExternalUserId);
   const trajectory = actions.length
     ? actions.map(action => `<li>第 ${action.approvalStep} 级 · ${action.decision === "APPROVED" ? "通过" : "驳回"} · ${statusLabel(action.actorRole)}${action.reviewNote ? ` · ${escapeHtml(action.reviewNote)}` : ""} · ${dateTime(action.createdAt)}</li>`).join("")
     : "<li>尚无审批动作</li>";
@@ -196,9 +227,11 @@ async function openReview(item) {
   $("#review-detail").innerHTML = `
     <div><span>申请人</span><strong>${applicantLabel(item.userId)}</strong></div>
     <div><span>申请编号</span><strong>${escapeHtml(item.bookingNo)}</strong></div>
+    <div><span>使用空间</span><p>${escapeHtml(resource?.name || resourceName(item.resourceId || slot?.resourceId))}${resource?.location ? ` · ${escapeHtml(resource.location)}` : ""}</p></div>
+    <div><span>使用时间</span><p>${escapeHtml(dateRange(slot?.startAt, slot?.endAt))} · ${item.quantity} 人</p></div>
     <div><span>活动用途</span><p>${escapeHtml(item.purpose || "历史申请未记录")}</p></div>
     <div><span>联系人</span><p>${escapeHtml(item.contactName || applicant?.displayName || "待完善")} · ${escapeHtml(item.contactPhone || applicant?.phone || "待完善")}</p></div>
-    <div><span>资源归属</span><p>${escapeHtml(item.ownerDepartment || "未分配部门")} · ${item.assignedApproverExternalUserId ? `审批人 #${item.assignedApproverExternalUserId}` : "未指定审批人"}</p></div>
+    <div><span>资源归属</span><p>${escapeHtml(item.ownerDepartment || "未分配部门")} · ${item.assignedApproverExternalUserId ? `审批人 ${escapeHtml(approver?.displayName || "历史审批人员")}` : "未指定审批人"}</p></div>
     <div><span>审批进度</span><p>第 ${item.currentApprovalStep || 1} / ${item.totalApprovalSteps || 1} 级 · ${item.approvalStages?.length ? item.approvalStages.map(stage => escapeHtml(stage.stageName)).join(" → ") : item.approvalMode === "TWO_STAGE" ? "两级审批" : "直接审批"}</p><ul>${trajectory}</ul></div>
     ${item.note ? `<div><span>补充说明</span><p>${escapeHtml(item.note)}</p></div>` : ""}
     ${item.reviewNote ? `<div><span>已有处理意见</span><p>${escapeHtml(item.reviewNote)}</p></div>` : ""}`;
@@ -208,18 +241,32 @@ async function openReview(item) {
   $("#review-panel").classList.remove("hidden");
 }
 function renderApprovals() {
-  $("#approval-table").innerHTML = bookings.length ? bookings.map(item => `
-    <tr><td><strong>${escapeHtml(item.bookingNo)}</strong></td><td>${applicantLabel(item.userId)}</td><td>#${item.slotId}</td><td>${item.quantity} 人</td>
+  const status = $("#approval-filter").value;
+  const filtered = status ? bookings.filter(item => item.status === status) : bookings;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / tablePageSize));
+  approvalPage = Math.min(approvalPage, totalPages - 1);
+  const visible = filtered.slice(approvalPage * tablePageSize, (approvalPage + 1) * tablePageSize);
+  $("#approval-table").innerHTML = visible.length ? visible.map(item => `
+    <tr><td><strong>${escapeHtml(item.bookingNo)}</strong></td><td>${applicantLabel(item.userId)}</td><td><strong>${escapeHtml(resourceName(item.resourceId))}</strong><small class="table-subline">时段 #${item.slotId}</small></td><td>${item.quantity} 人</td>
       <td><span class="status ${item.status.toLowerCase()}">${statusLabel(item.status)}</span></td><td>${dateTime(item.createdAt)}</td><td class="table-actions">${approvalActions(item)}</td></tr>
   `).join("") : `<tr><td colspan="7">${empty("暂无申请记录", "新的师生申请会出现在这里。")}</td></tr>`;
+  $("#approval-pagination").innerHTML = filtered.length > tablePageSize
+    ? `<button type="button" data-approval-page="${approvalPage - 1}" ${approvalPage === 0 ? "disabled" : ""}>上一页</button><span>第 ${approvalPage + 1} / ${totalPages} 页 · 共 ${filtered.length} 条</span><button type="button" data-approval-page="${approvalPage + 1}" ${approvalPage + 1 >= totalPages ? "disabled" : ""}>下一页</button>`
+    : `<span>共 ${filtered.length} 条</span>`;
 }
 function renderUsers() {
-  $("#user-table").innerHTML = users.length ? users.map(user => `
+  const totalPages = Math.max(1, Math.ceil(users.length / tablePageSize));
+  userPage = Math.min(userPage, totalPages - 1);
+  const visible = users.slice(userPage * tablePageSize, (userPage + 1) * tablePageSize);
+  $("#user-table").innerHTML = visible.length ? visible.map(user => `
     <tr><td><strong>${escapeHtml(user.displayName)}</strong></td><td>${escapeHtml(user.campusId || "待完善")}</td>
       <td>${statusLabel(user.identityType)}</td><td>${roleEditor(user)}</td><td>${escapeHtml(user.department || "待完善")}</td>
       <td>${escapeHtml(user.phone || "待完善")}</td><td>${escapeHtml(user.email || "待完善")}</td>
       <td><span class="status ${user.accountStatus.toLowerCase()}">${user.accountStatus === "ACTIVE" ? "正常" : "停用"}</span></td></tr>
   `).join("") : `<tr><td colspan="8">${empty("暂无人员资料", "没有符合条件的平台用户。")}</td></tr>`;
+  $("#user-pagination").innerHTML = users.length > tablePageSize
+    ? `<button type="button" data-user-page="${userPage - 1}" ${userPage === 0 ? "disabled" : ""}>上一页</button><span>第 ${userPage + 1} / ${totalPages} 页 · 共 ${users.length} 人</span><button type="button" data-user-page="${userPage + 1}" ${userPage + 1 >= totalPages ? "disabled" : ""}>下一页</button>`
+    : `<span>共 ${users.length} 人</span>`;
 }
 function roleEditor(user) {
   const account = accountFor(user.externalUserId);
@@ -289,6 +336,7 @@ function renderResources() {
         </form>
       </details>
       <div class="policy-summary"><strong>预约规则</strong><span>提前 ${item.minAdvanceHours ?? 0} 小时至 ${item.maxAdvanceDays ?? 90} 天 · 最长 ${item.maxDurationMinutes ?? 480} 分钟</span>${item.bookingNotice ? `<p>${escapeHtml(item.bookingNotice)}</p>` : ""}</div>
+      <details class="resource-governance"><summary>配置归属、审批与预约规则</summary><div>
       <form class="ownership-form" data-resource-ownership="${item.id}" data-version="${item.version}">
         <input name="ownerDepartment" maxlength="160" placeholder="归属部门" value="${escapeHtml(item.ownerDepartment || "")}">
         <input type="hidden" name="approvalMode" value="${item.approvalMode || "DIRECT"}">
@@ -304,6 +352,7 @@ function renderResources() {
         <label>最长使用（分钟）<input name="maxDurationMinutes" type="number" min="15" max="1440" required value="${item.maxDurationMinutes ?? 480}"></label>
         <button type="submit">保存预约规则</button>
       </form>
+      </div></details>
       <footer><span>分类 #${item.categoryId}</span>${next ? `<button data-resource-status="${item.id}" data-target="${next[0]}" data-version="${item.version}">${next[1]}</button>` : ""}</footer></article>`;
   }).join("") : empty("暂无校园资源", "点击“新增资源”建立统一资源目录。");
 }
@@ -365,6 +414,7 @@ async function reviewAction(action) {
   const note = $("#review-note").value.trim();
   if (action === "rejection" && !note) {
     notify("驳回申请必须填写原因", true);
+    $("#review-note").focus();
     return;
   }
   await api.bookingAction(selectedBooking.bookingNo, action, note);
@@ -382,9 +432,7 @@ $$("[data-section]").forEach(button => button.addEventListener("click", () => {
 $$("[data-jump]").forEach(button => button.addEventListener("click", () => $(`[data-section="${button.dataset.jump}"]`).click()));
 $("#admin-refresh").addEventListener("click", () => loadData().then(() => notify("管理数据已更新")).catch(fail));
 $("#admin-logout").addEventListener("click", async () => { await api.logout(); location.href = "./index.html"; });
-$("#approval-filter").addEventListener("change", async event => {
-  try { const page = await api.managementBookings(event.target.value); bookings = page.items || []; renderApprovals(); } catch (error) { fail(error); }
-});
+$("#approval-filter").addEventListener("change", () => { approvalPage = 0; renderApprovals(); });
 $("#export-bookings").addEventListener("click", () => {
   const safe = value => {
     let text = String(value ?? "");
@@ -393,9 +441,12 @@ $("#export-bookings").addEventListener("click", () => {
   };
   const resourceName = item =>
     resources.find(resource => Number(resource.id) === Number(item.resourceId))?.name || `资源 #${item.resourceId || ""}`;
+  const exportedBookings = $("#approval-filter").value
+    ? bookings.filter(item => item.status === $("#approval-filter").value)
+    : bookings;
   const rows = [
     ["申请编号", "活动名称", "资源", "申请人", "状态", "人数", "审批意见"],
-    ...bookings.map(item => [
+    ...exportedBookings.map(item => [
       item.bookingNo, item.activityTitle || "", resourceName(item),
       userFor(item.userId)?.displayName || `用户 #${item.userId}`,
       statusLabel(item.status), item.quantity, item.reviewNote || ""
@@ -406,13 +457,14 @@ $("#export-bookings").addEventListener("click", () => {
   const link = document.createElement("a");
   link.href = url; link.download = `venueflow-bookings-${new Date().toISOString().slice(0, 10)}.csv`;
   link.click(); URL.revokeObjectURL(url);
-  notify(`已导出当前列表，共 ${bookings.length} 条申请`);
+  notify(`已导出当前筛选列表，共 ${exportedBookings.length} 条申请`);
 });
 $("#user-search-form").addEventListener("submit", async event => {
   event.preventDefault();
   try {
-    const page = await api.managementUsers(new FormData(event.currentTarget).get("keyword").trim());
-    users = page.items || [];
+    const keyword = new FormData(event.currentTarget).get("keyword").trim();
+    users = await allPages((page, size) => api.managementUsers(keyword, page, size));
+    userPage = 0;
     renderUsers();
   } catch (error) { fail(error); }
 });
@@ -458,6 +510,20 @@ $("#user-table").addEventListener("submit", async event => {
   } catch (error) { fail(error); }
 });
 document.addEventListener("click", event => {
+  const approvalPager = event.target.closest("[data-approval-page]");
+  if (approvalPager && !approvalPager.disabled) {
+    approvalPage = Number(approvalPager.dataset.approvalPage);
+    renderApprovals();
+    $("#approvals").scrollIntoView({ block: "start" });
+    return;
+  }
+  const userPager = event.target.closest("[data-user-page]");
+  if (userPager && !userPager.disabled) {
+    userPage = Number(userPager.dataset.userPage);
+    renderUsers();
+    $("#users").scrollIntoView({ block: "start" });
+    return;
+  }
   const approval = event.target.closest("[data-approval]");
   if (approval) actBooking(approval).catch(fail);
   const review = event.target.closest("[data-review-booking]");

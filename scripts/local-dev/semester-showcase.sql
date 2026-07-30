@@ -306,7 +306,7 @@ applicants AS (
   FROM venueflow_user.user_profile WHERE external_user_id LIKE 'showcase-applicant-%'
 ),
 resources AS (
-  SELECT id, owner_department, approver_external_user_id, approval_mode,
+  SELECT id, capacity, owner_department, approver_external_user_id, approval_mode,
          final_approver_external_user_id,
          ROW_NUMBER() OVER (ORDER BY resource_no) rn
   FROM venueflow_resource.resource WHERE resource_no LIKE 'VF-CAMPUS-%'
@@ -317,7 +317,7 @@ SELECT
   a.id, 900000 + n, r.id, r.owner_department, r.approver_external_user_id,
   r.approval_mode, r.final_approver_external_user_id,
   CASE WHEN n > 66 AND r.approval_mode='TWO_STAGE' THEN 2 ELSE 1 END,
-  8 + MOD(n * 7, 73),
+  1 + MOD(n * 7, GREATEST(r.capacity, 1)),
   ELT(1 + MOD(n - 1, 10),
       '学院学术交流沙龙', '学生骨干培训', '课程项目集中研讨', '就业能力提升讲座',
       '社团年度成果展示', '跨学院创新工作坊', '教职工文体活动', '朋辈辅导技能培训',

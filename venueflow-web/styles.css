@@ -202,6 +202,7 @@ input::placeholder { color: #8a9391; }
 .booking-list, .notification-list { display: grid; gap: 12px; }
 .booking-card { padding: 21px; display: grid; grid-template-columns: minmax(180px, 1fr) repeat(2, minmax(110px, .55fr)) auto; gap: 20px; align-items: center; background: var(--paper); border: 1px solid var(--line-soft); border-radius: 4px; }
 .booking-card.focused { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+.booking-card.focused summary:focus { outline: 2px solid var(--gold); outline-offset: 3px; }
 .activity-name { margin: 7px 0; display: block; font-size: .84rem; }
 .booking-detail { grid-column: 1 / -2; color: var(--muted); font-size: .76rem; }
 .booking-detail summary { width: max-content; color: var(--primary); cursor: pointer; font-weight: 700; }
@@ -370,6 +371,10 @@ th { padding: 14px 16px; color: var(--muted); text-align: left; background: #f8f
 td { padding: 16px; border-top: 1px solid var(--line-soft); white-space: nowrap; }
 .table-actions { display: flex; gap: 6px; }
 .table-actions .danger { color: var(--error); background: #faeeee; }
+.table-subline { margin-top: 4px; display: block; color: var(--muted); font-weight: 400; }
+.pagination { padding: 14px 4px; display: flex; justify-content: flex-end; align-items: center; gap: 12px; color: var(--muted); font-size: .72rem; }
+.pagination button { padding: 8px 12px; color: var(--primary); background: white; border: 1px solid var(--line); border-radius: 4px; font-weight: 700; }
+.pagination button:disabled { cursor: not-allowed; }
 .admin-form { max-width: 720px; margin: 0 0 22px; padding: 24px; grid-template-columns: 1fr 1fr; background: white; border: 1px solid var(--line); border-radius: 7px; box-shadow: 0 16px 40px #073d3a12; }
 .form-heading { grid-column: 1 / -1; display: flex; justify-content: space-between; }
 .form-heading h2 { margin: 0; }
@@ -397,6 +402,9 @@ td { padding: 16px; border-top: 1px solid var(--line-soft); white-space: nowrap;
 .resource-editor label { display: grid; gap: 3px; font-size: .66rem; }
 .resource-editor .wide { grid-column: 1 / -1; }
 .resource-editor input, .resource-editor select, .resource-editor textarea { width: 100%; }
+.resource-governance { margin: 12px 0; color: var(--primary); font-size: .74rem; }
+.resource-governance > summary { cursor: pointer; font-weight: 700; }
+.resource-governance > div { margin-top: 9px; padding-top: 4px; border-top: 1px solid var(--line-soft); }
 .admin-form small { color: var(--muted); font-size: .68rem; }
 button:disabled { cursor: wait; opacity: .55; }
 .demo-disclosure { max-width: 1180px; margin: 14px auto 0; padding: 9px 13px; color: #49645f; background: #edf5f2; border: 1px solid #d8e7e2; border-radius: 4px; font-size: .72rem; letter-spacing: .02em; }

@@ -3,9 +3,7 @@
 ## Purpose
 
 Define a repeatable synthetic semester dataset that makes the local VenueFlow environment useful for product demonstration and acceptance.
-
 ## Requirements
-
 ### Requirement: Local showcase represents a semester of campus operations
 
 The local demonstration environment SHALL provide synthetic profiles, resources, slots, reservations, approval actions, and notifications spanning multiple campus departments and operational states.
@@ -55,3 +53,12 @@ The local showcase SHALL provision a reserved applicant credential through the p
 
 - **WHEN** the local seed is run more than once
 - **THEN** the reserved applicant account and its associated showcase history remain stable without duplicate records
+
+### Requirement: Showcase booking quantities respect resource capacity
+
+Synthetic semester reservations SHALL use a positive quantity no greater than the capacity of the joined resource.
+
+#### Scenario: Local showcase data is reseeded
+
+- **WHEN** reservation history is regenerated for a resource with positive capacity
+- **THEN** every generated quantity is between one and that resource capacity inclusive

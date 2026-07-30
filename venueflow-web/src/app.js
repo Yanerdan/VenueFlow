@@ -1,4 +1,4 @@
-import { createApi } from "./api.js?v=20260730-c37";
+import { createApi } from "./api.js?v=20260730-c38";
 import { buildCalendarEvent, safeCalendarFilename } from "./self-service.js?v=20260729-c36";
 
 const $ = selector => document.querySelector(selector);
@@ -49,6 +49,9 @@ const localDate = value => {
   const date = new Date(value);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 };
+const searchDate = $("#search-form").elements.date;
+searchDate.min = localDate(new Date());
+searchDate.max = localDate(new Date(Date.now() + 90 * 24 * 60 * 60 * 1000));
 const publicComplete = resource =>
   Boolean(resource.name?.trim() && resource.location?.trim() && Number(resource.capacity) > 0 && resource.ownerDepartment?.trim());
 
@@ -199,12 +202,23 @@ async function loadResources() {
   const filters = new FormData($("#search-form"));
   const text = String(filters.get("text") || "").trim();
   const intendedDate = String(filters.get("date") || "");
-  const [page, categories] = await Promise.all([
-    text ? api.search(text) : api.resources(),
+  const [catalogPage, searchPage, categories] = await Promise.all([
+    api.resources(),
+    text ? api.search(text).catch(() => ({ items: [] })) : Promise.resolve({ items: [] }),
     categoryCodes.size ? Promise.resolve([]) : api.categories().catch(() => [])
   ]);
   (categories.items || categories || []).forEach(category => categoryCodes.set(category.id, category.code));
-  resourceCatalog = (page.items || [])
+  const catalogItems = catalogPage.items || [];
+  const searchIds = new Set((searchPage.items || []).map(item => Number(item.id)));
+  const normalizedText = text.toLocaleLowerCase("zh-CN");
+  const locallyMatchedIds = new Set(catalogItems.filter(item =>
+    [item.resourceNo, item.name, item.location, item.description, item.ownerDepartment]
+      .some(value => String(value || "").toLocaleLowerCase("zh-CN").includes(normalizedText))
+  ).map(item => Number(item.id)));
+  resourceCatalog = catalogItems
+    .filter(item => !text || (locallyMatchedIds.size
+      ? locallyMatchedIds.has(Number(item.id))
+      : searchIds.has(Number(item.id))))
     .filter(item => (!item.status || item.status === "ACTIVE") && publicComplete(item))
     .sort((a, b) => Number(!String(a.resourceNo).startsWith("VF-CAMPUS-")) - Number(!String(b.resourceNo).startsWith("VF-CAMPUS-")));
   resourceCatalog.forEach(resource => resourceCache.set(Number(resource.id), resource));
@@ -248,7 +262,7 @@ async function loadSlots(resourceId, name) {
   }, new Map());
   $("#slot-list").innerHTML = items.length ? [...grouped.entries()].map(([day, slots]) => `
     <div class="slot-day"><strong>${new Intl.DateTimeFormat("zh-CN", { month: "long", day: "numeric", weekday: "short" }).format(new Date(`${day}T12:00:00`))}</strong>
-      ${slots.map(slot => `<button class="slot" data-slot-id="${slot.id}" data-remaining="${slot.capacity?.availableQuantity ?? ""}" ${slot.capacity?.availableQuantity <= 0 ? "disabled" : ""}>
+      ${slots.map(slot => `<button class="slot" aria-label="${escapeHtml(new Intl.DateTimeFormat("zh-CN", { month: "long", day: "numeric", weekday: "short" }).format(new Date(`${day}T12:00:00`)))} ${new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit" }).format(new Date(slot.startAt))} 至 ${new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit" }).format(new Date(slot.endAt))}，${slot.capacity ? `剩余 ${slot.capacity.availableQuantity} / ${slot.capacity.staticCapacity} 人` : "可提交申请"}" data-slot-id="${slot.id}" data-remaining="${slot.capacity?.availableQuantity ?? ""}" ${slot.capacity?.availableQuantity <= 0 ? "disabled" : ""}>
         <strong>${new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit" }).format(new Date(slot.startAt))} — ${new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit" }).format(new Date(slot.endAt))}</strong>
         <span>${slot.capacity ? `剩余 ${slot.capacity.availableQuantity} / ${slot.capacity.staticCapacity} 人` : "可提交申请"}</span>
       </button>`).join("")}</div>
@@ -281,7 +295,13 @@ function bookingMatchesFilters(booking) {
   const text = String(filters.get("text") || "").trim().toLowerCase();
   const status = String(filters.get("status") || "");
   const haystack = `${booking.bookingNo} ${booking.activityTitle || ""} ${booking.resource?.name || ""}`.toLowerCase();
-  return (!status || booking.status === status) && (!text || haystack.includes(text));
+  const statusMatches = !status ||
+    (status === "REJECTED"
+      ? booking.status === "CANCELLED" && booking.reviewDecision === "REJECTED"
+      : status === "CANCELLED"
+        ? booking.status === "CANCELLED" && booking.reviewDecision !== "REJECTED"
+        : booking.status === status);
+  return statusMatches && (!text || haystack.includes(text));
 }
 function renderBookings(focusBookingNo) {
   const items = bookingHistory.filter(bookingMatchesFilters);
@@ -291,13 +311,18 @@ function renderBookings(focusBookingNo) {
       <div><p class="booking-label">使用空间</p><div class="booking-value">${escapeHtml(booking.resource?.name || `资源记录 ${booking.resourceId || "待恢复"}`)}</div><small>${escapeHtml(booking.resource?.location || booking.ownerDepartment || "位置记录暂不可用")}</small></div>
       <div><p class="booking-label">使用时间</p><div class="booking-value">${escapeHtml(dateRange(booking.slot?.startAt, booking.slot?.endAt))}</div><small>${booking.quantity} 人 · ${escapeHtml(booking.ownerDepartment || booking.resource?.ownerDepartment || "管理部门待确认")}</small></div>
       <details class="booking-detail"><summary>查看申请与审批详情</summary><div><span>用途</span><p>${escapeHtml(booking.purpose || "历史申请未记录")}</p><span>联系人</span><p>${escapeHtml(booking.contactName || "待完善")} · ${escapeHtml(booking.contactPhone || "待完善")}</p><span>审批路径</span><p>第 ${booking.currentApprovalStep || 1} / ${booking.totalApprovalSteps || 1} 级 · ${booking.approvalStages?.length ? booking.approvalStages.map(stage => escapeHtml(stage.stageName)).join(" → ") : booking.approvalMode === "TWO_STAGE" ? "院系初审 + 校级终审" : "管理部门直接审批"}</p>${booking.approvalActions.length ? `<ul>${booking.approvalActions.map(action => `<li>第 ${action.approvalStep} 级 ${action.decision === "APPROVED" ? "已通过" : "未通过"}${action.reviewNote ? ` · ${escapeHtml(action.reviewNote)}` : ""}</li>`).join("")}</ul>` : ""}${booking.note ? `<span>补充说明</span><p>${escapeHtml(booking.note)}</p>` : ""}${booking.reviewNote ? `<span>处理意见</span><p>${escapeHtml(booking.reviewNote)}</p>` : ""}</div></details>
-      <div class="card-actions"><button data-repeat-booking="${escapeHtml(booking.bookingNo)}">再次申请</button>${booking.status === "CONFIRMED" && booking.slot ? `<button data-calendar-booking="${escapeHtml(booking.bookingNo)}">加入日历</button>` : ""}${["PENDING_CONFIRMATION", "CONFIRMED"].includes(booking.status) && booking.resource ? `<button data-reschedule-booking="${escapeHtml(booking.bookingNo)}">改期</button>` : ""}${["PENDING_CONFIRMATION", "CONFIRMED"].includes(booking.status) ? `<button data-booking="${escapeHtml(booking.bookingNo)}" data-action="cancellation">撤回申请</button>` : ""}</div>
+      <div class="card-actions"><button data-repeat-booking="${escapeHtml(booking.bookingNo)}">再次申请</button>${booking.status === "CONFIRMED" && booking.slot ? `<button data-calendar-booking="${escapeHtml(booking.bookingNo)}">加入日历</button>` : ""}${["PENDING_CONFIRMATION", "CONFIRMED"].includes(booking.status) && booking.resource ? `<button data-reschedule-booking="${escapeHtml(booking.bookingNo)}">改期</button>` : ""}${["PENDING_CONFIRMATION", "CONFIRMED"].includes(booking.status) ? `<button data-booking="${escapeHtml(booking.bookingNo)}" data-action="cancellation" data-booking-status="${booking.status}">${booking.status === "CONFIRMED" ? "取消预约" : "撤回申请"}</button>` : ""}</div>
     </article>`).join("") : empty(
       bookingHistory.length ? "没有符合筛选条件的申请" : "还没有申请记录",
       bookingHistory.length ? "请清除筛选条件后查看全部申请。" : "在空间大厅选择开放时段即可提交第一份申请。"
     );
   if (focusBookingNo) {
-    $("#booking-list").querySelector(`[data-booking-card="${CSS.escape(focusBookingNo)}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const card = $("#booking-list").querySelector(`[data-booking-card="${CSS.escape(focusBookingNo)}"]`);
+    if (card) {
+      card.querySelector("details").open = true;
+      card.scrollIntoView({ behavior: "smooth", block: "center" });
+      card.querySelector("summary").focus({ preventScroll: true });
+    }
   }
 }
 async function loadBookings() {
@@ -528,8 +553,9 @@ $("#booking-list").addEventListener("click", async event => {
     return;
   }
   const button = event.target.closest("[data-booking]"); if (!button) return;
-  if (!globalThis.confirm("确认撤回这份申请？撤回后如需使用须重新提交。")) return;
-  try { button.disabled = true; await api.bookingAction(button.dataset.booking, button.dataset.action); await loadBookings(); notify("申请已撤回"); }
+  const confirmed = button.dataset.bookingStatus === "CONFIRMED";
+  if (!globalThis.confirm(confirmed ? "确认取消这次已通过的预约？取消后将释放原时段。" : "确认撤回这份申请？撤回后如需使用须重新提交。")) return;
+  try { button.disabled = true; await api.bookingAction(button.dataset.booking, button.dataset.action); await loadBookings(); notify(confirmed ? "预约已取消，原时段已释放" : "申请已撤回"); }
   catch (error) { fail(error); }
   finally { button.disabled = false; }
 });

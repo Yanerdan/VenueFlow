@@ -140,10 +140,10 @@ test("campus role and management query come from the authenticated session", asy
     }
   });
   assert.equal(api.role(), "SYSTEM_ADMIN");
-  await api.managementBookings("PENDING_CONFIRMATION");
+  await api.managementBookings("PENDING_CONFIRMATION", 2, 20);
   assert.equal(
     requestedUrl,
-    "http://gateway/api/v1/bookings/management?pageNumber=0&pageSize=100&status=PENDING_CONFIRMATION"
+    "http://gateway/api/v1/bookings/management?pageNumber=2&pageSize=20&status=PENDING_CONFIRMATION"
   );
 });
 
@@ -195,12 +195,12 @@ test("campus profile and user directory use bounded management endpoints", async
   await api.updateCampusProfile({
     displayName: "Ada", identityType: "STAFF", department: "计算机学院", expectedVersion: 1
   });
-  await api.managementUsers("计算机");
+  await api.managementUsers("计算机", 1, 20);
   assert.equal(calls[0].url, "http://gateway/api/v1/users/me/campus-profile");
   assert.equal(calls[0].options.method, "PATCH");
   assert.equal(
     calls[1].url,
-    "http://gateway/api/v1/users/management?pageNumber=0&pageSize=100&keyword=%E8%AE%A1%E7%AE%97%E6%9C%BA"
+    "http://gateway/api/v1/users/management?pageNumber=1&pageSize=20&keyword=%E8%AE%A1%E7%AE%97%E6%9C%BA"
   );
 });
 

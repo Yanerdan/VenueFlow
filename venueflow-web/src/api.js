@@ -104,8 +104,8 @@ export function createApi({
     updateCampusProfile: payload => request("/api/v1/users/me/campus-profile", {
       method: "PATCH", body: JSON.stringify(payload)
     }),
-    managementUsers: (keyword = "") => request(
-      `/api/v1/users/management?pageNumber=0&pageSize=100${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""}`
+    managementUsers: (keyword = "", pageNumber = 0, pageSize = 100) => request(
+      `/api/v1/users/management?pageNumber=${pageNumber}&pageSize=${pageSize}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""}`
     ),
     organizations: (source = "campus") => request(
       `/api/v1/organizations?source=${encodeURIComponent(source)}`
@@ -217,8 +217,8 @@ export function createApi({
       body: JSON.stringify({ userId, slotId, quantity, ...details })
     }),
     bookings: userId => request(`/api/v1/bookings?userId=${userId}&pageNumber=0&pageSize=50`),
-    managementBookings: status => request(
-      `/api/v1/bookings/management?pageNumber=0&pageSize=100${status ? `&status=${status}` : ""}`
+    managementBookings: (status = "", pageNumber = 0, pageSize = 100) => request(
+      `/api/v1/bookings/management?pageNumber=${pageNumber}&pageSize=${pageSize}${status ? `&status=${status}` : ""}`
     ),
     operationalReport: () => request("/api/v1/bookings/management/report"),
     bookingAction: (bookingNo, action, note) => {
