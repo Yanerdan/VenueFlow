@@ -1,42 +1,108 @@
-# VenueFlow 校园资源预约平台
+# VenueFlow · 校园资源预约与审批治理平台
 
-VenueFlow 是面向学校部委、学院和职能部门的校园空间统一预约系统。它覆盖资源发布、开放时段、师生申请、管理审批、签到核销、消息通知和搜索，并提供申请人端与学校管理端两个浏览器工作区。
+> 面向高校部委、学院与职能部门的资源治理系统：把场地发布、开放排期、师生申请、多级审批、签到核销、消息通知和运营分析整合为一条可追踪的业务链路。
 
-## 当前能力
+VenueFlow 是一个可完整运行的全栈工程作品。项目不是简单的 CRUD 示例，而是围绕“有限校园资源如何被安全、公平、可审计地分配”设计了 7 个独立服务、浏览器双工作台、标准 OIDC 身份接入、组织架构同步、1–5 级审批、容量一致性与最终一致性事件链路。
 
-- 申请人端：注册登录、校园身份资料维护、按日期/人数/分类检索、账号隔离收藏、申请草稿恢复、提交/撤回/再次申请/引导改期、日历导出、历史筛选、审批轨迹与可跳转消息。
-- 管理端：运营总览与报表、申请详情、直接或两级审批、审批轨迹、人员目录与角色管理、签到核销、资源资料维护、按日排期、周期开放时段、批量开闭和 CSV 导出。
-- 后端：Gateway、Auth、User、Resource、Booking、Notification、Search 七个独立服务。
-- 可靠性：预约幂等、容量台账、Outbox、消费去重、超时释放、补偿协调、缓存与搜索投影。
-- 工程化：Maven Wrapper、Flyway、Docker 本地基础设施、质量门禁、健康探针和可选可观测性。
+> 数据说明：仓库内的学校、人员、资源和预约记录均为合成演示数据，不代表真实学校运营或生产使用情况。
 
-本阶段定位为可完整演示的校园管理产品。系统已提供标准 OIDC 校园统一身份接入、组织架构全量/增量同步和资源级 1–5 级审批；真实上线仍需学校信息化部门提供 IdP 客户端、组织数据源和联调窗口。压测、安全加固和发布材料留待后续建设。
+## 项目亮点
+
+| 方向 | 落地能力 |
+|---|---|
+| 完整业务闭环 | 资源发布 → 开放时段 → 预约申请 → 多级审批 → 通知 → 签到核销 → 运营报表 |
+| 分布式一致性 | 幂等命令、容量台账、事务 Outbox、消费者去重、超时释放与补偿协调 |
+| 校园治理 | OIDC + PKCE、组织树全量/增量同步、基于组织与角色的权限边界、审批链快照 |
+| 工程质量 | Java 21、Spring Boot 4、Flyway、Maven 多模块、CI、代码格式/静态检查、SBOM |
+| 可运行作品 | Docker Compose 基础设施、一键启停/播种/冒烟验收、申请人端与管理端双工作台 |
+
+## 系统全景
+
+```mermaid
+flowchart LR
+    U["师生申请人"] --> W["申请人工作台"]
+    A["审批人 / 资源管理员 / 系统管理员"] --> M["管理工作台"]
+    I["校园统一身份 IdP"] --> G
+    W --> G["API Gateway<br/>JWT · CORS · 路由"]
+    M --> G
+    G --> AU["Auth<br/>OIDC · Token"]
+    G --> US["User<br/>人员 · 组织 · 角色"]
+    G --> RS["Resource<br/>资源 · 时段 · 容量"]
+    G --> BS["Booking<br/>申请 · 审批 · 核销"]
+    G --> NS["Notification<br/>站内消息"]
+    G --> SS["Search<br/>资源检索"]
+    BS -- "Outbox / RabbitMQ" --> NS
+    RS -- "投影事件" --> SS
+    AU & US & RS & BS & NS --> DB[("MySQL<br/>按服务独立 Schema")]
+    RS --> R[("Redis")]
+    SS --> ES[("Elasticsearch")]
+```
+
+更完整的边界、时序、数据所有权和部署拓扑见 [架构文档](docs/architecture/README.md)。
+
+## 核心工程设计
+
+### 1. 容量不是一个可随意更新的数字
+
+Resource 服务以容量台账处理占用、确认和释放；Booking 服务用幂等键约束重复提交。失败或超时通过补偿流程归还容量，避免浏览器重试和服务间失败导致超卖或重复预约。
+
+### 2. 审批链在提交时固化
+
+资源可配置归属组织与 1–5 个有序审批节点。申请创建时保存审批链快照，之后即使管理员调整模板，进行中的申请仍按原有责任链执行，保证审计语义稳定。
+
+### 3. 可靠事件代替脆弱的“双写”
+
+预约状态与 Outbox 事件在同一数据库事务内提交，再异步投递到 RabbitMQ。通知和搜索消费者使用事件标识去重，并保留重试与重建路径，使核心交易不依赖下游瞬时可用。
+
+### 4. 身份、组织和权限形成治理边界
+
+Auth 服务支持本地演示账户与标准 OIDC Authorization Code + PKCE；User 服务承接组织树全量/增量同步。Gateway 统一校验 JWT 并传递可信身份，服务端仍按角色、组织范围和当前审批节点执行授权。
+
+## 技术栈
+
+| 层次 | 技术 |
+|---|---|
+| 前端 | 原生 ES Modules、HTML5、CSS3、响应式双工作台、Node Test Runner |
+| 网关与服务 | Java 21、Spring Boot 4.0.7、Spring Cloud 2025.1.2、Spring Security |
+| 数据访问 | MyBatis-Plus 3.5.17、Flyway、MySQL 8.4 |
+| 中间件 | Redis、RabbitMQ、Elasticsearch、Nacos（可选） |
+| 可观测性 | Spring Boot Actuator、Micrometer、OpenTelemetry、Prometheus、Grafana |
+| 工程化 | Maven Wrapper、GitHub Actions、JaCoCo、Spotless、SpotBugs、CycloneDX SBOM |
+
+## 可验证的工程规模
+
+以下数字来自当前仓库，可由 Git 或测试报告复核，不是生产运营指标：
+
+- 7 个可独立启动的后端进程：Gateway + 6 个领域服务。
+- 39 份主规格、28 个 Flyway 迁移、286 个生产 Java 源文件、88 个 Java 测试源文件。
+- 当前本地 Surefire 报告累计 277 项测试，0 failure / 0 error；前端测试 19 项通过。
+- 合成学期场景包含 7 个组织单元、16 名运营角色、10 个校园资源和 72 条跨约四个月的预约记录。
+
+详细案例拆解见 [项目案例](docs/resume/project-case-study.md)，可直接改写的中英文简历表述见 [简历文案](docs/resume/resume-copy.md)，面试追问准备见 [面试指南](docs/resume/interview-guide.md)。
 
 ## 最快启动
 
-环境要求：Windows PowerShell、JDK 21、Docker Desktop 和 OpenSSL。
+环境要求：Windows PowerShell、JDK 21、Docker Desktop、OpenSSL。
 
 ```powershell
 .\scripts\local-dev\start.ps1
 python -m http.server 3000 --directory venueflow-web
 ```
 
-打开：
+访问入口：
 
 - 申请人端：<http://127.0.0.1:3000/>
 - 管理端：<http://127.0.0.1:3000/admin.html>
 - Gateway：<http://127.0.0.1:8080>
 
-本地脚本会创建两个仅供本机使用的演示入口：
+本地脚本创建两个仅用于演示的入口：
 
 ```text
 申请人：campus.user / Campus-User-2026!
 管理员：campus.admin / Campus-Admin-2026!
 ```
 
-申请人账号关联了学期内的个人申请、审批与通知记录；管理员账号进入完整运营工作台。凭据不应部署到共享或生产环境，普通用户仍可自行注册。
-
-查看状态、执行全链路验收和停止服务：
+凭据不得用于共享或生产环境。普通用户也可自行注册。
 
 ```powershell
 .\scripts\local-dev\status.ps1
@@ -44,66 +110,50 @@ python -m http.server 3000 --directory venueflow-web
 .\scripts\local-dev\stop.ps1
 ```
 
-## 手工验收路径
+完整验收步骤见 [5 分钟演示脚本](docs/resume/demo-script.md) 和 [校园管理端运行手册](docs/runbook/campus-administration.md)。
 
-1. 使用 `campus.user` 登录申请人端，收藏空间并使用“我的收藏”筛选，按日期和人数查找空间，查看按日分组的时段并提交申请；可在历史记录中筛选、复用或引导改期，已通过申请可导出 `.ics` 日历文件。
-2. 使用演示管理员登录，在“申请审批”打开详情，填写审批意见后通过或填写原因后驳回。
-3. 回到申请人端刷新“我的申请”，确认状态变为“审批通过”。
-4. 管理员在允许的签到窗口执行“签到核销”，确认申请进入“已核销”。
-5. 在“资源管理”中编辑公开资料；在“开放时段”中检查按日期分组和开闭统计，一次发布最多 12 周的同一开放安排，或对当前列表执行确认后的批量开放/关闭。
-6. 在“申请审批”导出当前授权范围内的 UTF-8 CSV 运营清单。
-7. 在“人员目录”将测试账号设为审批人，再在资源卡片中从人员列表指定该审批人；测试结束后将账号恢复为申请人。
+## 服务边界
 
-完整说明见 [校园管理端运行手册](docs/runbook/campus-administration.md)。
+| 服务 | 端口 | 核心职责 |
+|---|---:|---|
+| Gateway | 8080 | 路由、JWT 校验、CORS、可信身份上下文 |
+| Auth | 8081 | 本地认证、OIDC、Access/Refresh Token |
+| User | 8082 | 用户资料、组织架构、角色与预约资格 |
+| Resource | 8083 | 资源目录、开放时段、规则、容量与审批策略 |
+| Booking | 8084 | 申请、审批、取消、超时、核销与运营统计 |
+| Notification | 8085 | 可靠事件消费与站内消息 |
+| Search | 8086 | Elasticsearch 资源检索投影 |
 
-资源管理支持配置归属部门，并从合格人员目录编排 1–5 级有序审批。新预约会保存审批链快照，普通审批人只接收当前节点分配给自己的申请，系统管理员保留全局管理视图；申请人和管理人员均可查看有序审批轨迹。
+联调时应使用 `persistence` 及所需附加 profile。推荐使用启动脚本，避免在 IDEA 中遗漏数据库、消息、搜索或 JWT 环境变量。
 
-运营报表提供申请量、待审批量、通过率、参与人数、资源排行、部门分布和最近审批记录；统计范围自动遵循审批权限。
+## 构建与验收
 
-本地启动会自动装载一套明确标注为合成数据的“2026 春季学期运营演示”：16 名跨院系运营角色和 1 个可登录申请人、10 个校园资源、可解析的历史/未来时段，以及 72 条覆盖约四个月的预约、审批与通知记录。再次执行 `scripts/local-dev/seed.ps1` 只会替换保留命名空间中的演示记录，不会清除自行创建的数据。
-
-## 构建与测试
-
-默认验证不连接 Docker 或外部服务：
+默认测试不依赖 Docker 或外部服务：
 
 ```powershell
 .\mvnw.cmd clean verify
 node --test venueflow-web/test/*.test.js
+openspec.cmd validate --all --strict
 ```
 
-只构建可执行包：
+全链路验收：
 
 ```powershell
-.\mvnw.cmd -DskipTests package --no-transfer-progress
+.\scripts\local-dev\start.ps1
+.\scripts\local-dev\smoke.ps1
 ```
 
-## 服务端口
+## 仓库导航
 
-| 服务 | 端口 | 职责 |
-|---|---:|---|
-| Gateway | 8080 | 路由、JWT 校验、CORS、可信身份上下文 |
-| Auth | 8081 | 凭证、校园角色、Access/Refresh Token |
-| User | 8082 | 用户资料与预约资格 |
-| Resource | 8083 | 资源目录、时段和容量 |
-| Booking | 8084 | 申请、审批、取消、超时与核销 |
-| Notification | 8085 | 可靠事件消费与站内消息 |
-| Search | 8086 | Elasticsearch 资源检索 |
+- `venueflow-web/`：零运行时依赖的申请人端与管理端。
+- `venueflow-*-service/`、`venueflow-gateway/`：网关与领域微服务。
+- `docs/architecture/`：系统上下文、容器、时序、事件、数据与部署设计。
+- `docs/resume/`：项目案例、简历文案、演示脚本和面试问答。
+- `docs/runbook/`：启动、恢复、对账与校园管理操作手册。
+- `scripts/local-dev/`：一键启动、播种、验收、状态检查和停止。
+- `deploy/`：Docker Compose、可观测性与治理配置。
+- `openspec/`：需求规格、变更提案与归档。
 
-业务联调时，各业务服务应使用 `persistence` 及其需要的附加 profile；推荐直接使用 `scripts/local-dev/start.ps1`，避免在 IDEA 中漏配数据库、消息或 JWT 环境变量。
+## 项目边界
 
-## 目录
-
-- `venueflow-web/`：零依赖申请人端和管理端。
-- `venueflow-*-service/`：领域微服务。
-- `venueflow-gateway/`：统一入口。
-- `scripts/local-dev/`：本地一键启动、数据种子、验收和停止脚本。
-- `deploy/`：基础设施 Compose 与版本锁。
-- `docs/runbook/`：运行和故障处理手册。
-- `openspec/`：主规范、变更提案和归档。
-
-## 安全提示
-
-密钥、数据库密码和本地运行文件位于未跟踪目录或环境变量中。不要提交 `.env`、`secrets/`、私钥、真实账号或生产凭据，也不要将本地演示管理员用于任何共享环境。
-资源管理员或系统管理员进入“资源管理”后，可以在每个资源卡片中维护申请须知、最少提前小时数、最多提前天数和单次最长使用分钟数。申请人会在资源大厅和选择时段时看到同一套规则；不符合规则的申请会在占用容量前被拒绝。
-
-管理工作台按角色收敛入口：审批人员使用审批、报表和人员目录；资源管理员使用资源、时段和人员目录；系统管理员拥有全部入口。
+VenueFlow 当前定位是“可完整演示、可深入讲解的校园数字化治理作品”。真实投产仍需要学校提供 IdP 客户端、权威组织数据源、域名证书和联调窗口，并完成针对目标环境的安全审计、容量压测、灾备演练与真实用户试用。仓库不声称已经在真实学校生产运行。

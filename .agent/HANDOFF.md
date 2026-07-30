@@ -3,32 +3,40 @@
 ## 当前状态
 
 - 分支：`main`
-- C01-C35 均已完成、同步并归档；当前没有活动 OpenSpec change。
-- C35：`complete-daily-booking-operations`
-- Gateway、Auth、User、Resource、Booking、Notification、Search 本地服务均可持久化运行。
-- 在暂缓正式 SSO、组织同步、安全加固、压测、真实试用和发布材料的约束下，应用构建阶段已经完成。
+- C01–C37 已完成、同步并归档；当前没有活动 OpenSpec change。
+- 最近功能变更：C37 `integrate-campus-identity-and-approval-governance`。
+- Gateway、Auth、User、Resource、Booking、Notification、Search 均可在持久化模式运行。
+- 已实现标准 OIDC + PKCE、组织架构全量/增量同步、资源级 1–5 级审批与审批链快照。
+- 当前工作重点已从功能建设转为作品包装；真实压测、安全审计、学校联调、试用和生产发布仍明确不在已完成范围内。
 
-## 当前产品能力
+## 产品能力
 
-- 申请人：演示账号快速进入、日期/人数/分类检索、按日开放时段、申请草稿恢复、再次申请、历史筛选、审批进度、可跳转已读消息和审批轨迹。
-- 管理人员：角色化总览与学期报表、人员目录与角色、直接/两级审批、签到核销、资源资料/归属/规则维护、最多 12 周周期时段和 CSV 导出。
-- 可靠性：幂等、容量台账、Outbox、消费去重、超时释放、补偿、缓存和搜索投影。
-- 运营包装：16 位合成人员、1 个绑定个人历史的可登录申请人、10 个校园资源、72 条跨四个月预约，以及配套审批、通知和未来开放时段。
-- 用户端和管理端均明确标注数据为合成演示数据，不冒充真实个人或学校运营记录。
+- 申请人：注册/登录、OIDC 登录、资料维护、资源检索与收藏、规则/时段查看、申请草稿、提交/撤回/取消/复用/改期、审批轨迹、通知与日历导出。
+- 管理人员：运营总览与报表、组织树和人员角色、资源资料/归属/规则、开放排期、1–5 级审批配置、审批处理、签到核销与 CSV 导出。
+- 可靠性：幂等、容量台账、事务 Outbox、消费者去重、超时释放、补偿对账、缓存与搜索投影。
+- 演示包装：合成组织、人员、资源、预约、审批、通知和未来排期；界面与文档均明确标注其为合成数据。
 
-## C35 验证
+## 最近验证
 
 ```powershell
+.\mvnw.cmd clean verify
 node --test venueflow-web/test/*.test.js
-.\mvnw.cmd -pl venueflow-resource-service -am -DskipITs test spotless:check spotbugs:check
-bash scripts/quality/verify-repository.sh
 openspec.cmd validate --all --strict
+.\scripts\local-dev\smoke.ps1
 ```
 
-- 资源服务 84 项测试、Spotless 与 SpotBugs 通过；前端 16 项测试和仓库质量策略通过。
-- 浏览器验证：容量筛选、历史状态筛选、再次申请、消息已读/定位、资源编辑入口、周期时段上限和导出入口均可用，控制台无错误。
-- 全仓 `clean verify` 在运行中的 Gateway JAR 文件锁处停止；这是 Windows 对运行产物的占用，不是代码或测试失败，未为验证中断现有服务。
+- 当前本地 Surefire XML：277 tests，0 failures，0 errors。
+- 前端：19 tests passed。
+- OpenSpec：39 个主规格严格校验通过。
+- 全链路 smoke：注册、资料、人员目录、资源/时段、规则、预约、报表、角色、多级审批、搜索、通知、刷新/登出均通过。
 
-## 后续范围
+## 作品材料
 
-应用主功能与演示包装已经收口。后续工作属于此前明确暂缓的上线准备：正式 SSO 与组织同步、安全审计与加固、压测、真实师生试用、部署和发布材料。
+- GitHub 首屏：`README.md`
+- 架构说明：`docs/architecture/`
+- 项目案例、简历文案、演示脚本和面试问答：`docs/resume/`
+- 管理操作：`docs/runbook/campus-administration.md`
+
+## 后续边界
+
+功能和作品叙事已具备完整演示条件。若转向真实上线，应单独规划学校 IdP/组织源联调、安全审计、容量压测、备份恢复、生产编排、真实用户试用和发布治理，不能用现有合成演示结果替代这些工作。
