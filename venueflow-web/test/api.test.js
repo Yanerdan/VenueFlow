@@ -253,17 +253,20 @@ test("approval workflow policy and action history use bounded APIs", async () =>
         : { data: [{ approvalStep: 1, decision: "APPROVED" }] });
     }
   });
-  await api.changeResourceOwnership(
-    9, "校团委", "approver-1", "TWO_STAGE", "approver-2", 4
-  );
+  await api.replaceApprovalPolicy(9, 4, "活动审批", [
+    { stageOrder: 1, stageName: "院系初审", approverExternalUserId: "approver-1" },
+    { stageOrder: 2, stageName: "校级终审", approverExternalUserId: "approver-2" }
+  ]);
   const actions = await api.approvalActions("VF-9");
   assert.deepEqual(JSON.parse(calls[0].options.body), {
-    ownerDepartment: "校团委",
-    approverExternalUserId: "approver-1",
-    approvalMode: "TWO_STAGE",
-    finalApproverExternalUserId: "approver-2",
-    expectedVersion: 4
+    expectedVersion: 4,
+    policyName: "活动审批",
+    stages: [
+      { stageOrder: 1, stageName: "院系初审", approverExternalUserId: "approver-1" },
+      { stageOrder: 2, stageName: "校级终审", approverExternalUserId: "approver-2" }
+    ]
   });
+  assert.equal(calls[0].url, "http://gateway/api/v1/resources/9/approval-policy");
   assert.equal(calls[1].url, "http://gateway/api/v1/bookings/VF-9/approval-actions");
   assert.equal(actions[0].approvalStep, 1);
 });

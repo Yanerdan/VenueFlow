@@ -1,16 +1,20 @@
 package com.yanerdan.venueflow.resource.catalog.http.controller;
 
+import com.yanerdan.venueflow.resource.catalog.application.ApprovalPolicyService;
 import com.yanerdan.venueflow.resource.catalog.application.CatalogApplicationService;
+import com.yanerdan.venueflow.resource.catalog.application.ResourcePageResult;
 import com.yanerdan.venueflow.resource.catalog.http.request.ChangeResourceBookingRulesRequest;
 import com.yanerdan.venueflow.resource.catalog.http.request.ChangeResourceFactsRequest;
 import com.yanerdan.venueflow.resource.catalog.http.request.ChangeResourceOwnershipRequest;
 import com.yanerdan.venueflow.resource.catalog.http.request.ChangeResourceStatusRequest;
 import com.yanerdan.venueflow.resource.catalog.http.request.CreateResourceRequest;
+import com.yanerdan.venueflow.resource.catalog.http.request.ReplaceApprovalPolicyRequest;
 import com.yanerdan.venueflow.resource.catalog.http.request.ResourcePageRequest;
 import com.yanerdan.venueflow.resource.catalog.http.response.ResourcePageResponse;
 import com.yanerdan.venueflow.resource.catalog.http.response.ResourceResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
+import java.util.Optional;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,9 +33,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class ResourceController {
 
   private final CatalogApplicationService catalogApplicationService;
+  private final Optional<ApprovalPolicyService> approvalPolicyService;
 
-  public ResourceController(CatalogApplicationService catalogApplicationService) {
+  public ResourceController(
+      CatalogApplicationService catalogApplicationService,
+      Optional<ApprovalPolicyService> approvalPolicyService) {
     this.catalogApplicationService = catalogApplicationService;
+    this.approvalPolicyService = approvalPolicyService;
   }
 
   @PostMapping
@@ -46,12 +54,35 @@ public class ResourceController {
   @GetMapping("/{resourceId}")
   public ResourceResponse getResource(
       @PathVariable @Positive(message = "resourceId must be positive") Long resourceId) {
-    return ResourceResponse.from(catalogApplicationService.getResource(resourceId));
+    return ResourceResponse.from(
+        approvalPolicyService
+            .map(service -> service.attach(catalogApplicationService.getResource(resourceId)))
+            .orElseGet(() -> catalogApplicationService.getResource(resourceId)));
+  }
+
+  @PatchMapping("/{resourceId}/approval-policy")
+  public ResourceResponse replaceApprovalPolicy(
+      @PathVariable @Positive(message = "resourceId must be positive") Long resourceId,
+      @Valid @RequestBody ReplaceApprovalPolicyRequest request) {
+    return ResourceResponse.from(
+        approvalPolicyService
+            .orElseThrow(() -> new IllegalStateException("Approval policy service unavailable"))
+            .replace(request.toCommand(resourceId)));
   }
 
   @GetMapping
   public ResourcePageResponse listResources(@Valid @ModelAttribute ResourcePageRequest request) {
-    return ResourcePageResponse.from(catalogApplicationService.listResources(request.toQuery()));
+    ResourcePageResult page = catalogApplicationService.listResources(request.toQuery());
+    if (approvalPolicyService.isPresent()) {
+      page =
+          new ResourcePageResult(
+              page.items().stream().map(approvalPolicyService.get()::attach).toList(),
+              page.page(),
+              page.size(),
+              page.totalElements(),
+              page.totalPages());
+    }
+    return ResourcePageResponse.from(page);
   }
 
   @PatchMapping("/{resourceId}/status")

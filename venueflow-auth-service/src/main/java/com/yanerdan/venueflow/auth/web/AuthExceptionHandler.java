@@ -24,6 +24,8 @@ public class AuthExceptionHandler {
           case AUTH_FORBIDDEN -> HttpStatus.FORBIDDEN;
           case AUTH_ACCOUNT_NOT_FOUND -> HttpStatus.NOT_FOUND;
           case AUTH_ROLE_CONFLICT -> HttpStatus.CONFLICT;
+          case AUTH_PROVIDER_UNAVAILABLE -> HttpStatus.SERVICE_UNAVAILABLE;
+          case AUTH_EXTERNAL_LOGIN_INVALID -> HttpStatus.UNAUTHORIZED;
           case AUTH_PERSISTENCE_FAILURE -> HttpStatus.SERVICE_UNAVAILABLE;
         };
     return error(status, exception.code().name(), exception.getMessage());

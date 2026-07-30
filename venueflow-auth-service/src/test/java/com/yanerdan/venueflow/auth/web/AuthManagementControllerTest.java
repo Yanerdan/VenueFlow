@@ -35,8 +35,7 @@ class AuthManagementControllerTest {
     when(service.accounts("SYSTEM_ADMIN")).thenReturn(List.of(account(CampusRole.APPROVER, 2)));
 
     mockMvc
-        .perform(
-            get("/api/v1/auth/management/accounts").header("X-Role", "SYSTEM_ADMIN"))
+        .perform(get("/api/v1/auth/management/accounts").header("X-Role", "SYSTEM_ADMIN"))
         .andExpectAll(
             status().isOk(),
             jsonPath("$.data[0].userId").value(TARGET.toString()),
@@ -52,8 +51,7 @@ class AuthManagementControllerTest {
 
     mockMvc
         .perform(
-            get("/api/v1/auth/management/accounts/approvers")
-                .header("X-Role", "RESOURCE_MANAGER"))
+            get("/api/v1/auth/management/accounts/approvers").header("X-Role", "RESOURCE_MANAGER"))
         .andExpectAll(
             status().isOk(),
             jsonPath("$.data[0].role").value("APPROVER"),
@@ -62,8 +60,7 @@ class AuthManagementControllerTest {
 
   @Test
   void updatesRoleAndMapsForbiddenAccess() throws Exception {
-    when(service.changeRole(
-            ADMIN.toString(), "SYSTEM_ADMIN", TARGET, CampusRole.APPROVER, 1))
+    when(service.changeRole(ADMIN.toString(), "SYSTEM_ADMIN", TARGET, CampusRole.APPROVER, 1))
         .thenReturn(account(CampusRole.APPROVER, 2));
     mockMvc
         .perform(

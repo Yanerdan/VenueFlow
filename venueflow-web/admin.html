@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#073d3a">
   <title>VenueFlow · 校园管理工作台</title>
-  <link rel="stylesheet" href="./styles.css?v=20260729-c36">
+  <link rel="stylesheet" href="./styles.css?v=20260730-c37">
 </head>
 <body class="admin-body">
   <aside class="admin-sidebar">
@@ -18,6 +18,7 @@
       <button data-section="resources"><span>◇</span>资源管理</button>
       <button data-section="slots"><span>◷</span>开放时段</button>
       <button data-section="users"><span>◎</span>人员目录</button>
+      <button data-section="governance"><span>⌘</span>身份与组织</button>
     </nav>
     <div class="sidebar-foot"><p>申请人服务入口</p><a href="./index.html">返回用户端 →</a></div>
   </aside>
@@ -126,9 +127,39 @@
         </div>
         <div class="table-shell"><table><thead><tr><th>姓名</th><th>学工号</th><th>身份</th><th>平台角色</th><th>院系 / 部门</th><th>联系电话</th><th>邮箱</th><th>状态</th></tr></thead><tbody id="user-table"></tbody></table></div>
       </section>
+
+      <section id="governance" class="admin-section hidden">
+        <div class="toolbar"><div><p>管理校园统一身份接入状态和权威组织目录；页面不会展示客户端密钥。</p></div><button id="refresh-governance" class="outline-button">刷新状态</button></div>
+        <div class="governance-grid">
+          <article class="admin-panel">
+            <div class="panel-title"><div><p class="eyebrow">FEDERATED IDENTITY</p><h2>统一身份认证</h2></div></div>
+            <div id="identity-provider-status" class="integration-status"></div>
+          </article>
+          <article class="admin-panel">
+            <div class="panel-title"><div><p class="eyebrow">DIRECTORY SYNC</p><h2>最近同步</h2></div></div>
+            <div id="directory-run-status" class="integration-status"></div>
+          </article>
+        </div>
+        <div class="governance-grid governance-directory">
+          <article class="admin-panel">
+            <div class="panel-title"><div><p class="eyebrow">ORGANIZATION TREE</p><h2>学校组织目录</h2></div><span id="organization-count" class="title-count"></span></div>
+            <div id="organization-tree" class="organization-tree"></div>
+          </article>
+          <article class="admin-panel">
+            <div class="panel-title"><div><p class="eyebrow">CANONICAL IMPORT</p><h2>同步组织数据</h2></div></div>
+            <form id="directory-sync-form" class="directory-sync-form">
+              <label>数据源<input name="source" value="campus" maxlength="48" required></label>
+              <label>同步模式<select name="mode"><option value="PARTIAL">增量更新</option><option value="FULL">全量同步</option></select></label>
+              <label class="span-2">规范化 JSON<textarea name="payload" rows="12" required placeholder='{"units":[{"externalKey":"school","code":"SCHOOL","name":"学校"}],"memberships":[]}'></textarea></label>
+              <small class="span-2">全量同步会停用本次未出现的同源记录；首次接入建议先使用增量更新。</small>
+              <button class="primary-button span-2">执行目录同步</button>
+            </form>
+          </article>
+        </div>
+      </section>
     </div>
     <div id="message" class="message hidden" role="status"></div>
   </main>
-  <script type="module" src="./src/admin.js?v=20260729-c36"></script>
+  <script type="module" src="./src/admin.js?v=20260730-c37"></script>
 </body>
 </html>

@@ -39,8 +39,7 @@ public class AuthRoleManagementService {
     return repository.listAccounts(ACCOUNT_LIMIT).stream()
         .filter(
             account ->
-                account.role() == CampusRole.APPROVER
-                    || account.role() == CampusRole.SYSTEM_ADMIN)
+                account.role() == CampusRole.APPROVER || account.role() == CampusRole.SYSTEM_ADMIN)
         .toList();
   }
 
@@ -66,10 +65,14 @@ public class AuthRoleManagementService {
             .orElseThrow(
                 () ->
                     new AuthException(
-                        AuthErrorCode.AUTH_ACCOUNT_NOT_FOUND, "Authentication account was not found"));
+                        AuthErrorCode.AUTH_ACCOUNT_NOT_FOUND,
+                        "Authentication account was not found"));
     if (current.role() == targetRole) return current;
     if (!repository.changeRole(
-        targetUserId, targetRole, expectedVersion, LocalDateTime.now(clock.withZone(ZoneOffset.UTC)))) {
+        targetUserId,
+        targetRole,
+        expectedVersion,
+        LocalDateTime.now(clock.withZone(ZoneOffset.UTC)))) {
       throw new AuthException(
           AuthErrorCode.AUTH_ROLE_CONFLICT, "Authentication account changed concurrently");
     }

@@ -1,10 +1,12 @@
 package com.yanerdan.venueflow.resource.slot.http.response;
 
+import com.yanerdan.venueflow.resource.catalog.application.ApprovalStageResult;
 import com.yanerdan.venueflow.resource.catalog.domain.ApprovalMode;
 import com.yanerdan.venueflow.resource.slot.application.ResourceSlotResult;
 import com.yanerdan.venueflow.resource.slot.domain.ResourceSlotStatus;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record ResourceSlotResponse(
     Long id,
@@ -17,6 +19,7 @@ public record ResourceSlotResponse(
     Integer minAdvanceHours,
     Integer maxAdvanceDays,
     Integer maxDurationMinutes,
+    List<ApprovalStageResult> approvalStages,
     Instant startAt,
     Instant endAt,
     ResourceSlotStatus status,
@@ -36,6 +39,7 @@ public record ResourceSlotResponse(
         result.minAdvanceHours(),
         result.maxAdvanceDays(),
         result.maxDurationMinutes(),
+        result.approvalStages(),
         result.startAt(),
         result.endAt(),
         result.status(),

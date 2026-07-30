@@ -27,3 +27,19 @@ venueflow:
     jwt-public-key: ${JWT_PUBLIC_KEY}
     bootstrap-admin-username: ${VENUEFLOW_BOOTSTRAP_ADMIN_USERNAME:}
     bootstrap-admin-password: ${VENUEFLOW_BOOTSTRAP_ADMIN_PASSWORD:}
+    local-login-enabled: ${VENUEFLOW_AUTH_LOCAL_LOGIN_ENABLED:true}
+    oidc:
+      enabled: ${VENUEFLOW_OIDC_ENABLED:false}
+      provider-key: ${VENUEFLOW_OIDC_PROVIDER_KEY:campus}
+      display-name: ${VENUEFLOW_OIDC_DISPLAY_NAME:校园统一身份认证}
+      issuer-uri: ${VENUEFLOW_OIDC_ISSUER_URI:}
+      authorization-uri: ${VENUEFLOW_OIDC_AUTHORIZATION_URI:}
+      token-uri: ${VENUEFLOW_OIDC_TOKEN_URI:}
+      jwk-set-uri: ${VENUEFLOW_OIDC_JWK_SET_URI:}
+      client-id: ${VENUEFLOW_OIDC_CLIENT_ID:}
+      client-secret: ${VENUEFLOW_OIDC_CLIENT_SECRET:}
+      callback-uri: ${VENUEFLOW_OIDC_CALLBACK_URI:}
+      browser-return-uri: ${VENUEFLOW_OIDC_BROWSER_RETURN_URI:}
+      username-claim: ${VENUEFLOW_OIDC_USERNAME_CLAIM:preferred_username}
+      campus-id-claim: ${VENUEFLOW_OIDC_CAMPUS_ID_CLAIM:campus_id}
+      scopes: ${VENUEFLOW_OIDC_SCOPES:openid profile}

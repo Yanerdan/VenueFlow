@@ -122,6 +122,22 @@ $resource = Invoke-Json "Patch" "$gateway/api/v1/resources/$($resource.id)/owner
     finalApproverExternalUserId = $adminExternalUserId
     expectedVersion = $resource.version
 } $adminHeaders
+$resource = Invoke-Json "Patch" "$gateway/api/v1/resources/$($resource.id)/approval-policy" @{
+    expectedVersion = $resource.version
+    policyName = "Acceptance two-stage workflow"
+    stages = @(
+        @{
+            stageOrder = 1
+            stageName = "Initial responsibility review"
+            approverExternalUserId = [string]$candidate.userId
+        },
+        @{
+            stageOrder = 2
+            stageName = "Final administration review"
+            approverExternalUserId = $adminExternalUserId
+        }
+    )
+} $adminHeaders
 
 $resource = Invoke-Json "Patch" "$gateway/api/v1/resources/$($resource.id)/booking-rules" @{
     bookingNotice = "Bring a campus card and follow the room instructions"
@@ -231,21 +247,8 @@ $restored = Invoke-Json "Patch" `
     } $adminHeaders
 if ($restored.data.role -ne "APPLICANT") { throw "Acceptance account role was not restored" }
 
-$resource = Invoke-Json "Patch" "$gateway/api/v1/resources/$($resource.id)/ownership" @{
-    ownerDepartment = $originalResource.ownerDepartment
-    approverExternalUserId = $originalResource.approverExternalUserId
-    approvalMode = $originalResource.approvalMode
-    finalApproverExternalUserId = $originalResource.finalApproverExternalUserId
-    expectedVersion = $resource.version
-} $adminHeaders
-$resource = Invoke-Json "Get" "$gateway/api/v1/resources/$($resource.id)" $null $adminHeaders
-$null = Invoke-Json "Patch" "$gateway/api/v1/resources/$($resource.id)/booking-rules" @{
-    bookingNotice = $originalResource.bookingNotice
-    minAdvanceHours = $originalResource.minAdvanceHours
-    maxAdvanceDays = $originalResource.maxAdvanceDays
-    maxDurationMinutes = $originalResource.maxDurationMinutes
-    expectedVersion = $resource.version
-} $adminHeaders
+# Rebuild the reserved synthetic namespace so acceptance mutations never leak into the demo.
+& (Join-Path $PSScriptRoot "seed.ps1") | Out-Null
 
 [pscustomobject]@{
     Gateway = "UP"

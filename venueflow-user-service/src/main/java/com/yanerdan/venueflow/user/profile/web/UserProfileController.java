@@ -1,21 +1,21 @@
 package com.yanerdan.venueflow.user.profile.web;
 
 import com.yanerdan.venueflow.user.profile.application.UserBookingEligibilityView;
-import com.yanerdan.venueflow.user.profile.application.UserProfileApplicationService;
 import com.yanerdan.venueflow.user.profile.application.UserDirectoryAccessDeniedException;
+import com.yanerdan.venueflow.user.profile.application.UserProfileApplicationService;
 import com.yanerdan.venueflow.user.profile.domain.UserProfile;
 import com.yanerdan.venueflow.user.profile.web.dto.BookingEligibilityResponse;
 import com.yanerdan.venueflow.user.profile.web.dto.CreateUserProfileRequest;
 import com.yanerdan.venueflow.user.profile.web.dto.UpdateAccountStatusRequest;
 import com.yanerdan.venueflow.user.profile.web.dto.UpdateBookingEligibilityRequest;
-import com.yanerdan.venueflow.user.profile.web.dto.UpdateDisplayNameRequest;
 import com.yanerdan.venueflow.user.profile.web.dto.UpdateCampusProfileRequest;
+import com.yanerdan.venueflow.user.profile.web.dto.UpdateDisplayNameRequest;
 import com.yanerdan.venueflow.user.profile.web.dto.UserProfilePageResponse;
 import com.yanerdan.venueflow.user.profile.web.dto.UserProfileResponse;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.net.URI;
@@ -87,10 +87,7 @@ public class UserProfileController {
 
   @PatchMapping("/me/campus-profile")
   public UserProfileResponse updateCurrentCampusProfile(
-      @RequestHeader("X-User-Id")
-          @NotBlank
-          @Size(max = 128)
-          String externalUserId,
+      @RequestHeader("X-User-Id") @NotBlank @Size(max = 128) String externalUserId,
       @Valid @RequestBody UpdateCampusProfileRequest request) {
     return UserProfileResponse.from(
         service.updateCampusProfile(

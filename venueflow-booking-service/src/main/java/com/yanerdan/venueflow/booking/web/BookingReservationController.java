@@ -4,6 +4,7 @@ import com.yanerdan.venueflow.booking.application.BookingReservationService;
 import com.yanerdan.venueflow.booking.domain.BookingReservation;
 import com.yanerdan.venueflow.booking.domain.BookingStatus;
 import com.yanerdan.venueflow.booking.persistence.BookingApprovalAction;
+import com.yanerdan.venueflow.booking.persistence.BookingApprovalStageSnapshot;
 import com.yanerdan.venueflow.booking.persistence.BookingRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -61,18 +62,24 @@ public class BookingReservationController {
                 request.contactPhone(),
                 request.note());
     return ResponseEntity.status(result.replay() ? HttpStatus.OK : HttpStatus.CREATED)
-        .body(SuccessEnvelope.of(BookingResponse.from(result.reservation())));
+        .body(SuccessEnvelope.of(response(result.reservation())));
   }
 
   @GetMapping("/{bookingNo}")
   public SuccessEnvelope<BookingResponse> get(@PathVariable @NotBlank String bookingNo) {
-    return SuccessEnvelope.of(BookingResponse.from(service.get(bookingNo)));
+    return SuccessEnvelope.of(response(service.get(bookingNo)));
   }
 
   @GetMapping("/{bookingNo}/approval-actions")
   public SuccessEnvelope<List<BookingApprovalAction>> approvalActions(
       @PathVariable @NotBlank String bookingNo) {
     return SuccessEnvelope.of(service.approvalActions(bookingNo));
+  }
+
+  @GetMapping("/{bookingNo}/approval-stages")
+  public SuccessEnvelope<List<BookingApprovalStageSnapshot>> approvalStages(
+      @PathVariable @NotBlank String bookingNo) {
+    return SuccessEnvelope.of(service.approvalStages(bookingNo));
   }
 
   @GetMapping
@@ -83,7 +90,7 @@ public class BookingReservationController {
     BookingRepository.BookingHistoryPage page = service.history(userId, pageNumber, pageSize);
     return SuccessEnvelope.of(
         new BookingPageResponse(
-            page.items().stream().map(BookingResponse::from).toList(),
+            page.items().stream().map(this::response).toList(),
             page.totalElements(),
             page.pageNumber(),
             page.pageSize()));
@@ -97,7 +104,7 @@ public class BookingReservationController {
         request == null || request.reviewNote() == null
             ? service.cancel(bookingNo)
             : service.cancel(bookingNo, request.reviewNote());
-    return SuccessEnvelope.of(BookingResponse.from(result));
+    return SuccessEnvelope.of(response(result));
   }
 
   @PostMapping("/{bookingNo}/confirmation")
@@ -112,7 +119,7 @@ public class BookingReservationController {
         request == null || request.reviewNote() == null
             ? service.confirm(bookingNo)
             : service.confirm(bookingNo, request.reviewNote(), role, trustedUserId);
-    return SuccessEnvelope.of(BookingResponse.from(result));
+    return SuccessEnvelope.of(response(result));
   }
 
   @PostMapping("/{bookingNo}/rejection")
@@ -124,7 +131,7 @@ public class BookingReservationController {
     BookingRoleGuard.requireApprover(role);
     service.requireApprovalScope(bookingNo, trustedUserId, role);
     return SuccessEnvelope.of(
-        BookingResponse.from(service.reject(bookingNo, request.reason(), role, trustedUserId)));
+        response(service.reject(bookingNo, request.reason(), role, trustedUserId)));
   }
 
   @PostMapping("/{bookingNo}/check-in")
@@ -134,7 +141,7 @@ public class BookingReservationController {
       @RequestHeader(value = "X-User-Id", required = false) String trustedUserId) {
     BookingRoleGuard.requireApprover(role);
     service.requireApprovalScope(bookingNo, trustedUserId, role);
-    return SuccessEnvelope.of(BookingResponse.from(service.checkIn(bookingNo)));
+    return SuccessEnvelope.of(response(service.checkIn(bookingNo)));
   }
 
   @GetMapping("/management")
@@ -151,7 +158,7 @@ public class BookingReservationController {
             : service.managementHistory(status, trustedUserId, role, pageNumber, pageSize);
     return SuccessEnvelope.of(
         new BookingPageResponse(
-            page.items().stream().map(BookingResponse::from).toList(),
+            page.items().stream().map(this::response).toList(),
             page.totalElements(),
             page.pageNumber(),
             page.pageSize()));
@@ -205,8 +212,15 @@ public class BookingReservationController {
       String approvalMode,
       String finalAssignedApproverExternalUserId,
       int currentApprovalStep,
-      int totalApprovalSteps) {
-    static BookingResponse from(BookingReservation reservation) {
+      int totalApprovalSteps,
+      List<BookingApprovalStageSnapshot> approvalStages) {
+    static BookingResponse from(
+        BookingReservation reservation, List<BookingApprovalStageSnapshot> approvalStages) {
+      approvalStages = approvalStages == null ? List.of() : List.copyOf(approvalStages);
+      int totalSteps =
+          approvalStages.isEmpty()
+              ? ("TWO_STAGE".equals(reservation.approvalMode()) ? 2 : 1)
+              : approvalStages.size();
       return new BookingResponse(
           reservation.bookingNo(),
           reservation.userId(),
@@ -236,8 +250,13 @@ public class BookingReservationController {
           reservation.approvalMode(),
           reservation.finalAssignedApproverExternalUserId(),
           reservation.currentApprovalStep(),
-          "TWO_STAGE".equals(reservation.approvalMode()) ? 2 : 1);
+          totalSteps,
+          approvalStages);
     }
+  }
+
+  private BookingResponse response(BookingReservation reservation) {
+    return BookingResponse.from(reservation, service.approvalStages(reservation.bookingNo()));
   }
 
   public record BookingPageResponse(

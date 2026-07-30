@@ -1,7 +1,7 @@
 package com.yanerdan.venueflow.user.profile.web.dto;
 
-import com.yanerdan.venueflow.user.profile.domain.ExternalUserId;
 import com.yanerdan.venueflow.user.profile.domain.CampusIdentityType;
+import com.yanerdan.venueflow.user.profile.domain.ExternalUserId;
 import com.yanerdan.venueflow.user.profile.domain.UserProfile;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

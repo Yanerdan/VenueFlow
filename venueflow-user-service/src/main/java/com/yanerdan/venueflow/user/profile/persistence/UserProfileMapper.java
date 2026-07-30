@@ -52,6 +52,9 @@ public interface UserProfileMapper extends BaseMapper<UserProfileEntity> {
             department,
             phone,
             email,
+            authoritative_source AS authoritativeSource,
+            organization_external_key AS organizationExternalKey,
+            directory_synced_at AS directorySyncedAt,
             account_status AS accountStatus,
             booking_eligibility AS bookingEligibility,
             version,
@@ -135,6 +138,9 @@ public interface UserProfileMapper extends BaseMapper<UserProfileEntity> {
       """
         SELECT id, external_user_id AS externalUserId, display_name AS displayName,
                campus_id AS campusId, identity_type AS identityType, department, phone, email,
+               authoritative_source AS authoritativeSource,
+               organization_external_key AS organizationExternalKey,
+               directory_synced_at AS directorySyncedAt,
                account_status AS accountStatus, booking_eligibility AS bookingEligibility,
                version, created_at AS createdAt, updated_at AS updatedAt
         FROM user_profile
@@ -146,9 +152,7 @@ public interface UserProfileMapper extends BaseMapper<UserProfileEntity> {
         LIMIT #{limit} OFFSET #{offset}
         """)
   java.util.List<UserProfileEntity> selectPage(
-      @Param("keyword") String keyword,
-      @Param("offset") long offset,
-      @Param("limit") int limit);
+      @Param("keyword") String keyword, @Param("offset") long offset, @Param("limit") int limit);
 
   @Select(
       """

@@ -32,6 +32,7 @@ public class BookingRepository {
   private final OutboxEventFactory outboxFactory;
   private final BookingStatusLogMapper statusLogMapper;
   private final BookingApprovalActionMapper approvalActionMapper;
+  private final BookingApprovalStageMapper approvalStageMapper;
   private final ReconciliationIntentRepository reconciliationIntents;
 
   public BookingRepository(
@@ -41,6 +42,7 @@ public class BookingRepository {
       OutboxEventFactory outboxFactory,
       BookingStatusLogMapper statusLogMapper,
       BookingApprovalActionMapper approvalActionMapper,
+      BookingApprovalStageMapper approvalStageMapper,
       ReconciliationIntentRepository reconciliationIntents) {
     this.reservationMapper = reservationMapper;
     this.idempotencyMapper = idempotencyMapper;
@@ -48,6 +50,7 @@ public class BookingRepository {
     this.outboxFactory = outboxFactory;
     this.statusLogMapper = statusLogMapper;
     this.approvalActionMapper = approvalActionMapper;
+    this.approvalStageMapper = approvalStageMapper;
     this.reconciliationIntents = reconciliationIntents;
   }
 
@@ -168,6 +171,39 @@ public class BookingRepository {
       String assignedApproverExternalUserId,
       String approvalMode,
       String finalAssignedApproverExternalUserId) {
+    return complete(
+        requestId,
+        userId,
+        slotId,
+        quantity,
+        allocationId,
+        releaseId,
+        expireAt,
+        details,
+        resourceId,
+        ownerDepartment,
+        assignedApproverExternalUserId,
+        approvalMode,
+        finalAssignedApproverExternalUserId,
+        List.of());
+  }
+
+  @Transactional
+  public BookingReservation complete(
+      String requestId,
+      long userId,
+      long slotId,
+      int quantity,
+      String allocationId,
+      String releaseId,
+      LocalDateTime expireAt,
+      BookingApplicationDetails details,
+      Long resourceId,
+      String ownerDepartment,
+      String assignedApproverExternalUserId,
+      String approvalMode,
+      String finalAssignedApproverExternalUserId,
+      List<BookingApprovalStageSnapshot> approvalStages) {
     LocalDateTime now = LocalDateTime.now();
     BookingReservationEntity entity = new BookingReservationEntity();
     entity.setBookingNo(UUID.randomUUID().toString());
@@ -197,6 +233,9 @@ public class BookingRepository {
     entity.setTimeoutNextCheckAt(expireAt);
     entity.setUpdatedAt(now);
     reservationMapper.insert(entity);
+    for (BookingApprovalStageSnapshot stage : approvalStages) {
+      approvalStageMapper.insert(entity.getId(), stage);
+    }
     BookingReservation reservation = entity.toDomain();
     statusLogMapper.insertLog(
         entity.getId(), null, BookingStatus.PENDING_CONFIRMATION.name(), CREATE, null, now);
@@ -225,6 +264,11 @@ public class BookingRepository {
   @Transactional(readOnly = true)
   public List<BookingApprovalAction> approvalActions(String bookingNo) {
     return List.copyOf(approvalActionMapper.findByBookingNo(bookingNo));
+  }
+
+  @Transactional(readOnly = true)
+  public List<BookingApprovalStageSnapshot> approvalStages(String bookingNo) {
+    return List.copyOf(approvalStageMapper.findByBookingNo(bookingNo));
   }
 
   @Transactional
@@ -321,7 +365,14 @@ public class BookingRepository {
     if (current.getExpireAt() == null || !now.isBefore(current.getExpireAt())) {
       throw new IllegalArgumentException("Reservation confirmation deadline expired");
     }
-    if ("TWO_STAGE".equals(current.getApprovalMode()) && current.getCurrentApprovalStep() == 1) {
+    int snapshotStageCount = approvalStageMapper.count(current.getId());
+    boolean hasNextSnapshotStage =
+        snapshotStageCount > 0 && current.getCurrentApprovalStep() < snapshotStageCount;
+    boolean hasNextLegacyStage =
+        snapshotStageCount == 0
+            && "TWO_STAGE".equals(current.getApprovalMode())
+            && current.getCurrentApprovalStep() == 1;
+    if (hasNextSnapshotStage || hasNextLegacyStage) {
       int advanced =
           reservationMapper.update(
               null,
@@ -342,7 +393,17 @@ public class BookingRepository {
                   .setSql("version = version + 1"));
       if (advanced != 1) return findEntity(bookingNo).toDomain();
       approvalActionMapper.insertAction(
-          current.getId(), 1, actorExternalUserId, reviewerRole, "APPROVED", reviewNote, now);
+          current.getId(),
+          current.getCurrentApprovalStep(),
+          actorExternalUserId,
+          reviewerRole,
+          "APPROVED",
+          reviewNote,
+          now);
+      if (snapshotStageCount > 0) {
+        approvalStageMapper.decide(
+            current.getId(), current.getCurrentApprovalStep(), "APPROVED", now);
+      }
       return findEntity(bookingNo).toDomain();
     }
     int updated =
@@ -379,6 +440,10 @@ public class BookingRepository {
         "APPROVED",
         reviewNote,
         now);
+    if (snapshotStageCount > 0) {
+      approvalStageMapper.decide(
+          current.getId(), current.getCurrentApprovalStep(), "APPROVED", now);
+    }
     statusLogMapper.insertLog(
         confirmed.getId(),
         BookingStatus.PENDING_CONFIRMATION.name(),
@@ -408,6 +473,9 @@ public class BookingRepository {
           decision,
           note,
           LocalDateTime.now());
+      if ("REJECTED".equals(decision)) {
+        approvalStageMapper.decide(entity.getId(), step, "REJECTED", LocalDateTime.now());
+      }
     }
   }
 

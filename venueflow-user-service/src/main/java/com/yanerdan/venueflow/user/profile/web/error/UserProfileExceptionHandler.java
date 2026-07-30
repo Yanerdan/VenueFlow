@@ -1,8 +1,11 @@
 package com.yanerdan.venueflow.user.profile.web.error;
 
+import com.yanerdan.venueflow.user.directory.OrganizationDirectoryController;
+import com.yanerdan.venueflow.user.directory.OrganizationDirectoryForbiddenException;
+import com.yanerdan.venueflow.user.profile.application.AuthoritativeCampusIdentityException;
 import com.yanerdan.venueflow.user.profile.application.StaleUserProfileVersionException;
-import com.yanerdan.venueflow.user.profile.application.UserProfileNotFoundException;
 import com.yanerdan.venueflow.user.profile.application.UserDirectoryAccessDeniedException;
+import com.yanerdan.venueflow.user.profile.application.UserProfileNotFoundException;
 import com.yanerdan.venueflow.user.profile.application.UserProfilePersistenceException;
 import com.yanerdan.venueflow.user.profile.domain.DuplicateExternalUserIdException;
 import com.yanerdan.venueflow.user.profile.web.UserProfileController;
@@ -27,7 +30,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-@RestControllerAdvice(basePackageClasses = UserProfileController.class)
+@RestControllerAdvice(
+    basePackageClasses = {UserProfileController.class, OrganizationDirectoryController.class})
 @Profile("persistence")
 public class UserProfileExceptionHandler {
 
@@ -131,6 +135,17 @@ public class UserProfileExceptionHandler {
         request);
   }
 
+  @ExceptionHandler(AuthoritativeCampusIdentityException.class)
+  public ResponseEntity<UserProfileErrorResponse> handleAuthoritativeIdentity(
+      AuthoritativeCampusIdentityException exception, HttpServletRequest request) {
+    return response(
+        HttpStatus.CONFLICT,
+        UserProfileErrorCode.USER_PROFILE_VERSION_CONFLICT,
+        exception.getMessage(),
+        Map.of(),
+        request);
+  }
+
   @ExceptionHandler(UserDirectoryAccessDeniedException.class)
   public ResponseEntity<UserProfileErrorResponse> handleForbidden(
       UserDirectoryAccessDeniedException exception, HttpServletRequest request) {
@@ -138,6 +153,17 @@ public class UserProfileExceptionHandler {
         HttpStatus.FORBIDDEN,
         UserProfileErrorCode.USER_PROFILE_FORBIDDEN,
         "Current role cannot access the user directory",
+        Map.of(),
+        request);
+  }
+
+  @ExceptionHandler(OrganizationDirectoryForbiddenException.class)
+  public ResponseEntity<UserProfileErrorResponse> handleOrganizationForbidden(
+      OrganizationDirectoryForbiddenException exception, HttpServletRequest request) {
+    return response(
+        HttpStatus.FORBIDDEN,
+        UserProfileErrorCode.USER_PROFILE_FORBIDDEN,
+        exception.getMessage(),
         Map.of(),
         request);
   }

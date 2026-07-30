@@ -146,6 +146,15 @@ public class HttpResourceCapacityClient implements ResourceCapacityClient {
       int minAdvanceHours = body.path("minAdvanceHours").asInt(0);
       int maxAdvanceDays = body.path("maxAdvanceDays").asInt(90);
       int maxDurationMinutes = body.path("maxDurationMinutes").asInt(480);
+      java.util.List<ResourceCapacityClient.ApprovalStage> approvalStages =
+          new java.util.ArrayList<>();
+      for (com.fasterxml.jackson.databind.JsonNode stage : body.path("approvalStages")) {
+        approvalStages.add(
+            new ResourceCapacityClient.ApprovalStage(
+                stage.path("stageOrder").asInt(),
+                stage.path("stageName").asText(),
+                stage.path("approverExternalUserId").asText()));
+      }
       if (returnedId != slotId || startAt == null || endAt == null) {
         throw invalidSlot();
       }
@@ -160,6 +169,7 @@ public class HttpResourceCapacityClient implements ResourceCapacityClient {
           minAdvanceHours,
           maxAdvanceDays,
           maxDurationMinutes,
+          approvalStages,
           Instant.parse(startAt),
           Instant.parse(endAt));
     } catch (InterruptedException exception) {

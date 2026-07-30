@@ -6,6 +6,7 @@ import com.yanerdan.venueflow.booking.domain.BookingApplicationDetails;
 import com.yanerdan.venueflow.booking.domain.BookingReservation;
 import com.yanerdan.venueflow.booking.domain.BookingStatus;
 import com.yanerdan.venueflow.booking.persistence.BookingApprovalAction;
+import com.yanerdan.venueflow.booking.persistence.BookingApprovalStageSnapshot;
 import com.yanerdan.venueflow.booking.persistence.BookingRepository;
 import com.yanerdan.venueflow.booking.persistence.BookingRepository.BookingHistoryPage;
 import com.yanerdan.venueflow.booking.persistence.ClaimResult;
@@ -211,7 +212,17 @@ public class BookingReservationService {
                   responsibility.ownerDepartment(),
                   responsibility.approverExternalUserId(),
                   responsibility.approvalMode(),
-                  responsibility.finalApproverExternalUserId());
+                  responsibility.finalApproverExternalUserId(),
+                  responsibility.approvalStages().stream()
+                      .map(
+                          stage ->
+                              new BookingApprovalStageSnapshot(
+                                  stage.stageOrder(),
+                                  stage.stageName(),
+                                  stage.approverExternalUserId(),
+                                  "PENDING",
+                                  null))
+                      .toList());
       return new CreateResult(completed, false);
     } catch (RuntimeException persistenceFailure) {
       try {
@@ -297,10 +308,16 @@ public class BookingReservationService {
       return;
     }
     BookingReservation reservation = get(bookingNo);
-    String currentApprover =
-        reservation.currentApprovalStep() == 2
-            ? reservation.finalAssignedApproverExternalUserId()
-            : reservation.assignedApproverExternalUserId();
+    List<BookingApprovalStageSnapshot> stages = repository.approvalStages(bookingNo);
+    String currentApprover;
+    if (!stages.isEmpty() && reservation.currentApprovalStep() <= stages.size()) {
+      currentApprover = stages.get(reservation.currentApprovalStep() - 1).approverExternalUserId();
+    } else {
+      currentApprover =
+          reservation.currentApprovalStep() == 2
+              ? reservation.finalAssignedApproverExternalUserId()
+              : reservation.assignedApproverExternalUserId();
+    }
     if (currentApprover == null || !currentApprover.equals(trustedUserId)) {
       throw error(BookingErrorCode.BOOKING_FORBIDDEN, "Booking is assigned to another approver");
     }
@@ -420,7 +437,7 @@ public class BookingReservationService {
       if (result != null
           && (result.status() == BookingStatus.CONFIRMED
               || (result.status() == BookingStatus.PENDING_CONFIRMATION
-                  && result.currentApprovalStep() == 2))) {
+                  && result.currentApprovalStep() > current.currentApprovalStep()))) {
         return result;
       }
     } catch (IllegalArgumentException exception) {
@@ -434,6 +451,11 @@ public class BookingReservationService {
   public List<BookingApprovalAction> approvalActions(String bookingNo) {
     get(bookingNo);
     return repository.approvalActions(bookingNo);
+  }
+
+  public List<BookingApprovalStageSnapshot> approvalStages(String bookingNo) {
+    get(bookingNo);
+    return repository.approvalStages(bookingNo);
   }
 
   public BookingReservation checkIn(String bookingNo) {

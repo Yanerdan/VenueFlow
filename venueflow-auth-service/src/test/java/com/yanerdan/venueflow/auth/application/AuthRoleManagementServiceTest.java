@@ -29,7 +29,8 @@ class AuthRoleManagementServiceTest {
 
   @Test
   void listsBoundedAccountsForSystemAdmin() {
-    when(repository.listAccounts(200)).thenReturn(List.of(account(TARGET, CampusRole.APPLICANT, 1)));
+    when(repository.listAccounts(200))
+        .thenReturn(List.of(account(TARGET, CampusRole.APPLICANT, 1)));
     AuthRoleManagementService service = service();
 
     assertThat(service.accounts("SYSTEM_ADMIN")).hasSize(1);
@@ -91,12 +92,7 @@ class AuthRoleManagementServiceTest {
     assertThatThrownBy(
             () ->
                 service()
-                    .changeRole(
-                        ADMIN.toString(),
-                        "SYSTEM_ADMIN",
-                        ADMIN,
-                        CampusRole.APPLICANT,
-                        1))
+                    .changeRole(ADMIN.toString(), "SYSTEM_ADMIN", ADMIN, CampusRole.APPLICANT, 1))
         .isInstanceOf(AuthException.class)
         .extracting("code")
         .isEqualTo(AuthErrorCode.AUTH_FORBIDDEN);

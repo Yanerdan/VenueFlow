@@ -3,56 +3,54 @@
 ## Purpose
 
 Define resource-level direct or two-stage approval policy, immutable booking-chain snapshots, sequential processing, and readable approval progress.
-
 ## Requirements
-
 ### Requirement: Resources choose a bounded approval policy
 
-Resource Service SHALL support `DIRECT` and `TWO_STAGE` approval modes. Direct mode SHALL use one assigned approver; two-stage mode SHALL require distinct initial and final approver external user IDs.
+Resource Service SHALL support an ordered approval policy containing one to five stages. Every stage SHALL have a bounded label, a distinct positive sequence number, and one eligible approver external user ID; a resource SHALL reference one active policy before accepting new bookings.
 
-#### Scenario: Manager configures two-stage approval
+#### Scenario: Manager configures a multi-stage policy
 
-- **WHEN** an authorized manager selects two distinct eligible approvers
-- **THEN** Resource persists the two-stage policy optimistically
+- **WHEN** an authorized manager saves between one and five valid ordered stages
+- **THEN** Resource persists the policy and stages optimistically
 
-#### Scenario: Manager repeats an approver
+#### Scenario: Manager repeats a sequence
 
-- **WHEN** both stages reference the same account
+- **WHEN** two stages use the same sequence number or the policy exceeds five stages
 - **THEN** Resource rejects the invalid policy
 
 ### Requirement: Bookings snapshot their approval chain
 
-Booking Service SHALL copy approval mode and assigned stage identities from the resource slot when creating a reservation so later resource edits do not change the in-flight chain.
+Booking Service SHALL copy the ordered stage labels, sequence numbers, and assigned external user IDs from the resource when creating a reservation so later resource or policy edits do not change the in-flight chain.
 
 #### Scenario: Resource policy changes after submission
 
-- **WHEN** a manager edits the resource after a booking was created
-- **THEN** the booking retains its original approval chain
+- **WHEN** a manager edits the resource policy after a booking was created
+- **THEN** the booking retains its original ordered approval chain
 
 ### Requirement: Approval advances one bounded stage at a time
 
-Booking Service SHALL keep a two-stage booking pending after initial approval, advance it to the final stage exactly once, and confirm it only after final approval.
+Booking Service SHALL keep a multi-stage booking pending after every non-final approval, advance it to the next stage exactly once, and confirm it only after the final configured stage approves.
 
-#### Scenario: Initial approver approves
+#### Scenario: A non-final approver approves
 
-- **WHEN** the assigned initial approver confirms a two-stage pending booking
-- **THEN** Booking records the action and advances the current stage without confirming the booking
+- **WHEN** the assigned current approver confirms a pending booking
+- **THEN** Booking records the action and advances one stage without confirming the booking
 
-#### Scenario: Final approver approves
+#### Scenario: The final approver approves
 
-- **WHEN** the assigned final approver confirms the second stage
+- **WHEN** the assigned final-stage approver confirms the pending booking
 - **THEN** Booking records the action and transitions the booking to `CONFIRMED`
 
-#### Scenario: Either stage rejects
+#### Scenario: Any stage rejects
 
 - **WHEN** the current assigned approver rejects with a bounded reason
 - **THEN** Booking records the action and ends the booking using the existing cancellation behavior
 
 ### Requirement: Approval progress is visible
 
-Booking APIs and web workspaces SHALL expose the current stage, total stages, and ordered bounded approval actions without credential secrets.
+Booking APIs and web workspaces SHALL expose the current stage, total stages, ordered stage labels and assignees, and ordered bounded approval actions without credential secrets.
 
 #### Scenario: Applicant views an in-progress chain
 
-- **WHEN** the initial stage has approved but final approval is pending
-- **THEN** the applicant sees stage two pending and the completed initial action
+- **WHEN** one or more non-final stages have approved
+- **THEN** the applicant sees the current pending stage and every completed prior action

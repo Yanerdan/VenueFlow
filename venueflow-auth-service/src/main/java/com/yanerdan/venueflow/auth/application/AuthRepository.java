@@ -1,12 +1,12 @@
 package com.yanerdan.venueflow.auth.application;
 
-import com.yanerdan.venueflow.auth.domain.AuthCredential;
 import com.yanerdan.venueflow.auth.domain.AuthAccount;
+import com.yanerdan.venueflow.auth.domain.AuthCredential;
 import com.yanerdan.venueflow.auth.domain.CampusRole;
 import com.yanerdan.venueflow.auth.domain.RefreshSession;
 import java.time.LocalDateTime;
-import java.util.Optional;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface AuthRepository {
@@ -23,8 +23,7 @@ public interface AuthRepository {
 
   Optional<AuthAccount> findAccount(UUID userId);
 
-  boolean changeRole(
-      UUID userId, CampusRole role, long expectedVersion, LocalDateTime now);
+  boolean changeRole(UUID userId, CampusRole role, long expectedVersion, LocalDateTime now);
 
   void recordFailure(
       long id, long version, int attempts, LocalDateTime lockedUntil, LocalDateTime now);

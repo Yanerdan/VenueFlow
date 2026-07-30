@@ -56,8 +56,7 @@ public class AuthManagementController {
         "role updated");
   }
 
-  public record ChangeRoleRequest(
-      @NotNull CampusRole role, @PositiveOrZero long expectedVersion) {}
+  public record ChangeRoleRequest(@NotNull CampusRole role, @PositiveOrZero long expectedVersion) {}
 
   public record AccountResponse(
       UUID userId,

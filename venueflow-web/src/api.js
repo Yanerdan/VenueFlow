@@ -74,6 +74,18 @@ export function createApi({
       saveTokens(tokens);
       return tokens;
     },
+    ssoProviders: () => request("/api/v1/auth/sso/providers", { auth: false }),
+    startSso: providerKey => request(
+      `/api/v1/auth/sso/${encodeURIComponent(providerKey)}/authorize`,
+      { method: "POST", auth: false }
+    ),
+    async completeSso(completionCode) {
+      const tokens = await request("/api/v1/auth/sso/complete", {
+        method: "POST", auth: false, body: JSON.stringify({ completionCode })
+      });
+      saveTokens(tokens);
+      return tokens;
+    },
     async logout() {
       const refreshToken = storage.getItem(REFRESH);
       try {
@@ -95,6 +107,15 @@ export function createApi({
     managementUsers: (keyword = "") => request(
       `/api/v1/users/management?pageNumber=0&pageSize=100${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""}`
     ),
+    organizations: (source = "campus") => request(
+      `/api/v1/organizations?source=${encodeURIComponent(source)}`
+    ),
+    directorySyncRuns: (source = "campus") => request(
+      `/api/v1/organizations/sync-runs?source=${encodeURIComponent(source)}`
+    ),
+    synchronizeDirectory: payload => request("/api/v1/organizations/sync", {
+      method: "POST", body: JSON.stringify(payload)
+    }),
     authAccounts: () => request("/api/v1/auth/management/accounts"),
     approverAccounts: () => request("/api/v1/auth/management/accounts/approvers"),
     changeAccountRole: (userId, role, expectedVersion) => request(
@@ -136,6 +157,12 @@ export function createApi({
         })
       })
     },
+    replaceApprovalPolicy: (resourceId, expectedVersion, policyName, stages) => request(
+      `/api/v1/resources/${resourceId}/approval-policy`, {
+        method: "PATCH",
+        body: JSON.stringify({ expectedVersion, policyName, stages })
+      }
+    ),
     changeResourceBookingRules: (
       resourceId, bookingNotice, minAdvanceHours, maxAdvanceDays,
       maxDurationMinutes, expectedVersion
@@ -159,6 +186,9 @@ export function createApi({
     }),
     approvalActions: bookingNo => request(
       `/api/v1/bookings/${encodeURIComponent(bookingNo)}/approval-actions`
+    ),
+    approvalStages: bookingNo => request(
+      `/api/v1/bookings/${encodeURIComponent(bookingNo)}/approval-stages`
     ),
     async search(text) {
       const page = await request(

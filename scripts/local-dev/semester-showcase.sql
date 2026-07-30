@@ -44,6 +44,49 @@ ON DUPLICATE KEY UPDATE
   phone = VALUES(phone), email = VALUES(email), account_status = 'ACTIVE',
   booking_eligibility = 'ELIGIBLE', updated_at = VALUES(updated_at);
 
+INSERT INTO venueflow_user.organization_unit
+  (source, external_key, code, name, parent_external_key, active,
+   last_synced_at, created_at, updated_at)
+VALUES
+  ('campus', 'UNIVERSITY', 'UNIV', 'VenueFlow 演示大学', NULL, 1, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)),
+  ('campus', 'ACADEMIC', 'ACADEMIC', '教学科研单位', 'UNIVERSITY', 1, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)),
+  ('campus', 'ADMIN', 'ADMIN', '党政与公共服务单位', 'UNIVERSITY', 1, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)),
+  ('campus', 'CS', 'CS', '计算机学院', 'ACADEMIC', 1, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)),
+  ('campus', 'BUSINESS', 'BUS', '商学院', 'ACADEMIC', 1, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)),
+  ('campus', 'STUDENT-AFFAIRS', 'SA', '学生工作部', 'ADMIN', 1, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)),
+  ('campus', 'ACADEMIC-AFFAIRS', 'AA', '教务处', 'ADMIN', 1, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), UTC_TIMESTAMP(6))
+ON DUPLICATE KEY UPDATE
+  code = VALUES(code), name = VALUES(name), parent_external_key = VALUES(parent_external_key),
+  active = 1, last_synced_at = VALUES(last_synced_at), updated_at = VALUES(updated_at);
+
+INSERT INTO venueflow_user.directory_membership
+  (source, external_user_id, organization_external_key, campus_id, identity_type, active,
+   last_synced_at, created_at, updated_at)
+SELECT 'campus', profile.external_user_id,
+       CASE profile.department
+         WHEN '计算机学院' THEN 'CS'
+         WHEN '商学院' THEN 'BUSINESS'
+         WHEN '教务处' THEN 'ACADEMIC-AFFAIRS'
+         ELSE 'STUDENT-AFFAIRS' END,
+       profile.campus_id, profile.identity_type, 1, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)
+FROM venueflow_user.user_profile profile
+WHERE profile.external_user_id LIKE 'showcase-%'
+ON DUPLICATE KEY UPDATE
+  organization_external_key = VALUES(organization_external_key),
+  campus_id = VALUES(campus_id), identity_type = VALUES(identity_type),
+  active = 1, last_synced_at = VALUES(last_synced_at), updated_at = VALUES(updated_at);
+
+INSERT INTO venueflow_user.directory_sync_run
+  (source, run_key, sync_mode, status, organization_count, membership_count,
+   error_summary, started_at, completed_at)
+VALUES
+  ('campus', 'semester-2026-spring', 'FULL', 'SUCCEEDED', 7, 16, NULL,
+   UTC_TIMESTAMP(6) - INTERVAL 1 DAY, UTC_TIMESTAMP(6) - INTERVAL 1 DAY)
+ON DUPLICATE KEY UPDATE
+  status = 'SUCCEEDED', organization_count = VALUES(organization_count),
+  membership_count = VALUES(membership_count), error_summary = NULL,
+  completed_at = VALUES(completed_at);
+
 INSERT INTO venueflow_resource.resource_category (code, name)
 VALUES
   ('SHOW-TEACHING', '教学与研讨空间'),
@@ -118,6 +161,64 @@ ON DUPLICATE KEY UPDATE
   max_advance_days = VALUES(max_advance_days), max_duration_minutes = VALUES(max_duration_minutes),
   status = VALUES(status), version = VALUES(version), updated_at = VALUES(updated_at);
 
+DELETE stage
+FROM venueflow_resource.resource_approval_stage stage
+JOIN venueflow_resource.resource_approval_policy policy ON policy.id = stage.policy_id
+JOIN venueflow_resource.resource resource ON resource.id = policy.resource_id
+WHERE resource.resource_no LIKE 'VF-CAMPUS-%';
+DELETE policy
+FROM venueflow_resource.resource_approval_policy policy
+JOIN venueflow_resource.resource resource ON resource.id = policy.resource_id
+WHERE resource.resource_no LIKE 'VF-CAMPUS-%';
+
+INSERT INTO venueflow_resource.resource_approval_policy(resource_id, policy_name)
+SELECT id, '校园资源标准审批流程'
+FROM venueflow_resource.resource WHERE resource_no LIKE 'VF-CAMPUS-%';
+
+INSERT INTO venueflow_resource.resource_approval_stage
+  (policy_id, stage_order, stage_name, approver_external_user_id)
+SELECT policy.id, 1, '归属单位初审', resource.approver_external_user_id
+FROM venueflow_resource.resource_approval_policy policy
+JOIN venueflow_resource.resource resource ON resource.id = policy.resource_id
+WHERE resource.resource_no LIKE 'VF-CAMPUS-%';
+
+INSERT INTO venueflow_resource.resource_approval_stage
+  (policy_id, stage_order, stage_name, approver_external_user_id)
+SELECT policy.id, 2, '校级业务复核', resource.final_approver_external_user_id
+FROM venueflow_resource.resource_approval_policy policy
+JOIN venueflow_resource.resource resource ON resource.id = policy.resource_id
+WHERE resource.resource_no LIKE 'VF-CAMPUS-%'
+  AND resource.approval_mode = 'TWO_STAGE'
+  AND resource.final_approver_external_user_id IS NOT NULL;
+
+-- One representative high-governance resource demonstrates an arbitrary third stage.
+INSERT INTO venueflow_resource.resource_approval_stage
+  (policy_id, stage_order, stage_name, approver_external_user_id)
+SELECT policy.id, 3, '学校办公室备案', 'showcase-admin-01'
+FROM venueflow_resource.resource_approval_policy policy
+JOIN venueflow_resource.resource resource ON resource.id = policy.resource_id
+WHERE resource.resource_no = 'VF-CAMPUS-009';
+
+-- Drop reserved history before rebuilding its referenced slots.
+DELETE snapshot
+FROM venueflow_booking.booking_approval_stage_snapshot snapshot
+JOIN venueflow_booking.booking_reservation booking ON booking.id = snapshot.booking_id
+WHERE booking.booking_no LIKE 'VF-SHOW-%';
+DELETE FROM venueflow_booking.booking_approval_action
+WHERE booking_id IN (
+  SELECT id FROM venueflow_booking.booking_reservation WHERE booking_no LIKE 'VF-SHOW-%'
+);
+DELETE FROM venueflow_booking.booking_status_log
+WHERE booking_id IN (
+  SELECT id FROM venueflow_booking.booking_reservation WHERE booking_no LIKE 'VF-SHOW-%'
+);
+DELETE FROM venueflow_booking.booking_reservation WHERE booking_no LIKE 'VF-SHOW-%';
+DELETE FROM venueflow_notification.notification_record WHERE booking_no LIKE 'VF-SHOW-%';
+DELETE FROM venueflow_resource.resource_slot_allocation
+WHERE slot_id BETWEEN 900001 AND 900072;
+DELETE FROM venueflow_resource.resource_slot
+WHERE id BETWEEN 900001 AND 900072;
+
 -- Remove only unreferenced generated slots so advancing the calendar does not accumulate stale choices.
 DELETE slot
 FROM venueflow_resource.resource_slot slot
@@ -173,6 +274,10 @@ ON DUPLICATE KEY UPDATE
   status = VALUES(status), allocated_quantity = VALUES(allocated_quantity), updated_at = VALUES(updated_at);
 
 -- Recreate only the reserved semester history.
+DELETE snapshot
+FROM venueflow_booking.booking_approval_stage_snapshot snapshot
+JOIN venueflow_booking.booking_reservation booking ON booking.id = snapshot.booking_id
+WHERE booking.booking_no LIKE 'VF-SHOW-%';
 DELETE FROM venueflow_booking.booking_approval_action
 WHERE booking_id IN (
   SELECT id FROM venueflow_booking.booking_reservation WHERE booking_no LIKE 'VF-SHOW-%'
@@ -291,6 +396,26 @@ FROM venueflow_booking.booking_reservation b
 WHERE b.booking_no LIKE 'VF-SHOW-%'
   AND b.approval_mode='TWO_STAGE'
   AND b.status IN ('COMPLETED', 'CONFIRMED');
+
+INSERT INTO venueflow_booking.booking_approval_stage_snapshot
+  (booking_id, stage_order, stage_name, approver_external_user_id, stage_status, decided_at)
+SELECT b.id, 1, '归属单位初审', b.assigned_approver_external_user_id,
+       CASE WHEN b.review_decision = 'REJECTED' THEN 'REJECTED'
+            WHEN b.status IN ('COMPLETED', 'CONFIRMED') OR b.current_approval_step > 1 THEN 'APPROVED'
+            ELSE 'PENDING' END,
+       CASE WHEN b.status IN ('COMPLETED', 'CONFIRMED', 'CANCELLED') THEN b.reviewed_at END
+FROM venueflow_booking.booking_reservation b
+WHERE b.booking_no LIKE 'VF-SHOW-%';
+
+INSERT INTO venueflow_booking.booking_approval_stage_snapshot
+  (booking_id, stage_order, stage_name, approver_external_user_id, stage_status, decided_at)
+SELECT b.id, 2, '校级业务复核', b.final_assigned_approver_external_user_id,
+       CASE WHEN b.status IN ('COMPLETED', 'CONFIRMED') THEN 'APPROVED' ELSE 'PENDING' END,
+       CASE WHEN b.status IN ('COMPLETED', 'CONFIRMED') THEN b.reviewed_at END
+FROM venueflow_booking.booking_reservation b
+WHERE b.booking_no LIKE 'VF-SHOW-%'
+  AND b.approval_mode = 'TWO_STAGE'
+  AND b.final_assigned_approver_external_user_id IS NOT NULL;
 
 INSERT INTO venueflow_notification.notification_record
   (consumer_name, event_id, user_id, booking_no, notification_type, title, body, created_at)

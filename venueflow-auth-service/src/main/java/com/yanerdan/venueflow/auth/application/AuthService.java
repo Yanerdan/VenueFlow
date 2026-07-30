@@ -40,6 +40,7 @@ public class AuthService {
   private final Duration refreshTtl;
   private final int maxLoginAttempts;
   private final Duration lockoutDuration;
+  private final boolean localLoginEnabled;
   private final String dummyHash;
   private final SecureRandom random = new SecureRandom();
 
@@ -51,7 +52,8 @@ public class AuthService {
       Clock clock,
       @Value("${venueflow.auth.refresh-token-ttl}") Duration refreshTtl,
       @Value("${venueflow.auth.max-login-attempts}") int maxLoginAttempts,
-      @Value("${venueflow.auth.lockout-duration}") Duration lockoutDuration) {
+      @Value("${venueflow.auth.lockout-duration}") Duration lockoutDuration,
+      @Value("${venueflow.auth.local-login-enabled:true}") boolean localLoginEnabled) {
     this.repository = repository;
     this.passwordPolicy = passwordPolicy;
     this.passwordEncoder = passwordEncoder;
@@ -65,6 +67,7 @@ public class AuthService {
     this.maxLoginAttempts = maxLoginAttempts;
     this.lockoutDuration =
         between(lockoutDuration, Duration.ofMinutes(1), Duration.ofHours(24), "lockout duration");
+    this.localLoginEnabled = localLoginEnabled;
     this.dummyHash = passwordEncoder.encode("VenueFlow-Dummy-Password-2026");
   }
 
@@ -87,6 +90,11 @@ public class AuthService {
 
   @Transactional
   public Tokens login(String username, char[] password) {
+    if (!localLoginEnabled) {
+      passwordEncoder.matches(new String(password), dummyHash);
+      wipe(password);
+      throw invalidCredentials();
+    }
     String normalized;
     try {
       normalized = passwordPolicy.normalizeUsername(username);
@@ -97,7 +105,10 @@ public class AuthService {
     }
 
     AuthCredential credential = repository.findCredential(normalized).orElse(null);
-    String hash = credential == null ? dummyHash : credential.passwordHash();
+    String hash =
+        credential == null || credential.passwordHash() == null
+            ? dummyHash
+            : credential.passwordHash();
     boolean matches;
     try {
       matches = passwordEncoder.matches(new String(password), hash);
@@ -105,7 +116,7 @@ public class AuthService {
       wipe(password);
     }
     LocalDateTime now = nowLocal();
-    if (credential == null) {
+    if (credential == null || credential.passwordHash() == null) {
       throw invalidCredentials();
     }
     if (credential.lockedAt(now)) {
@@ -162,6 +173,14 @@ public class AuthService {
   @Transactional
   public void logout(String refreshToken) {
     repository.revokeRefresh(hash(refreshToken), nowLocal());
+  }
+
+  @Transactional
+  public Tokens federatedLogin(UUID userId) {
+    AuthCredential credential =
+        repository.findCredential(userId).orElseThrow(this::invalidCredentials);
+    return issuePair(
+        credential.userId(), credential.username(), credential.role(), credential.tokenVersion());
   }
 
   private Tokens issuePair(

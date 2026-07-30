@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#073d3a">
   <title>VenueFlow · 校园空间预约</title>
-  <link rel="stylesheet" href="./styles.css?v=20260729-c36">
+  <link rel="stylesheet" href="./styles.css?v=20260730-c37">
 </head>
 <body>
   <header class="site-header">
@@ -37,7 +37,9 @@
         </div>
       </div>
       <div class="auth-panel">
-        <div class="panel-heading"><p class="eyebrow">统一服务入口</p><h2>登录 VenueFlow</h2><p>使用本地演示账号进入校园资源预约平台。</p></div>
+        <div class="panel-heading"><p class="eyebrow">统一服务入口</p><h2>登录 VenueFlow</h2><p>可使用学校统一身份认证；本地账号仅用于演示与应急管理。</p></div>
+        <div id="campus-sso" class="campus-sso hidden"><span>学校统一身份认证</span><div id="sso-providers"></div></div>
+        <div class="local-login-divider"><span>本地账号登录</span></div>
         <div class="tabs"><button data-auth-tab="login" class="active">登录</button><button data-auth-tab="register">注册</button></div>
         <form id="login-form">
           <label>用户名<input name="username" minlength="3" autocomplete="username" required placeholder="请输入用户名"></label>
@@ -164,6 +166,6 @@
   <nav id="mobile-nav" class="mobile-nav hidden">
     <button data-view="discover" class="active">空间</button><button data-view="bookings">申请</button><button data-view="notifications">消息</button><button data-view="profile">我的</button>
   </nav>
-  <script type="module" src="./src/app.js?v=20260729-c36"></script>
+  <script type="module" src="./src/app.js?v=20260730-c37"></script>
 </body>
 </html>

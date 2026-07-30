@@ -65,6 +65,10 @@ class AuthLifecycleAuthSuite {
             jdbc.queryForObject(
                 "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '001'", Integer.class))
         .isEqualTo(1);
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '003'", Integer.class))
+        .isEqualTo(1);
 
     JsonNode identity =
         response(

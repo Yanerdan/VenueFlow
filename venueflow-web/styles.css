@@ -86,6 +86,11 @@ h3 { font-family: var(--serif); font-size: 1.28rem; }
 .panel-heading { margin-bottom: 24px; }
 .panel-heading h2 { font-size: 2.15rem; }
 .panel-heading > p:last-child, .auth-note { color: var(--muted); font-size: .84rem; line-height: 1.6; }
+.campus-sso { margin-bottom: 18px; padding: 14px; display: grid; gap: 8px; background: #edf5f2; border: 1px solid #d5e7e1; border-radius: 6px; }
+.campus-sso > span, .local-login-divider { color: var(--muted); font-size: .68rem; font-weight: 700; letter-spacing: .06em; }
+.campus-sso button { width: 100%; padding: 12px 14px; display: flex; justify-content: space-between; color: white; background: var(--primary); border: 0; border-radius: 4px; font-weight: 700; }
+.local-login-divider { margin: 4px 0 10px; display: flex; align-items: center; gap: 10px; }
+.local-login-divider::after { content: ""; height: 1px; flex: 1; background: var(--line-soft); }
 .tabs { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 24px; border-bottom: 1px solid var(--line-soft); }
 .tabs button { padding: 11px; color: var(--muted); background: transparent; border: 0; border-bottom: 2px solid transparent; font-weight: 600; }
 .tabs button.active { color: var(--primary); border-color: var(--primary); }
@@ -413,6 +418,17 @@ button:disabled { cursor: wait; opacity: .55; }
 .slot-day-groups { display: grid; gap: 16px; }
 .slot-day-group header { margin-bottom: 7px; display: flex; justify-content: space-between; align-items: center; }
 .slot-day-group header strong { font-size: .82rem; }
+.governance-grid { margin-bottom: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.governance-directory { grid-template-columns: .85fr 1.15fr; }
+.integration-status > div { display: grid; gap: 7px; }
+.integration-status small, .integration-status p { margin: 0; color: var(--muted); font-size: .72rem; line-height: 1.55; }
+.organization-tree { max-height: 520px; display: grid; gap: 5px; overflow: auto; }
+.organization-tree > div { padding: 10px 12px; display: grid; grid-template-columns: 20px 1fr auto; gap: 8px; align-items: center; background: var(--surface-low); border-radius: 4px; }
+.organization-tree > div.inactive { opacity: .55; }
+.organization-tree span, .organization-tree small { color: var(--muted); font-size: .68rem; }
+.directory-sync-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.directory-sync-form label { display: grid; gap: 4px; color: var(--muted); font-size: .7rem; }
+.directory-sync-form input, .directory-sync-form select, .directory-sync-form textarea { width: 100%; }
 .guard-card { max-width: 560px; margin: 12vh auto; padding: 44px; background: white; border: 1px solid var(--line); border-radius: 8px; text-align: center; }
 .review-panel { position: fixed; z-index: 70; inset: 0 0 0 auto; width: min(480px, 100%); padding: 42px 34px; overflow-y: auto; background: white; border-left: 1px solid var(--line); box-shadow: -20px 0 60px #073d3a20; }
 .review-panel .close-button { display: block; top: 20px; right: 22px; }
@@ -436,6 +452,7 @@ button:disabled { cursor: wait; opacity: .55; }
 @media (max-width: 720px) {
   .schedule-summary { grid-template-columns: repeat(3, 1fr); }
   .schedule-bulk-actions { grid-column: 1 / -1; }
+  .governance-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 720px) {
   .admin-body { padding: 0; }
@@ -448,4 +465,34 @@ button:disabled { cursor: wait; opacity: .55; }
   .admin-form { grid-template-columns: 1fr; }
   .admin-form > * { grid-column: 1; }
   .toolbar, .toolbar-actions { align-items: stretch; flex-direction: column; }
+}
+.approval-policy-form {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 92%, var(--primary));
+}
+.policy-form-head,
+.policy-form-actions,
+.policy-stage-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.policy-form-head,
+.policy-form-actions { justify-content: space-between; }
+.policy-form-head span { color: var(--muted); font-size: 12px; }
+.policy-stage-row input,
+.policy-stage-row select { flex: 1; min-width: 0; }
+.stage-index {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  font-weight: 700;
 }

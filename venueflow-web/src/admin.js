@@ -1,5 +1,5 @@
-import { createApi } from "./api.js?v=20260729-c36";
-import { transitionCandidates } from "./self-service.js?v=20260729-c36";
+import { createApi } from "./api.js?v=20260730-c37";
+import { transitionCandidates } from "./self-service.js?v=20260730-c37";
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -10,7 +10,7 @@ const approvalRoles = ["APPROVER", "SYSTEM_ADMIN"];
 const sectionsByRole = {
   APPROVER: ["dashboard", "reports", "approvals", "users"],
   RESOURCE_MANAGER: ["dashboard", "resources", "slots", "users"],
-  SYSTEM_ADMIN: ["dashboard", "reports", "approvals", "resources", "slots", "users"]
+  SYSTEM_ADMIN: ["dashboard", "reports", "approvals", "resources", "slots", "users", "governance"]
 };
 let resources = [];
 let bookings = [];
@@ -18,6 +18,9 @@ let users = [];
 let accounts = [];
 let approvers = [];
 let categories = [];
+let organizations = [];
+let directoryRuns = [];
+let identityProviders = [];
 let report;
 let selectedBooking;
 let selectedSlotResource;
@@ -91,6 +94,32 @@ async function loadData() {
   approvers = approverData || [];
   categories = categoryData?.items || categoryData || [];
   renderDashboard(); renderReports(); renderApprovals(); renderResources(); renderResourceOptions(); renderResourcePicker(); renderUsers();
+  if (role === "SYSTEM_ADMIN") await loadGovernance();
+}
+async function loadGovernance() {
+  const source = $("#directory-sync-form")?.elements.source.value.trim() || "campus";
+  const [providerData, organizationData, runData] = await Promise.all([
+    api.ssoProviders().catch(() => []),
+    api.organizations(source).catch(() => []),
+    api.directorySyncRuns(source).catch(() => [])
+  ]);
+  identityProviders = providerData || [];
+  organizations = organizationData || [];
+  directoryRuns = runData || [];
+  renderGovernance();
+}
+function renderGovernance() {
+  $("#identity-provider-status").innerHTML = identityProviders.length
+    ? identityProviders.map(provider => `<div><span class="status ${provider.ready ? "confirmed" : "cancelled"}">${provider.ready ? "已就绪" : "未就绪"}</span><strong>${escapeHtml(provider.displayName)}</strong><small>${escapeHtml(provider.status)}</small></div>`).join("")
+    : empty("尚未配置身份提供方", "设置 OIDC 环境变量并重启 Auth Service 后将在这里显示就绪状态。");
+  const latest = directoryRuns[0];
+  $("#directory-run-status").innerHTML = latest
+    ? `<div><span class="status ${latest.status === "SUCCEEDED" ? "completed" : latest.status === "FAILED" ? "cancelled" : "pending"}">${escapeHtml(latest.status)}</span><strong>${escapeHtml(latest.source)} · ${escapeHtml(latest.mode)}</strong><small>${latest.organizationCount} 个组织 · ${latest.membershipCount} 个成员 · ${dateTime(latest.completedAt || latest.startedAt)}</small>${latest.errorSummary ? `<p>${escapeHtml(latest.errorSummary)}</p>` : ""}</div>`
+    : empty("还没有同步记录", "导入首个规范化组织批次后，这里会显示结果和处理数量。");
+  $("#organization-count").textContent = `${organizations.filter(item => item.active).length} 个在用`;
+  $("#organization-tree").innerHTML = organizations.length
+    ? organizations.map(unit => `<div class="${unit.active ? "" : "inactive"}"><span>${unit.parentExternalKey ? "└" : "●"}</span><strong>${escapeHtml(unit.name)}</strong><small>${escapeHtml(unit.code)} · ${unit.active ? "在用" : "已停用"}</small></div>`).join("")
+    : empty("组织目录为空", "可从学校组织系统转换后导入规范化批次。");
 }
 const userFor = userId => users.find(user => Number(user.id) === Number(userId));
 const profileForExternalId = externalId =>
@@ -170,7 +199,7 @@ async function openReview(item) {
     <div><span>活动用途</span><p>${escapeHtml(item.purpose || "历史申请未记录")}</p></div>
     <div><span>联系人</span><p>${escapeHtml(item.contactName || applicant?.displayName || "待完善")} · ${escapeHtml(item.contactPhone || applicant?.phone || "待完善")}</p></div>
     <div><span>资源归属</span><p>${escapeHtml(item.ownerDepartment || "未分配部门")} · ${item.assignedApproverExternalUserId ? `审批人 #${item.assignedApproverExternalUserId}` : "未指定审批人"}</p></div>
-    <div><span>审批进度</span><p>第 ${item.currentApprovalStep || 1} / ${item.totalApprovalSteps || 1} 级 · ${item.approvalMode === "TWO_STAGE" ? "两级审批" : "直接审批"}</p><ul>${trajectory}</ul></div>
+    <div><span>审批进度</span><p>第 ${item.currentApprovalStep || 1} / ${item.totalApprovalSteps || 1} 级 · ${item.approvalStages?.length ? item.approvalStages.map(stage => escapeHtml(stage.stageName)).join(" → ") : item.approvalMode === "TWO_STAGE" ? "两级审批" : "直接审批"}</p><ul>${trajectory}</ul></div>
     ${item.note ? `<div><span>补充说明</span><p>${escapeHtml(item.note)}</p></div>` : ""}
     ${item.reviewNote ? `<div><span>已有处理意见</span><p>${escapeHtml(item.reviewNote)}</p></div>` : ""}`;
   $("#review-note").value = item.reviewNote || "";
@@ -227,6 +256,23 @@ function categoryOptions(selectedId) {
     `<option value="${category.id}" ${Number(category.id) === Number(selectedId) ? "selected" : ""}>${escapeHtml(category.name)}</option>`
   ).join("");
 }
+function approvalStageEditor(item) {
+  const stages = item.approvalStages?.length
+    ? item.approvalStages
+    : [{ stageOrder: 1, stageName: "资源负责人审批", approverExternalUserId: item.approverExternalUserId || "" }];
+  return `<form class="approval-policy-form" data-resource-policy="${item.id}" data-version="${item.version}">
+    <div class="policy-form-head"><strong>多级审批流程</strong><span>支持 1–5 级，保存后新申请生效</span></div>
+    <input name="policyName" maxlength="100" required value="标准审批流程" placeholder="流程名称">
+    <div data-policy-stage-list>${stages.map(stage => `
+      <div class="policy-stage-row">
+        <span class="stage-index">${stage.stageOrder}</span>
+        <input name="stageName" maxlength="100" required value="${escapeHtml(stage.stageName)}" placeholder="审批环节名称">
+        <select name="stageApprover" required>${approverOptions(stage.approverExternalUserId)}</select>
+        <button type="button" class="outline-button" data-remove-policy-stage>移除</button>
+      </div>`).join("")}</div>
+    <div class="policy-form-actions"><button type="button" class="outline-button" data-add-policy-stage>增加一级</button><button type="submit">保存审批流程</button></div>
+  </form>`;
+}
 function renderResources() {
   $("#resource-admin-list").innerHTML = resources.length ? resources.map(item => {
     const next = nextResourceStatus(item);
@@ -245,11 +291,12 @@ function renderResources() {
       <div class="policy-summary"><strong>预约规则</strong><span>提前 ${item.minAdvanceHours ?? 0} 小时至 ${item.maxAdvanceDays ?? 90} 天 · 最长 ${item.maxDurationMinutes ?? 480} 分钟</span>${item.bookingNotice ? `<p>${escapeHtml(item.bookingNotice)}</p>` : ""}</div>
       <form class="ownership-form" data-resource-ownership="${item.id}" data-version="${item.version}">
         <input name="ownerDepartment" maxlength="160" placeholder="归属部门" value="${escapeHtml(item.ownerDepartment || "")}">
-        <select name="approvalMode" aria-label="${escapeHtml(item.name)}的审批模式"><option value="DIRECT" ${item.approvalMode !== "TWO_STAGE" ? "selected" : ""}>直接审批</option><option value="TWO_STAGE" ${item.approvalMode === "TWO_STAGE" ? "selected" : ""}>两级审批</option></select>
-        <select name="approverExternalUserId" aria-label="${escapeHtml(item.name)}的初审人">${approverOptions(item.approverExternalUserId)}</select>
-        <select name="finalApproverExternalUserId" aria-label="${escapeHtml(item.name)}的终审人">${approverOptions(item.finalApproverExternalUserId)}</select>
+        <input type="hidden" name="approvalMode" value="${item.approvalMode || "DIRECT"}">
+        <input type="hidden" name="approverExternalUserId" value="${escapeHtml(item.approverExternalUserId || "")}">
+        <input type="hidden" name="finalApproverExternalUserId" value="${escapeHtml(item.finalApproverExternalUserId || "")}">
         <button type="submit">保存归属</button>
       </form>
+      ${approvalStageEditor(item)}
       <form class="booking-rules-form" data-resource-rules="${item.id}" data-version="${item.version}">
         <textarea name="bookingNotice" maxlength="1000" rows="2" placeholder="申请须知，例如携带校园卡">${escapeHtml(item.bookingNotice || "")}</textarea>
         <label>最少提前（小时）<input name="minAdvanceHours" type="number" min="0" max="720" required value="${item.minAdvanceHours ?? 0}"></label>
@@ -330,7 +377,7 @@ $$("[data-section]").forEach(button => button.addEventListener("click", () => {
   const section = button.dataset.section;
   $$(".admin-section").forEach(item => item.classList.toggle("hidden", item.id !== section));
   $$("[data-section]").forEach(item => item.classList.toggle("active", item === button));
-  $("#section-title").textContent = ({ dashboard: "运营总览", reports: "运营报表", approvals: "申请审批", resources: "资源管理", slots: "开放时段", users: "人员目录" })[section];
+  $("#section-title").textContent = ({ dashboard: "运营总览", reports: "运营报表", approvals: "申请审批", resources: "资源管理", slots: "开放时段", users: "人员目录", governance: "身份与组织" })[section];
 }));
 $$("[data-jump]").forEach(button => button.addEventListener("click", () => $(`[data-section="${button.dataset.jump}"]`).click()));
 $("#admin-refresh").addEventListener("click", () => loadData().then(() => notify("管理数据已更新")).catch(fail));
@@ -368,6 +415,34 @@ $("#user-search-form").addEventListener("submit", async event => {
     users = page.items || [];
     renderUsers();
   } catch (error) { fail(error); }
+});
+$("#refresh-governance").addEventListener("click", () =>
+  loadGovernance().then(() => notify("身份与组织状态已更新")).catch(fail));
+$("#directory-sync-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  if (form.dataset.submitting === "true") return;
+  const data = new FormData(form);
+  let payload;
+  try { payload = JSON.parse(data.get("payload")); }
+  catch { notify("规范化 JSON 格式不正确", true); return; }
+  if (data.get("mode") === "FULL" && !globalThis.confirm("全量同步会停用本批次未出现的同源组织和成员，是否继续？")) return;
+  const button = form.querySelector('button[type="submit"]');
+  form.dataset.submitting = "true"; button.disabled = true;
+  try {
+    const source = data.get("source").trim();
+    await api.synchronizeDirectory({
+      source,
+      runKey: `${new Date().toISOString()}-${crypto.randomUUID()}`,
+      mode: data.get("mode"),
+      units: payload.units || [],
+      memberships: payload.memberships || []
+    });
+    await loadGovernance();
+    await loadData();
+    notify("组织目录同步成功");
+  } catch (error) { fail(error); }
+  finally { form.dataset.submitting = "false"; button.disabled = false; }
 });
 $("#user-table").addEventListener("submit", async event => {
   const form = event.target.closest("[data-role-user]"); if (!form) return;
@@ -454,6 +529,46 @@ $("#resource-admin-list").addEventListener("submit", async event => {
       Number(form.dataset.version)
     );
     await loadData(); notify("资源归属已更新");
+  } catch (error) { fail(error); }
+});
+$("#resource-admin-list").addEventListener("click", event => {
+  const add = event.target.closest("[data-add-policy-stage]");
+  const remove = event.target.closest("[data-remove-policy-stage]");
+  if (!add && !remove) return;
+  const form = event.target.closest("[data-resource-policy]");
+  const list = form.querySelector("[data-policy-stage-list]");
+  if (add) {
+    if (list.children.length >= 5) return notify("审批流程最多 5 级", true);
+    const row = document.createElement("div");
+    row.className = "policy-stage-row";
+    row.innerHTML = `<span class="stage-index">${list.children.length + 1}</span><input name="stageName" maxlength="100" required placeholder="审批环节名称"><select name="stageApprover" required>${approverOptions("")}</select><button type="button" class="outline-button" data-remove-policy-stage>移除</button>`;
+    list.append(row);
+  } else if (list.children.length > 1) {
+    remove.closest(".policy-stage-row").remove();
+    [...list.children].forEach((row, index) => row.querySelector(".stage-index").textContent = index + 1);
+  } else {
+    notify("审批流程至少保留 1 级", true);
+  }
+});
+$("#resource-admin-list").addEventListener("submit", async event => {
+  const form = event.target.closest("[data-resource-policy]"); if (!form) return;
+  event.preventDefault();
+  const stages = [...form.querySelectorAll(".policy-stage-row")].map((row, index) => ({
+    stageOrder: index + 1,
+    stageName: row.querySelector('[name="stageName"]').value.trim(),
+    approverExternalUserId: row.querySelector('[name="stageApprover"]').value
+  }));
+  if (stages.some(stage => !stage.stageName || !stage.approverExternalUserId)) {
+    return notify("请完整填写每一级名称和审批人", true);
+  }
+  try {
+    await api.replaceApprovalPolicy(
+      Number(form.dataset.resourcePolicy),
+      Number(form.dataset.version),
+      new FormData(form).get("policyName").trim(),
+      stages
+    );
+    await loadData(); notify("多级审批流程已生效");
   } catch (error) { fail(error); }
 });
 $("#resource-admin-list").addEventListener("submit", async event => {

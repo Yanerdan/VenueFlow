@@ -1,8 +1,8 @@
 package com.yanerdan.venueflow.auth.persistence;
 
 import com.yanerdan.venueflow.auth.application.AuthRepository;
-import com.yanerdan.venueflow.auth.domain.AuthCredential;
 import com.yanerdan.venueflow.auth.domain.AuthAccount;
+import com.yanerdan.venueflow.auth.domain.AuthCredential;
 import com.yanerdan.venueflow.auth.domain.CampusRole;
 import com.yanerdan.venueflow.auth.domain.RefreshSession;
 import java.sql.ResultSet;
@@ -103,8 +103,7 @@ public class JdbcAuthRepository implements AuthRepository {
   }
 
   @Override
-  public boolean changeRole(
-      UUID userId, CampusRole role, long expectedVersion, LocalDateTime now) {
+  public boolean changeRole(UUID userId, CampusRole role, long expectedVersion, LocalDateTime now) {
     return jdbc.update(
             """
             UPDATE auth_credentials

@@ -14,8 +14,7 @@ public interface UserProfileRepository {
       String email);
 
   default UserProfileId create(ExternalUserId externalUserId, String displayName) {
-    return create(
-        externalUserId, displayName, null, CampusIdentityType.OTHER, null, null, null);
+    return create(externalUserId, displayName, null, CampusIdentityType.OTHER, null, null, null);
   }
 
   Optional<UserProfile> findById(UserProfileId id);

@@ -14,6 +14,7 @@ import com.yanerdan.venueflow.booking.collaboration.ResourceCapacityClient;
 import com.yanerdan.venueflow.booking.collaboration.UserEligibilityClient;
 import com.yanerdan.venueflow.booking.domain.BookingReservation;
 import com.yanerdan.venueflow.booking.domain.BookingStatus;
+import com.yanerdan.venueflow.booking.persistence.BookingApprovalStageSnapshot;
 import com.yanerdan.venueflow.booking.persistence.BookingRepository;
 import com.yanerdan.venueflow.booking.persistence.ClaimResult;
 import com.yanerdan.venueflow.booking.reconciliation.domain.ReconciliationOutcomeCode;
@@ -315,6 +316,26 @@ class BookingReservationServiceTest {
 
     assertThatThrownBy(
             () -> service.requireApprovalScope("booking-1", "initial-approver", "APPROVER"))
+        .isInstanceOfSatisfying(
+            BookingException.class,
+            exception ->
+                assertThat(exception.getCode()).isEqualTo(BookingErrorCode.BOOKING_FORBIDDEN));
+  }
+
+  @Test
+  void snapshotAssigneeOwnsArbitraryCurrentStage() {
+    when(repository.find("booking-1")).thenReturn(twoStageReservation(2));
+    when(repository.approvalStages("booking-1"))
+        .thenReturn(
+            List.of(
+                new BookingApprovalStageSnapshot(
+                    1, "初审", "initial", "APPROVED", LocalDateTime.now()),
+                new BookingApprovalStageSnapshot(2, "复核", "middle", "PENDING", null),
+                new BookingApprovalStageSnapshot(3, "备案", "final", "PENDING", null)));
+
+    service.requireApprovalScope("booking-1", "middle", "APPROVER");
+
+    assertThatThrownBy(() -> service.requireApprovalScope("booking-1", "final", "APPROVER"))
         .isInstanceOfSatisfying(
             BookingException.class,
             exception ->

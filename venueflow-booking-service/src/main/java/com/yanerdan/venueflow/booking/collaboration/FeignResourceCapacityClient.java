@@ -93,6 +93,7 @@ public class FeignResourceCapacityClient implements ResourceCapacityClient {
           value.minAdvanceHours(),
           value.maxAdvanceDays(),
           value.maxDurationMinutes(),
+          value.approvalStages(),
           value.startAt(),
           value.endAt());
     } catch (BookingException exception) {

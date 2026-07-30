@@ -7,8 +7,8 @@ import com.yanerdan.venueflow.user.profile.domain.DuplicateExternalUserIdExcepti
 import com.yanerdan.venueflow.user.profile.domain.ExternalUserId;
 import com.yanerdan.venueflow.user.profile.domain.UserProfile;
 import com.yanerdan.venueflow.user.profile.domain.UserProfileId;
-import com.yanerdan.venueflow.user.profile.domain.UserProfileRepository;
 import com.yanerdan.venueflow.user.profile.domain.UserProfilePage;
+import com.yanerdan.venueflow.user.profile.domain.UserProfileRepository;
 import com.yanerdan.venueflow.user.profile.domain.VersionedUpdateResult;
 import java.util.Objects;
 import java.util.Optional;
@@ -42,7 +42,8 @@ public class MyBatisUserProfileRepository implements UserProfileRepository {
     entity.setExternalUserId(externalUserId.value());
     entity.setDisplayName(displayName);
     entity.setCampusId(blankToNull(campusId));
-    entity.setIdentityType(Objects.requireNonNullElse(identityType, CampusIdentityType.OTHER).name());
+    entity.setIdentityType(
+        Objects.requireNonNullElse(identityType, CampusIdentityType.OTHER).name());
     entity.setDepartment(blankToNull(department));
     entity.setPhone(blankToNull(phone));
     entity.setEmail(blankToNull(email));
@@ -143,7 +144,9 @@ public class MyBatisUserProfileRepository implements UserProfileRepository {
     String normalized = blankToNull(keyword);
     long offset = (long) pageNumber * pageSize;
     return new UserProfilePage(
-        mapper.selectPage(normalized, offset, pageSize).stream().map(MyBatisUserProfileRepository::toDomain).toList(),
+        mapper.selectPage(normalized, offset, pageSize).stream()
+            .map(MyBatisUserProfileRepository::toDomain)
+            .toList(),
         pageNumber,
         pageSize,
         mapper.countPage(normalized));
@@ -178,6 +181,9 @@ public class MyBatisUserProfileRepository implements UserProfileRepository {
         entity.getDepartment(),
         entity.getPhone(),
         entity.getEmail(),
+        entity.getAuthoritativeSource(),
+        entity.getOrganizationExternalKey(),
+        entity.getDirectorySyncedAt(),
         AccountStatus.valueOf(requirePersistedValue(entity.getAccountStatus(), "account_status")),
         BookingEligibility.valueOf(
             requirePersistedValue(entity.getBookingEligibility(), "booking_eligibility")),

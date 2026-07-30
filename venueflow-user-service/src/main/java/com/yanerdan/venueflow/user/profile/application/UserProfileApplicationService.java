@@ -6,8 +6,8 @@ import com.yanerdan.venueflow.user.profile.domain.CampusIdentityType;
 import com.yanerdan.venueflow.user.profile.domain.ExternalUserId;
 import com.yanerdan.venueflow.user.profile.domain.UserProfile;
 import com.yanerdan.venueflow.user.profile.domain.UserProfileId;
-import com.yanerdan.venueflow.user.profile.domain.UserProfileRepository;
 import com.yanerdan.venueflow.user.profile.domain.UserProfilePage;
+import com.yanerdan.venueflow.user.profile.domain.UserProfileRepository;
 import com.yanerdan.venueflow.user.profile.domain.VersionedUpdateResult;
 import java.util.Objects;
 import org.springframework.context.annotation.Profile;
@@ -73,6 +73,12 @@ public class UserProfileApplicationService {
       long expectedVersion) {
     UserProfile current = getByExternalUserId(externalUserId);
     validateExpectedVersion(expectedVersion);
+    if (current.authoritativeSource() != null
+        && (!Objects.equals(current.campusId(), blankToNull(campusId))
+            || current.identityType() != identityType
+            || !Objects.equals(current.department(), blankToNull(department)))) {
+      throw new AuthoritativeCampusIdentityException();
+    }
     VersionedUpdateResult result =
         repository.updateCampusProfile(
             current.id(),
@@ -186,6 +192,10 @@ public class UserProfileApplicationService {
     if (expectedVersion == Long.MAX_VALUE) {
       throw new IllegalArgumentException("Expected version is too large");
     }
+  }
+
+  private static String blankToNull(String value) {
+    return value == null || value.isBlank() ? null : value.trim();
   }
 
   @Transactional(readOnly = true)

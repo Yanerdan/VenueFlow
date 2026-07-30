@@ -21,6 +21,9 @@ public final class AuthDtos {
 
   public record RefreshRequest(@NotBlank @Size(min = 32, max = 128) String refreshToken) {}
 
+  public record ExternalCompletionRequest(
+      @NotBlank @Size(min = 32, max = 128) String completionCode) {}
+
   public record IdentityResponse(UUID userId, String username) {}
 
   public record TokenResponse(

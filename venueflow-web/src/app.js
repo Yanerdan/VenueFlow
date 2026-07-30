@@ -1,4 +1,4 @@
-import { createApi } from "./api.js?v=20260729-c36";
+import { createApi } from "./api.js?v=20260730-c37";
 import { buildCalendarEvent, safeCalendarFilename } from "./self-service.js?v=20260729-c36";
 
 const $ = selector => document.querySelector(selector);
@@ -40,7 +40,9 @@ const empty = (title, copy) => `<div class="empty"><strong>${title}</strong>${co
 const skeletons = (count = 3) => Array.from({ length: count }, () => '<div class="skeleton"></div>').join("");
 const ruleSummary = resource =>
   `至少提前 ${resource.minAdvanceHours ?? 0} 小时 · 最多提前 ${resource.maxAdvanceDays ?? 90} 天 · 单次不超过 ${resource.maxDurationMinutes ?? 480} 分钟`;
-const approvalLabel = resource => resource?.approvalMode === "TWO_STAGE" ? "院系初审 + 校级终审" : "管理部门直接审批";
+const approvalLabel = resource => resource?.approvalStages?.length
+  ? resource.approvalStages.map(stage => stage.stageName).join(" → ")
+  : resource?.approvalMode === "TWO_STAGE" ? "院系初审 + 校级终审" : "管理部门直接审批";
 const draftFields = ["activityTitle", "purpose", "contactName", "contactPhone", "note", "quantity"];
 const identityKey = suffix => `venueflow.${suffix}.${profile?.externalUserId || profile?.id || "anonymous"}`;
 const localDate = value => {
@@ -105,10 +107,28 @@ function renderProfile() {
   ["displayName", "campusId", "identityType", "department", "phone", "email"].forEach(name => {
     form.elements[name].value = profile[name] || (name === "identityType" ? "OTHER" : "");
   });
+  const authoritative = Boolean(profile.authoritativeSource);
+  ["campusId", "identityType", "department"].forEach(name => {
+    form.elements[name].disabled = authoritative;
+  });
   const missing = profileMissingFields();
   $("#profile-completeness").innerHTML = missing.length
     ? `<strong>资料完成度 ${Math.round((6 - missing.length) / 6 * 100)}%</strong><span>建议补充：${escapeHtml(missing.join("、"))}。完整资料有助于管理部门联系和审核。</span>`
-    : "<strong>校园资料已完整</strong><span>申请表将自动带入姓名与联系电话，你仍可在提交前修改。</span>";
+    : authoritative
+      ? `<strong>校园身份已由组织目录同步</strong><span>${escapeHtml(profile.department || "学校组织")} · 最近同步 ${escapeHtml(dateTime(profile.directorySyncedAt))}；联系电话和邮箱仍可自行维护。</span>`
+      : "<strong>校园资料已完整</strong><span>申请表将自动带入姓名与联系电话，你仍可在提交前修改。</span>";
+}
+async function loadSsoProviders() {
+  try {
+    const providers = await api.ssoProviders();
+    const ready = (providers || []).filter(provider => provider.ready);
+    $("#campus-sso").classList.toggle("hidden", !ready.length);
+    $("#sso-providers").innerHTML = ready.map(provider =>
+      `<button type="button" data-sso-provider="${escapeHtml(provider.key)}">${escapeHtml(provider.displayName)} <span>→</span></button>`
+    ).join("");
+  } catch {
+    $("#campus-sso").classList.add("hidden");
+  }
 }
 function renderPersonalSummary() {
   const active = bookingHistory.filter(item => ["PENDING_CONFIRMATION", "CONFIRMED"].includes(item.status)).length;
@@ -248,12 +268,13 @@ const bookingLabel = booking => booking.status === "CANCELLED" && booking.review
   ? "未通过" : booking.status === "CANCELLED" ? "已撤回" : labels[booking.status] || booking.status;
 
 async function enrichBooking(item) {
-  const [approvalActions, slot] = await Promise.all([
+  const [approvalActions, approvalStages, slot] = await Promise.all([
     api.approvalActions(item.bookingNo).catch(() => []),
+    api.approvalStages(item.bookingNo).catch(() => item.approvalStages || []),
     cachedSlot(item.slotId).catch(() => null)
   ]);
   const resource = await cachedResource(item.resourceId || slot?.resourceId).catch(() => null);
-  return { ...item, approvalActions, slot, resource };
+  return { ...item, approvalActions, approvalStages, slot, resource };
 }
 function bookingMatchesFilters(booking) {
   const filters = new FormData($("#booking-filter-form"));
@@ -269,7 +290,7 @@ function renderBookings(focusBookingNo) {
       <div><p class="booking-label">${escapeHtml(booking.bookingNo)}</p><strong class="activity-name">${escapeHtml(booking.activityTitle || "历史场地申请")}</strong><span class="status ${statusClasses[booking.status] || ""}">${escapeHtml(bookingLabel(booking))}</span></div>
       <div><p class="booking-label">使用空间</p><div class="booking-value">${escapeHtml(booking.resource?.name || `资源记录 ${booking.resourceId || "待恢复"}`)}</div><small>${escapeHtml(booking.resource?.location || booking.ownerDepartment || "位置记录暂不可用")}</small></div>
       <div><p class="booking-label">使用时间</p><div class="booking-value">${escapeHtml(dateRange(booking.slot?.startAt, booking.slot?.endAt))}</div><small>${booking.quantity} 人 · ${escapeHtml(booking.ownerDepartment || booking.resource?.ownerDepartment || "管理部门待确认")}</small></div>
-      <details class="booking-detail"><summary>查看申请与审批详情</summary><div><span>用途</span><p>${escapeHtml(booking.purpose || "历史申请未记录")}</p><span>联系人</span><p>${escapeHtml(booking.contactName || "待完善")} · ${escapeHtml(booking.contactPhone || "待完善")}</p><span>审批路径</span><p>第 ${booking.currentApprovalStep || 1} / ${booking.totalApprovalSteps || 1} 级 · ${booking.approvalMode === "TWO_STAGE" ? "院系初审 + 校级终审" : "管理部门直接审批"}</p>${booking.approvalActions.length ? `<ul>${booking.approvalActions.map(action => `<li>第 ${action.approvalStep} 级 ${action.decision === "APPROVED" ? "已通过" : "未通过"}${action.reviewNote ? ` · ${escapeHtml(action.reviewNote)}` : ""}</li>`).join("")}</ul>` : ""}${booking.note ? `<span>补充说明</span><p>${escapeHtml(booking.note)}</p>` : ""}${booking.reviewNote ? `<span>处理意见</span><p>${escapeHtml(booking.reviewNote)}</p>` : ""}</div></details>
+      <details class="booking-detail"><summary>查看申请与审批详情</summary><div><span>用途</span><p>${escapeHtml(booking.purpose || "历史申请未记录")}</p><span>联系人</span><p>${escapeHtml(booking.contactName || "待完善")} · ${escapeHtml(booking.contactPhone || "待完善")}</p><span>审批路径</span><p>第 ${booking.currentApprovalStep || 1} / ${booking.totalApprovalSteps || 1} 级 · ${booking.approvalStages?.length ? booking.approvalStages.map(stage => escapeHtml(stage.stageName)).join(" → ") : booking.approvalMode === "TWO_STAGE" ? "院系初审 + 校级终审" : "管理部门直接审批"}</p>${booking.approvalActions.length ? `<ul>${booking.approvalActions.map(action => `<li>第 ${action.approvalStep} 级 ${action.decision === "APPROVED" ? "已通过" : "未通过"}${action.reviewNote ? ` · ${escapeHtml(action.reviewNote)}` : ""}</li>`).join("")}</ul>` : ""}${booking.note ? `<span>补充说明</span><p>${escapeHtml(booking.note)}</p>` : ""}${booking.reviewNote ? `<span>处理意见</span><p>${escapeHtml(booking.reviewNote)}</p>` : ""}</div></details>
       <div class="card-actions"><button data-repeat-booking="${escapeHtml(booking.bookingNo)}">再次申请</button>${booking.status === "CONFIRMED" && booking.slot ? `<button data-calendar-booking="${escapeHtml(booking.bookingNo)}">加入日历</button>` : ""}${["PENDING_CONFIRMATION", "CONFIRMED"].includes(booking.status) && booking.resource ? `<button data-reschedule-booking="${escapeHtml(booking.bookingNo)}">改期</button>` : ""}${["PENDING_CONFIRMATION", "CONFIRMED"].includes(booking.status) ? `<button data-booking="${escapeHtml(booking.bookingNo)}" data-action="cancellation">撤回申请</button>` : ""}</div>
     </article>`).join("") : empty(
       bookingHistory.length ? "没有符合筛选条件的申请" : "还没有申请记录",
@@ -536,7 +557,10 @@ $("#profile-form").addEventListener("submit", async event => {
   const data = Object.fromEntries(new FormData(form));
   try {
     profile = await api.updateCampusProfile({
-      ...data, campusId: data.campusId || null, department: data.department || null,
+      ...data,
+      campusId: profile.authoritativeSource ? profile.campusId : data.campusId || null,
+      identityType: profile.authoritativeSource ? profile.identityType : data.identityType,
+      department: profile.authoritativeSource ? profile.department : data.department || null,
       phone: data.phone || null, email: data.email || null, expectedVersion: profile.version
     });
     $("#profile-name").textContent = profile.displayName;
@@ -548,4 +572,33 @@ $("#profile-form").addEventListener("submit", async event => {
 $("#close-slots").addEventListener("click", () => $("#slot-panel").classList.remove("open"));
 $$('[data-view]').forEach(button => button.addEventListener("click", () => showView(button.dataset.view)));
 
-if (api.hasSession()) enter().catch(error => { api.clear(); exit(); fail(error); });
+$("#sso-providers").addEventListener("click", async event => {
+  const button = event.target.closest("[data-sso-provider]"); if (!button) return;
+  try {
+    button.disabled = true;
+    const start = await api.startSso(button.dataset.ssoProvider);
+    location.assign(start.authorizationUrl);
+  } catch (error) {
+    button.disabled = false;
+    fail(error);
+  }
+});
+
+async function bootstrapAuthentication() {
+  const url = new URL(location.href);
+  const completionCode = url.searchParams.get("sso_code");
+  if (completionCode) {
+    await api.completeSso(completionCode);
+    url.searchParams.delete("sso_code");
+    history.replaceState({}, "", url);
+    await enter();
+    notify("校园统一身份认证成功");
+    return;
+  }
+  if (api.hasSession()) {
+    await enter();
+    return;
+  }
+  await loadSsoProviders();
+}
+bootstrapAuthentication().catch(error => { api.clear(); exit(); fail(error); });

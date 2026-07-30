@@ -1,11 +1,13 @@
 package com.yanerdan.venueflow.resource.slot.application;
 
+import com.yanerdan.venueflow.resource.catalog.application.ApprovalStageResult;
 import com.yanerdan.venueflow.resource.catalog.domain.ApprovalMode;
 import com.yanerdan.venueflow.resource.slot.domain.ResourceSlotStatus;
 import com.yanerdan.venueflow.resource.slot.persistence.entity.ResourceSlotEntity;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 
 public record ResourceSlotResult(
     Long id,
@@ -18,6 +20,7 @@ public record ResourceSlotResult(
     Integer minAdvanceHours,
     Integer maxAdvanceDays,
     Integer maxDurationMinutes,
+    List<ApprovalStageResult> approvalStages,
     Instant startAt,
     Instant endAt,
     ResourceSlotStatus status,
@@ -37,6 +40,7 @@ public record ResourceSlotResult(
         0,
         90,
         480,
+        List.of(),
         entity.getStartAt().toInstant(ZoneOffset.UTC),
         entity.getEndAt().toInstant(ZoneOffset.UTC),
         entity.getStatus(),
@@ -65,6 +69,7 @@ public record ResourceSlotResult(
         0,
         90,
         480,
+        List.of(),
         startAt,
         endAt,
         status,
@@ -81,7 +86,8 @@ public record ResourceSlotResult(
       String notice,
       Integer minimumHours,
       Integer maximumDays,
-      Integer maximumMinutes) {
+      Integer maximumMinutes,
+      List<ApprovalStageResult> stages) {
     return new ResourceSlotResult(
         id,
         resourceId,
@@ -93,11 +99,16 @@ public record ResourceSlotResult(
         minimumHours,
         maximumDays,
         maximumMinutes,
+        stages,
         startAt,
         endAt,
         status,
         version,
         createdAt,
         updatedAt);
+  }
+
+  public ResourceSlotResult {
+    approvalStages = approvalStages == null ? List.of() : List.copyOf(approvalStages);
   }
 }

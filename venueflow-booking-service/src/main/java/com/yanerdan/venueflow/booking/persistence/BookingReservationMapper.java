@@ -131,7 +131,13 @@ public interface BookingReservationMapper extends BaseMapper<BookingReservationE
       FROM booking_reservation
       WHERE (#{status} IS NULL OR status = #{status})
         AND (
-          (current_approval_step = 1 AND assigned_approver_external_user_id = #{approverId})
+          EXISTS (
+            SELECT 1 FROM booking_approval_stage_snapshot stage
+            WHERE stage.booking_id = booking_reservation.id
+              AND stage.stage_order = booking_reservation.current_approval_step
+              AND stage.approver_external_user_id = #{approverId}
+          )
+          OR (current_approval_step = 1 AND assigned_approver_external_user_id = #{approverId})
           OR (current_approval_step = 2
               AND final_assigned_approver_external_user_id = #{approverId})
         )
@@ -150,7 +156,13 @@ public interface BookingReservationMapper extends BaseMapper<BookingReservationE
       FROM booking_reservation
       WHERE (#{status} IS NULL OR status = #{status})
         AND (
-          (current_approval_step = 1 AND assigned_approver_external_user_id = #{approverId})
+          EXISTS (
+            SELECT 1 FROM booking_approval_stage_snapshot stage
+            WHERE stage.booking_id = booking_reservation.id
+              AND stage.stage_order = booking_reservation.current_approval_step
+              AND stage.approver_external_user_id = #{approverId}
+          )
+          OR (current_approval_step = 1 AND assigned_approver_external_user_id = #{approverId})
           OR (current_approval_step = 2
               AND final_assigned_approver_external_user_id = #{approverId})
         )

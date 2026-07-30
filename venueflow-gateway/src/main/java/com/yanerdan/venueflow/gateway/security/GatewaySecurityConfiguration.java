@@ -63,10 +63,12 @@ public class GatewaySecurityConfiguration {
                         "/api/v1/auth/login",
                         "/api/v1/auth/refresh",
                         "/api/v1/auth/logout",
+                        "/api/v1/auth/sso/**",
                         "/actuator/health/**")
                     .permitAll()
                     .pathMatchers(
                         "/api/v1/users/**",
+                        "/api/v1/organizations/**",
                         "/api/v1/resources/**",
                         "/api/v1/resource-categories/**",
                         "/api/v1/resource-slots/**",

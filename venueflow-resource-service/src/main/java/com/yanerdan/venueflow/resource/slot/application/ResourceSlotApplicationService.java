@@ -9,6 +9,7 @@ import static com.yanerdan.venueflow.resource.catalog.error.CatalogErrorCode.RES
 import static com.yanerdan.venueflow.resource.catalog.error.CatalogErrorCode.RESOURCE_SLOT_NOT_FOUND;
 import static com.yanerdan.venueflow.resource.catalog.error.CatalogErrorCode.RESOURCE_SLOT_TIME_OVERLAP;
 
+import com.yanerdan.venueflow.resource.catalog.application.ApprovalPolicyService;
 import com.yanerdan.venueflow.resource.catalog.domain.ResourceStatus;
 import com.yanerdan.venueflow.resource.catalog.error.CatalogException;
 import com.yanerdan.venueflow.resource.catalog.persistence.entity.ResourceEntity;
@@ -22,6 +23,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
@@ -33,11 +35,21 @@ public class ResourceSlotApplicationService {
 
   private final ResourceMapper resourceMapper;
   private final ResourceSlotMapper resourceSlotMapper;
+  private final ApprovalPolicyService approvalPolicyService;
 
+  @Autowired
   public ResourceSlotApplicationService(
-      ResourceMapper resourceMapper, ResourceSlotMapper resourceSlotMapper) {
+      ResourceMapper resourceMapper,
+      ResourceSlotMapper resourceSlotMapper,
+      ApprovalPolicyService approvalPolicyService) {
     this.resourceMapper = resourceMapper;
     this.resourceSlotMapper = resourceSlotMapper;
+    this.approvalPolicyService = approvalPolicyService;
+  }
+
+  ResourceSlotApplicationService(
+      ResourceMapper resourceMapper, ResourceSlotMapper resourceSlotMapper) {
+    this(resourceMapper, resourceSlotMapper, null);
   }
 
   @Transactional
@@ -100,7 +112,10 @@ public class ResourceSlotApplicationService {
               resource.getBookingNotice(),
               resource.getMinAdvanceHours(),
               resource.getMaxAdvanceDays(),
-              resource.getMaxDurationMinutes());
+              resource.getMaxDurationMinutes(),
+              approvalPolicyService == null
+                  ? List.of()
+                  : approvalPolicyService.stages(resource.getId()));
     } catch (CatalogException exception) {
       throw exception;
     } catch (DataAccessException exception) {

@@ -26,6 +26,8 @@ public class GatewayRouteConfiguration {
         .routes()
         .route("auth", route -> route.path("/api/v1/auth/**").uri(baseUri(authUri)))
         .route("users", route -> route.path("/api/v1/users/**").uri(baseUri(userUri)))
+        .route(
+            "organizations", route -> route.path("/api/v1/organizations/**").uri(baseUri(userUri)))
         .route("resources", route -> route.path("/api/v1/resources/**").uri(baseUri(resourceUri)))
         .route(
             "resource-management",
@@ -55,6 +57,9 @@ public class GatewayRouteConfiguration {
         .routes()
         .route("auth", route -> route.path("/api/v1/auth/**").uri(serviceUri(authService)))
         .route("users", route -> route.path("/api/v1/users/**").uri(serviceUri(userService)))
+        .route(
+            "organizations",
+            route -> route.path("/api/v1/organizations/**").uri(serviceUri(userService)))
         .route(
             "resources",
             route -> route.path("/api/v1/resources/**").uri(serviceUri(resourceService)))

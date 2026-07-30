@@ -1,9 +1,11 @@
 package com.yanerdan.venueflow.resource.catalog.http.response;
 
+import com.yanerdan.venueflow.resource.catalog.application.ApprovalStageResult;
 import com.yanerdan.venueflow.resource.catalog.application.ResourceResult;
 import com.yanerdan.venueflow.resource.catalog.domain.ApprovalMode;
 import com.yanerdan.venueflow.resource.catalog.domain.ResourceStatus;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record ResourceResponse(
     Long id,
@@ -21,6 +23,7 @@ public record ResourceResponse(
     Integer minAdvanceHours,
     Integer maxAdvanceDays,
     Integer maxDurationMinutes,
+    List<ApprovalStageResult> approvalStages,
     ResourceStatus status,
     Long version,
     LocalDateTime createdAt,
@@ -43,6 +46,7 @@ public record ResourceResponse(
         result.minAdvanceHours(),
         result.maxAdvanceDays(),
         result.maxDurationMinutes(),
+        result.approvalStages(),
         result.status(),
         result.version(),
         result.createdAt(),
