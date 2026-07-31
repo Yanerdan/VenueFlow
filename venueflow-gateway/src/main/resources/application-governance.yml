@@ -6,6 +6,9 @@ spring:
       - optional:nacos:venueflow-common.yml?group=${VENUEFLOW_NACOS_GROUP:VENUEFLOW_GROUP}
       - optional:nacos:venueflow-gateway.yml?group=${VENUEFLOW_NACOS_GROUP:VENUEFLOW_GROUP}
   cloud:
+    loadbalancer:
+      cache:
+        enabled: false
     discovery:
       enabled: true
     service-registry:

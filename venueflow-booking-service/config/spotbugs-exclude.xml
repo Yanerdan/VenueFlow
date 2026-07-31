@@ -30,4 +30,17 @@
     <Class name="com.yanerdan.venueflow.booking.application.BookingReservationService"/>
     <Bug pattern="CT_CONSTRUCTOR_THROW"/>
   </Match>
+  <!-- HTTP boundary records are serialized immediately and never mutated by the application. -->
+  <Match>
+    <Or>
+      <Class name="com.yanerdan.venueflow.booking.collaboration.FeignResourceCapacityApi$SlotResponse"/>
+      <Class name="com.yanerdan.venueflow.booking.web.BookingReservationController$BookingResponse"/>
+    </Or>
+    <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+  </Match>
+  <!-- The broad catch converts all client decoding/runtime failures to the bounded collaboration error. -->
+  <Match>
+    <Class name="com.yanerdan.venueflow.booking.collaboration.HttpResourceCapacityClient"/>
+    <Bug pattern="REC_CATCH_EXCEPTION"/>
+  </Match>
 </FindBugsFilter>

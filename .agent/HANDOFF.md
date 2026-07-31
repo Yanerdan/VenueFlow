@@ -3,10 +3,12 @@
 ## 当前状态
 
 - 分支：`main`
-- C01–C39 已完成、同步并归档；当前没有活动 OpenSpec change。
-- 最近功能变更：C39 `restore-cross-layer-consistency`。
+- C01–C40 已完成、同步并归档；当前没有活动 OpenSpec change。
+- 最近功能变更：C40 `operationalize-local-service-governance`。
 - Gateway、Auth、User、Resource、Booking、Notification、Search 均可在持久化模式运行。
 - 已实现标准 OIDC + PKCE、组织架构全量/增量同步、资源级 1–5 级审批与审批链快照。
+- 已实现可选 `-Governance` 本地模式：鉴权 Nacos 3 幂等初始化、8 个 Data ID、
+  双 Resource 实例、注册状态检查与自动恢复的故障切换验收；默认静态模式不依赖 Nacos。
 - C38 已完成申请人/管理员双视角精细验收：改进搜索兜底、日期和状态筛选、消息定位、操作文案、表格分页、审批详情、资源配置折叠、无障碍语义及合成数据容量一致性。
 - 当前工作重点已从功能建设转为作品包装；真实压测、安全审计、学校联调、试用和生产发布仍明确不在已完成范围内。
 
@@ -29,6 +31,8 @@ openspec.cmd validate --all --strict
 - 当前本地 Surefire XML：278 tests，0 failures，0 errors。
 - 前端：19 tests passed。
 - OpenSpec：39 个主规格严格校验通过。
+- 治理验收：静态与治理双模式业务 smoke 通过；双 Resource 实例摘除、Gateway 续读和
+  实例恢复通过。
 - 全链路 smoke：注册、资料、人员目录、资源/时段、规则、预约、报表、角色、多级审批、搜索、通知、刷新/登出、展示预约取消与容量释放均通过。
 - 浏览器：申请人和系统管理员主流程、验证/筛选/空状态/分页/审批/通知跳转均已回归，控制台 0 warning / 0 error。
 

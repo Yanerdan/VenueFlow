@@ -17,10 +17,10 @@ spring:
       password: ${NACOS_PASSWORD:}
       discovery:
         enabled: true
-        namespace: ${VENUEFLOW_NACOS_NAMESPACE:}
+        namespace: ${NACOS_NAMESPACE}
         group: ${VENUEFLOW_NACOS_GROUP:VENUEFLOW_GROUP}
         instance-id: ${VENUEFLOW_INSTANCE_ID:${spring.application.name}-${server.port}}
       config:
         enabled: true
-        namespace: ${VENUEFLOW_NACOS_NAMESPACE:}
+        namespace: ${NACOS_NAMESPACE}
         group: ${VENUEFLOW_NACOS_GROUP:VENUEFLOW_GROUP}

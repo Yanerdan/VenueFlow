@@ -4,6 +4,11 @@ spring:
       on-profile: observe
 
 management:
+  otlp:
+    metrics:
+      export:
+        enabled: true
+        url: ${OTEL_EXPORTER_OTLP_METRICS_ENDPOINT:http://127.0.0.1:4318/v1/metrics}
   metrics:
     tags:
       application: ${spring.application.name}

@@ -27,6 +27,10 @@ public record ResourceSlotResponse(
     LocalDateTime createdAt,
     LocalDateTime updatedAt) {
 
+  public ResourceSlotResponse {
+    approvalStages = List.copyOf(approvalStages);
+  }
+
   public static ResourceSlotResponse from(ResourceSlotResult result) {
     return new ResourceSlotResponse(
         result.id(),

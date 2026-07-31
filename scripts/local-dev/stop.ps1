@@ -22,7 +22,7 @@ if ($Infrastructure) {
     if (Test-Path $envFile) {
         & docker compose --env-file (Join-Path $repoRoot "deploy\versions.env") `
             --env-file $envFile -f (Join-Path $repoRoot "deploy\compose\compose.yml") `
-            stop mysql redis rabbitmq elasticsearch
+            stop mysql redis rabbitmq nacos elasticsearch
         if ($LASTEXITCODE -ne 0) { throw "Failed to stop local infrastructure" }
     }
 }

@@ -3,6 +3,7 @@ package com.yanerdan.venueflow.auth.application;
 import com.yanerdan.venueflow.auth.domain.CampusRole;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Locale;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -24,7 +25,7 @@ public class AuthAdminBootstrap implements ApplicationRunner {
       @Value("${venueflow.auth.bootstrap-admin-password:}") String password) {
     this.repository = repository;
     this.authService = authService;
-    this.username = username == null ? "" : username.trim().toLowerCase();
+    this.username = username == null ? "" : username.trim().toLowerCase(Locale.ROOT);
     this.password = password == null ? "" : password;
   }
 

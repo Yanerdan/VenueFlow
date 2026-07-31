@@ -110,6 +110,17 @@ python -m http.server 3000 --directory venueflow-web
 .\scripts\local-dev\stop.ps1
 ```
 
+需要演示服务注册、配置中心和实例故障切换时，可启用不影响默认启动方式的治理模式：
+
+```powershell
+.\scripts\local-dev\start.ps1 -Governance
+.\scripts\local-dev\status.ps1 -Governance
+.\scripts\local-dev\governance-smoke.ps1
+```
+
+该模式自动启动鉴权 Nacos、幂等发布 8 个 Data ID，并运行两个 Resource 实例；细节见
+[微服务治理运行手册](docs/runbook/microservice-governance.md)。
+
 完整验收步骤见 [5 分钟演示脚本](docs/resume/demo-script.md) 和 [校园管理端运行手册](docs/runbook/campus-administration.md)。
 
 ## 服务边界

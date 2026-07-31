@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+  <!-- Spring owns injected collaborators for the application-context lifetime. -->
+  <Match>
+    <Or>
+      <Class name="com.yanerdan.venueflow.resource.catalog.application.ApprovalPolicyService"/>
+      <Class name="com.yanerdan.venueflow.resource.slot.application.ResourceSlotApplicationService"/>
+    </Or>
+    <Bug pattern="EI_EXPOSE_REP2"/>
+  </Match>
+
+  <!-- Compact constructors make the exposed approval-stage lists immutable. -->
+  <Match>
+    <Or>
+      <Class name="com.yanerdan.venueflow.resource.catalog.http.request.ReplaceApprovalPolicyRequest"/>
+      <Class name="com.yanerdan.venueflow.resource.catalog.http.response.ResourceResponse"/>
+      <Class name="com.yanerdan.venueflow.resource.slot.http.response.ResourceSlotResponse"/>
+    </Or>
+    <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+  </Match>
+</FindBugsFilter>

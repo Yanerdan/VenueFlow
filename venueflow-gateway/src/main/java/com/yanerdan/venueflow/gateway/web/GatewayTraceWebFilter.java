@@ -27,6 +27,13 @@ public class GatewayTraceWebFilter implements WebFilter, Ordered {
     exchange.getResponse().getHeaders().set("X-Frame-Options", "DENY");
     exchange.getResponse().getHeaders().set("Referrer-Policy", "no-referrer");
     exchange.getResponse().getHeaders().set(HttpHeaders.CACHE_CONTROL, "no-store");
+    exchange
+        .getResponse()
+        .beforeCommit(
+            () -> {
+              exchange.getResponse().getHeaders().set(TRACE_HEADER, traceId);
+              return Mono.empty();
+            });
     ServerWebExchange traced =
         exchange
             .mutate()

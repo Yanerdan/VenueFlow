@@ -1,46 +1,27 @@
 # Microservice governance runbook
 
-## Prepare Nacos
+## Start governed mode
 
-Use the existing base Compose profile and publish every tracked file under `deploy/nacos/` to the
-matching Data ID in the configured namespace and `VENUEFLOW_GROUP`. These files contain only
-non-secret defaults. Database credentials and JWT keys remain environment variables.
-
-Required environment values:
-
-```text
-NACOS_SERVER_ADDR
-NACOS_NAMESPACE
-NACOS_USERNAME
-NACOS_PASSWORD
-VENUEFLOW_NACOS_GROUP
-```
-
-## Start two Resource instances
-
-Start the normal persistence dependencies, then use distinct ports and instance IDs:
+The regular local command remains static and does not require Nacos. Use the governed switch to
+start authenticated Nacos, initialize its administrator and namespace, publish all tracked Data
+IDs, and launch two Resource instances:
 
 ```powershell
-$env:SPRING_PROFILES_ACTIVE = "persistence,governance"
-$env:SERVER_PORT = "18083"
-$env:VENUEFLOW_INSTANCE_ID = "resource-1"
-java -jar venueflow-resource-service/target/venueflow-resource-service-0.1.0-SNAPSHOT.jar
-
-$env:SERVER_PORT = "28083"
-$env:VENUEFLOW_INSTANCE_ID = "resource-2"
-java -jar venueflow-resource-service/target/venueflow-resource-service-0.1.0-SNAPSHOT.jar
+.\scripts\local-dev\start.ps1 -Governance
+.\scripts\local-dev\status.ps1 -Governance
 ```
 
-Start User and Booking with `persistence,governance`; start Auth with the same profile and its
-existing key/database variables. Start Gateway with `gateway,governance`. Gateway keeps an
-explicit route allowlist and Booking resolves only the named User and Resource services.
+Local Nacos credentials are generated in the ignored `secrets/local-dev/local-dev.env`. Tracked
+files under `deploy/nacos/` contain non-secret defaults only. Running the command again is safe:
+the namespace and Data IDs are reconciled idempotently.
 
-## Verify and rollback
+## Verify failover
 
-Send several Resource requests through Gateway, stop either Resource process, wait for Nacos to
-remove it, then repeat the requests. The remaining instance must continue serving them. Verify
-that `X-Trace-Id` is the same UUID at Gateway, Booking, and Resource.
+```powershell
+.\scripts\local-dev\governance-smoke.ps1
+```
 
-Writes are never automatically retried. A capacity timeout is resolved through its operation ID
-and existing reconciliation path. Roll back governance without data migration by removing the
-`governance` profile and restoring static URI environment variables.
+The bounded smoke test verifies both Resource registrations, stops only the managed second
+instance, reads Resource data through Gateway while one instance remains, and restores the second
+instance in a `finally` block. Writes are not retried. Return to static mode without data migration
+by stopping the stack and running `start.ps1` without `-Governance`.

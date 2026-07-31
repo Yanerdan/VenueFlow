@@ -6,4 +6,19 @@
     <Field name="mapper" />
     <Bug pattern="EI_EXPOSE_REP2" />
   </Match>
+  <!-- Request and response records normalize their lists before domain use. -->
+  <Match>
+    <Or>
+      <Class name="com.yanerdan.venueflow.user.directory.OrganizationDirectoryController$SyncRequest" />
+      <Class name="com.yanerdan.venueflow.user.directory.OrganizationDirectoryService$SyncCommand" />
+      <Class name="com.yanerdan.venueflow.user.profile.domain.UserProfilePage" />
+      <Class name="com.yanerdan.venueflow.user.profile.web.dto.UserProfilePageResponse" />
+    </Or>
+    <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2" />
+  </Match>
+  <!-- Spring owns these transaction and JDBC collaborators for the context lifetime. -->
+  <Match>
+    <Class name="com.yanerdan.venueflow.user.directory.OrganizationDirectoryService" />
+    <Bug pattern="EI_EXPOSE_REP2,THROWS_METHOD_THROWS_RUNTIMEEXCEPTION" />
+  </Match>
 </FindBugsFilter>

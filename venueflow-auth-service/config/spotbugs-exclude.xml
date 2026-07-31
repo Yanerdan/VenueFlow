@@ -16,6 +16,16 @@
     <Bug pattern="EI_EXPOSE_REP2"/>
   </Match>
   <Match>
+    <Or>
+      <Class name="com.yanerdan.venueflow.auth.application.AuthAdminBootstrap"/>
+      <Class name="com.yanerdan.venueflow.auth.application.AuthRoleManagementService"/>
+      <Class name="com.yanerdan.venueflow.auth.application.AuthService"/>
+      <Class name="com.yanerdan.venueflow.auth.application.FederatedIdentityService"/>
+      <Class name="com.yanerdan.venueflow.auth.persistence.JdbcFederatedIdentityRepository"/>
+    </Or>
+    <Bug pattern="EI_EXPOSE_REP2"/>
+  </Match>
+  <Match>
     <Class name="com.yanerdan.venueflow.auth.security.AuthSecurityConfiguration"/>
     <Bug pattern="THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION"/>
   </Match>

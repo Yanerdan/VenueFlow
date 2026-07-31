@@ -14,6 +14,10 @@ public record ReplaceApprovalPolicyRequest(
     @NotBlank @Size(max = 100) String policyName,
     @NotEmpty @Size(max = 5) List<@Valid StageRequest> stages) {
 
+  public ReplaceApprovalPolicyRequest {
+    stages = List.copyOf(stages);
+  }
+
   public record StageRequest(
       @Positive int stageOrder,
       @NotBlank @Size(max = 100) String stageName,

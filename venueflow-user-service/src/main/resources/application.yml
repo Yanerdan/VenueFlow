@@ -19,6 +19,10 @@ server:
   port: ${SERVER_PORT:8082}
 
 management:
+  otlp:
+    metrics:
+      export:
+        enabled: false
   opentelemetry:
     enabled: false
   endpoints:

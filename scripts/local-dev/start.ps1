@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [switch]$SkipBuild,
-    [switch]$SkipSeed
+    [switch]$SkipSeed,
+    [switch]$Governance
 )
 
 $ErrorActionPreference = "Stop"
@@ -27,13 +28,32 @@ function New-RandomSecret([int]$Bytes = 24) {
     }
 }
 
+function New-NacosToken {
+    $value = New-Object byte[] 32
+    $generator = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+        $generator.GetBytes($value)
+        return [Convert]::ToBase64String($value)
+    } finally {
+        $generator.Dispose()
+    }
+}
+
+function Test-NacosToken([string]$Value) {
+    try {
+        return ([Convert]::FromBase64String($Value).Length -ge 32)
+    } catch {
+        return $false
+    }
+}
+
 function Initialize-LocalSecrets {
     New-Item -ItemType Directory -Force -Path $secretDir, $runDir | Out-Null
     if (-not (Test-Path $envFile)) {
         $rootPassword = New-RandomSecret
         $redisPassword = New-RandomSecret
         $rabbitPassword = New-RandomSecret
-        $nacosToken = New-RandomSecret 32
+        $nacosToken = New-NacosToken
         $servicePasswords = @{
             Auth = New-RandomSecret
             User = New-RandomSecret
@@ -63,9 +83,15 @@ NACOS_AUTH_ENABLE=true
 NACOS_AUTH_TOKEN=$nacosToken
 NACOS_AUTH_IDENTITY_KEY=venueflow-local-key
 NACOS_AUTH_IDENTITY_VALUE=$(New-RandomSecret 16)
+NACOS_CONSOLE_PORT=18080
 NACOS_HTTP_PORT=8848
 NACOS_GRPC_PORT=9848
 NACOS_GRPC_TLS_PORT=9849
+NACOS_SERVER_ADDR=127.0.0.1:8848
+NACOS_NAMESPACE=venueflow-local
+NACOS_USERNAME=nacos
+NACOS_PASSWORD=$(New-RandomSecret)
+VENUEFLOW_NACOS_GROUP=VENUEFLOW_GROUP
 ELASTICSEARCH_URI=http://127.0.0.1:9200
 ELASTICSEARCH_PORT=9200
 RESOURCE_SERVICE_BASE_URI=http://127.0.0.1:8083
@@ -231,7 +257,7 @@ function Initialize-Databases {
 }
 
 function Stop-StaleVenueFlowProcesses {
-    foreach ($port in 8080..8086) {
+    foreach ($port in @((8080..8086) + 18083)) {
         $listeners = @(Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue)
         foreach ($listener in $listeners) {
             $process = Get-CimInstance Win32_Process -Filter "ProcessId=$($listener.OwningProcess)" `
@@ -251,8 +277,15 @@ function Start-ServiceProcess($Service) {
     if (-not (Test-Path $jar)) { throw "Missing executable jar: $jar" }
     $stdout = Join-Path $runDir "$($Service.Name).out.log"
     $stderr = Join-Path $runDir "$($Service.Name).err.log"
+    $arguments = @(
+        "-Dspring.profiles.active=$($Service.Profiles)",
+        "-Dserver.port=$($Service.Port)",
+        "-DVENUEFLOW_INSTANCE_ID=$($Service.InstanceId)",
+        "-jar",
+        $jar
+    )
     $process = Start-Process -FilePath "java" `
-        -ArgumentList @("-Dspring.profiles.active=$($Service.Profiles)", "-jar", $jar) `
+        -ArgumentList $arguments `
         -WorkingDirectory $repoRoot -WindowStyle Hidden `
         -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
     [IO.File]::WriteAllText(
@@ -290,17 +323,35 @@ function Wait-ServiceHealthy($Service, [int]$TimeoutSeconds = 90) {
 Set-Location $repoRoot
 Initialize-LocalSecrets
 Import-EnvironmentFile
+if (-not (Test-NacosToken $env:NACOS_AUTH_TOKEN)) {
+    Set-LocalEnvironmentValue "NACOS_AUTH_TOKEN" (New-NacosToken)
+}
+if (-not $env:NACOS_SERVER_ADDR) { Set-LocalEnvironmentValue "NACOS_SERVER_ADDR" "127.0.0.1:8848" }
+if (-not $env:NACOS_CONSOLE_PORT) { Set-LocalEnvironmentValue "NACOS_CONSOLE_PORT" "18080" }
+if (-not $env:NACOS_NAMESPACE) { Set-LocalEnvironmentValue "NACOS_NAMESPACE" "venueflow-local" }
+if (-not $env:NACOS_USERNAME) { Set-LocalEnvironmentValue "NACOS_USERNAME" "nacos" }
+if (-not $env:NACOS_PASSWORD) { Set-LocalEnvironmentValue "NACOS_PASSWORD" (New-RandomSecret) }
+if (-not $env:VENUEFLOW_NACOS_GROUP) {
+    Set-LocalEnvironmentValue "VENUEFLOW_NACOS_GROUP" "VENUEFLOW_GROUP"
+}
 Set-LocalEnvironmentValue "VENUEFLOW_BOOTSTRAP_ADMIN_USERNAME" "campus.admin"
 Set-LocalEnvironmentValue "VENUEFLOW_BOOTSTRAP_ADMIN_PASSWORD" "Campus-Admin-2026!"
 Resolve-MySqlPort
 Stop-StaleVenueFlowProcesses
 
 Write-Host "Starting local infrastructure..."
-Invoke-Compose @("up", "-d", "mysql", "redis", "rabbitmq", "elasticsearch")
+$infrastructure = @("mysql", "redis", "rabbitmq", "elasticsearch")
+if ($Governance) { $infrastructure += "nacos" }
+Invoke-Compose (@("up", "-d") + $infrastructure)
 Wait-ContainerHealthy "venueflow-base-mysql-1"
 Wait-ContainerHealthy "venueflow-base-redis-1"
 Wait-ContainerHealthy "venueflow-base-rabbitmq-1"
 Wait-ContainerHealthy "venueflow-base-elasticsearch-1"
+if ($Governance) {
+    Wait-ContainerHealthy "venueflow-base-nacos-1"
+    & (Join-Path $PSScriptRoot "nacos-bootstrap.ps1") -EnvironmentFile $envFile
+    if ($LASTEXITCODE -ne 0) { throw "Nacos bootstrap failed" }
+}
 Initialize-Databases
 
 if (-not $SkipBuild) {
@@ -309,15 +360,21 @@ if (-not $SkipBuild) {
     if ($LASTEXITCODE -ne 0) { throw "Maven package failed" }
 }
 
+$governanceProfile = if ($Governance) { ",governance" } else { "" }
 $services = @(
-    [pscustomobject]@{ Name = "auth"; Port = 8081; Profiles = "persistence"; Jar = "venueflow-auth-service\target\venueflow-auth-service-0.1.0-SNAPSHOT.jar" },
-    [pscustomobject]@{ Name = "user"; Port = 8082; Profiles = "persistence"; Jar = "venueflow-user-service\target\venueflow-user-service-0.1.0-SNAPSHOT.jar" },
-    [pscustomobject]@{ Name = "resource"; Port = 8083; Profiles = "persistence,cache,resource-events"; Jar = "venueflow-resource-service\target\venueflow-resource-service-0.1.0-SNAPSHOT.jar" },
-    [pscustomobject]@{ Name = "booking"; Port = 8084; Profiles = "persistence,messaging"; Jar = "venueflow-booking-service\target\venueflow-booking-service-0.1.0-SNAPSHOT.jar" },
-    [pscustomobject]@{ Name = "notification"; Port = 8085; Profiles = "persistence,messaging"; Jar = "venueflow-notification-service\target\venueflow-notification-service-0.1.0-SNAPSHOT.jar" },
-    [pscustomobject]@{ Name = "search"; Port = 8086; Profiles = "search"; Jar = "venueflow-search-service\target\venueflow-search-service-0.1.0-SNAPSHOT.jar" },
-    [pscustomobject]@{ Name = "gateway"; Port = 8080; Profiles = "gateway"; Jar = "venueflow-gateway\target\venueflow-gateway-0.1.0-SNAPSHOT.jar" }
+    [pscustomobject]@{ Name = "auth"; Port = 8081; InstanceId = "auth-1"; Profiles = "persistence$governanceProfile"; Jar = "venueflow-auth-service\target\venueflow-auth-service-0.1.0-SNAPSHOT.jar" },
+    [pscustomobject]@{ Name = "user"; Port = 8082; InstanceId = "user-1"; Profiles = "persistence$governanceProfile"; Jar = "venueflow-user-service\target\venueflow-user-service-0.1.0-SNAPSHOT.jar" },
+    [pscustomobject]@{ Name = "resource"; Port = 8083; InstanceId = "resource-1"; Profiles = "persistence,cache,resource-events$governanceProfile"; Jar = "venueflow-resource-service\target\venueflow-resource-service-0.1.0-SNAPSHOT.jar" },
+    [pscustomobject]@{ Name = "booking"; Port = 8084; InstanceId = "booking-1"; Profiles = "persistence,messaging$governanceProfile"; Jar = "venueflow-booking-service\target\venueflow-booking-service-0.1.0-SNAPSHOT.jar" },
+    [pscustomobject]@{ Name = "notification"; Port = 8085; InstanceId = "notification-1"; Profiles = "persistence,messaging$governanceProfile"; Jar = "venueflow-notification-service\target\venueflow-notification-service-0.1.0-SNAPSHOT.jar" },
+    [pscustomobject]@{ Name = "search"; Port = 8086; InstanceId = "search-1"; Profiles = "search$governanceProfile"; Jar = "venueflow-search-service\target\venueflow-search-service-0.1.0-SNAPSHOT.jar" },
+    [pscustomobject]@{ Name = "gateway"; Port = 8080; InstanceId = "gateway-1"; Profiles = "gateway$governanceProfile"; Jar = "venueflow-gateway\target\venueflow-gateway-0.1.0-SNAPSHOT.jar" }
 )
+if ($Governance) {
+    $services = @($services[0..2]) + @(
+        [pscustomobject]@{ Name = "resource-2"; Port = 18083; InstanceId = "resource-2"; Profiles = "persistence,cache,resource-events,governance"; Jar = "venueflow-resource-service\target\venueflow-resource-service-0.1.0-SNAPSHOT.jar" }
+    ) + @($services[3..($services.Count - 1)])
+}
 
 Write-Host "Starting VenueFlow services..."
 foreach ($service in $services) { Start-ServiceProcess $service }
@@ -333,6 +390,7 @@ if (-not $SkipSeed) {
 
 Write-Host ""
 Write-Host "VenueFlow local stack is ready."
+Write-Host "Mode:     $(if ($Governance) { 'governance (Nacos + dual Resource)' } else { 'static' })"
 Write-Host "Gateway:  http://127.0.0.1:8080"
 Write-Host "Frontend: python -m http.server 3000 --directory venueflow-web"
 Write-Host "Admin:    campus.admin / Campus-Admin-2026! (local demo only)"

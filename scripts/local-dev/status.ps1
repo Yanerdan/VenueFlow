@@ -1,3 +1,6 @@
+[CmdletBinding()]
+param([switch]$Governance)
+
 $ErrorActionPreference = "Stop"
 
 $components = @(
@@ -9,6 +12,9 @@ $components = @(
     @{ Name = "Notification"; Port = 8085 },
     @{ Name = "Search"; Port = 8086 }
 )
+if ($Governance) {
+    $components += @{ Name = "Resource-2"; Port = 18083 }
+}
 
 $result = foreach ($component in $components) {
     $uri = "http://127.0.0.1:$($component.Port)/actuator/health/liveness"
@@ -25,4 +31,14 @@ $result = foreach ($component in $components) {
 }
 
 $result | Format-Table -AutoSize
+if ($Governance) {
+    $nacosStatus = "DOWN"
+    try {
+        $nacos = Invoke-RestMethod -Uri "http://127.0.0.1:18080/v3/console/health/liveness" `
+            -TimeoutSec 2
+        if ($nacos -or $null -eq $nacos) { $nacosStatus = "UP" }
+    } catch {}
+    Write-Host "Nacos: $nacosStatus"
+    if ($nacosStatus -ne "UP") { exit 1 }
+}
 if (@($result | Where-Object Status -ne "UP").Count -gt 0) { exit 1 }
