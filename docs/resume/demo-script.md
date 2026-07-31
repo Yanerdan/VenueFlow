@@ -3,9 +3,10 @@
 ## 演示前
 
 ```powershell
-.\scripts\local-dev\start.ps1
+.\scripts\local-dev\start.ps1 -Governance
 python -m http.server 3000 --directory venueflow-web
 .\scripts\local-dev\smoke.ps1
+.\scripts\local-dev\governance-smoke.ps1
 ```
 
 打开申请人端和管理端，确认页面顶部的合成数据说明可见。
@@ -38,7 +39,7 @@ python -m http.server 3000 --directory venueflow-web
 
 ## 4:20–5:00 · 技术深挖入口
 
-打开 README 架构图，沿“Booking → Outbox → RabbitMQ → Notification/Search”说明最终一致性；再说明容量台账、超时释放与对账如何处理跨服务失败。
+打开 README 架构图，先说明 Nacos 只承担配置与注册发现，Gateway 通过服务名路由到两个 Resource 实例；展示故障切换脚本结果。随后沿“Booking → Outbox → RabbitMQ → Notification/Search”说明最终一致性，以及容量台账、超时释放与对账如何处理跨服务失败。
 
 ## 推荐收尾
 

@@ -13,6 +13,7 @@ VenueFlow 是一个可完整运行的全栈工程作品。项目不是简单的 
 | 完整业务闭环 | 资源发布 → 开放时段 → 预约申请 → 多级审批 → 通知 → 签到核销 → 运营报表 |
 | 分布式一致性 | 幂等命令、容量台账、事务 Outbox、消费者去重、超时释放与补偿协调 |
 | 校园治理 | OIDC + PKCE、组织树全量/增量同步、基于组织与角色的权限边界、审批链快照 |
+| 服务治理 | 可选鉴权 Nacos 配置/注册中心、Gateway 服务发现、Resource 双实例与故障切换验收 |
 | 工程质量 | Java 21、Spring Boot 4、Flyway、Maven 多模块、CI、代码格式/静态检查、SBOM |
 | 可运行作品 | Docker Compose 基础设施、一键启停/播种/冒烟验收、申请人端与管理端双工作台 |
 
@@ -23,6 +24,7 @@ flowchart LR
     U["师生申请人"] --> W["申请人工作台"]
     A["审批人 / 资源管理员 / 系统管理员"] --> M["管理工作台"]
     I["校园统一身份 IdP"] --> G
+    NC["Nacos<br/>配置 · 注册发现"] -.-> G
     W --> G["API Gateway<br/>JWT · CORS · 路由"]
     M --> G
     G --> AU["Auth<br/>OIDC · Token"]
@@ -31,6 +33,12 @@ flowchart LR
     G --> BS["Booking<br/>申请 · 审批 · 核销"]
     G --> NS["Notification<br/>站内消息"]
     G --> SS["Search<br/>资源检索"]
+    NC -.-> AU
+    NC -.-> US
+    NC -.-> RS
+    NC -.-> BS
+    NC -.-> NS
+    NC -.-> SS
     BS -- "Outbox / RabbitMQ" --> NS
     RS -- "投影事件" --> SS
     AU & US & RS & BS & NS --> DB[("MySQL<br/>按服务独立 Schema")]
