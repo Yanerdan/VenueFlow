@@ -74,8 +74,8 @@ Auth 服务支持本地演示账户与标准 OIDC Authorization Code + PKCE；Us
 以下数字来自当前仓库，可由 Git 或测试报告复核，不是生产运营指标：
 
 - 7 个可独立启动的后端进程：Gateway + 6 个领域服务。
-- 39 份主规格、28 个 Flyway 迁移、286 个生产 Java 源文件、88 个 Java 测试源文件。
-- 当前本地 Surefire 报告累计 277 项测试，0 failure / 0 error；前端测试 19 项通过。
+- 39 份主规格、28 个 Flyway 迁移、286 个生产 Java 源文件、89 个 Java 测试源文件。
+- 当前本地 Surefire 报告累计 278 项测试，0 failure / 0 error；前端测试 19 项通过。
 - 合成学期场景包含 7 个组织单元、16 名运营角色、10 个校园资源和 72 条跨约四个月的预约记录。
 
 详细案例拆解见 [项目案例](docs/resume/project-case-study.md)，可直接改写的中英文简历表述见 [简历文案](docs/resume/resume-copy.md)，面试追问准备见 [面试指南](docs/resume/interview-guide.md)。
@@ -129,6 +129,10 @@ python -m http.server 3000 --directory venueflow-web
 ## 构建与验收
 
 默认测试不依赖 Docker 或外部服务：
+
+在 Windows 上执行 `clean verify` 或重新打包前，请先运行
+`.\scripts\local-dev\stop.ps1` 停止本地 VenueFlow 服务；运行中的 Java 进程会占用
+`target` 下的可执行 JAR。只执行不重新打包的单元测试时可使用 `.\mvnw.cmd test`。
 
 ```powershell
 .\mvnw.cmd clean verify

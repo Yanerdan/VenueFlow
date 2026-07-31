@@ -247,6 +247,31 @@ $restored = Invoke-Json "Patch" `
     } $adminHeaders
 if ($restored.data.role -ne "APPLICANT") { throw "Acceptance account role was not restored" }
 
+# Prove that active synthetic history owns a real capacity allocation and remains actionable.
+$demoLogin = Invoke-Json "Post" "$gateway/api/v1/auth/login" @{
+    username = "campus.user"
+    password = "Campus-User-2026!"
+}
+$demoHeaders = @{ Authorization = "Bearer $($demoLogin.data.accessToken)" }
+$demoProfile = Invoke-Json "Get" "$gateway/api/v1/users/me" $null $demoHeaders
+$demoBookings = Invoke-Json "Get" `
+    "$gateway/api/v1/bookings?userId=$($demoProfile.id)&pageNumber=0&pageSize=50" `
+    $null $demoHeaders
+$showcaseBooking = @($demoBookings.data.items) |
+    Where-Object { $_.bookingNo -like "VF-SHOW-*" -and $_.status -eq "CONFIRMED" } |
+    Select-Object -First 1
+if (-not $showcaseBooking) { throw "No cancellable showcase booking was available" }
+$showcaseCancelled = Invoke-Json "Post" `
+    "$gateway/api/v1/bookings/$($showcaseBooking.bookingNo)/cancellation" @{} $demoHeaders
+if ($showcaseCancelled.data.status -ne "CANCELLED") {
+    throw "Showcase booking cancellation did not complete"
+}
+$showcaseCapacity = Invoke-Json "Get" `
+    "$gateway/api/v1/resource-slots/$($showcaseBooking.slotId)/capacity" $null $demoHeaders
+if ($showcaseCapacity.occupiedQuantity -ne 0) {
+    throw "Showcase cancellation did not release its capacity"
+}
+
 # Rebuild the reserved synthetic namespace so acceptance mutations never leak into the demo.
 & (Join-Path $PSScriptRoot "seed.ps1") | Out-Null
 
@@ -264,4 +289,5 @@ if ($restored.data.role -ne "APPLICANT") { throw "Acceptance account role was no
     Search = "PASS"
     Notification = "PASS"
     RefreshAndLogout = "PASS"
+    ShowcaseCancellation = "PASS"
 } | Format-List

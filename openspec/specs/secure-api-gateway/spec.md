@@ -4,9 +4,7 @@
 
 Define the bounded reactive entry point, Auth-issued JWT validation, trusted request headers, and
 deterministic verification boundaries for VenueFlow business APIs.
-
 ## Requirements
-
 ### Requirement: Gateway is an executable reactive entry module
 
 The repository SHALL provide `venueflow-gateway` as a Spring Cloud Gateway WebFlux module in the
@@ -119,3 +117,12 @@ containers, or automatic retry/circuit-breaker behavior.
 
 - **WHEN** code, dependencies, configuration, tests, and deployment files are reviewed
 - **THEN** changes remain limited to Gateway entry routing/security and documentation
+
+### Requirement: Oversized request rejection releases inbound buffers
+
+When Gateway rejects a declared oversized request before routing, it SHALL consume and release received request buffers before completing the 413 response.
+
+#### Scenario: Repeated oversized requests are rejected
+
+- **WHEN** multiple declared oversized request bodies reach Gateway
+- **THEN** every request returns 413 without reaching downstream and without leaking reference-counted buffers

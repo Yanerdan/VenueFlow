@@ -1,9 +1,7 @@
 ## Purpose
 
 定义 VenueFlow 在工程启动阶段必须遵守的兼容版本、本机与 VMware 运行模式、预约一致性基础和 OpenSpec 引导规则，使后续 Change 可以在可执行、可验证且可审计的基线上实施。
-
 ## Requirements
-
 ### Requirement: Compatible technology baseline
 工程规范 MUST 使用内部兼容的 Spring 与 Elasticsearch 版本组合，并在引入 Search Service 前锁定具体 Elasticsearch 补丁版本和镜像 digest。
 
@@ -49,3 +47,12 @@ v0.1.0 MUST 被定义为由工程基线、基础设施和 Resource Service 骨�
 #### Scenario: Revise the initial uncommitted specification
 - **WHEN** OpenSpec 已初始化但仓库尚无首次提交且规范存在阻断性冲突
 - **THEN** 可以通过本 Change 修订规范并保留 proposal、spec、design 和 tasks 工件
+
+### Requirement: Windows verification documents executable lock boundaries
+
+Local documentation SHALL state that `clean verify` and executable repackaging require VenueFlow service processes to be stopped on Windows.
+
+#### Scenario: Developer verifies after running the local stack
+
+- **WHEN** executable service JARs are still running
+- **THEN** the instructions direct the developer to stop the stack before invoking the packaging gate

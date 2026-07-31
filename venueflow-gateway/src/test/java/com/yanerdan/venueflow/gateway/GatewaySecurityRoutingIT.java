@@ -176,16 +176,18 @@ class GatewaySecurityRoutingIT {
 
   @Test
   void declaredOversizedBodyIsRejectedBeforeRouting() {
-    client()
-        .post()
-        .uri("/api/v1/auth/login")
-        .bodyValue("x".repeat(1025))
-        .exchange()
-        .expectStatus()
-        .isEqualTo(413)
-        .expectBody()
-        .jsonPath("$.code")
-        .isEqualTo("GATEWAY_PAYLOAD_TOO_LARGE");
+    for (int attempt = 0; attempt < 5; attempt++) {
+      client()
+          .post()
+          .uri("/api/v1/auth/login")
+          .bodyValue("x".repeat(1025))
+          .exchange()
+          .expectStatus()
+          .isEqualTo(413)
+          .expectBody()
+          .jsonPath("$.code")
+          .isEqualTo("GATEWAY_PAYLOAD_TOO_LARGE");
+    }
     assertThat(CALLS).hasValue(0);
   }
 

@@ -8,6 +8,7 @@ $searchBase = "http://127.0.0.1:8086"
 $gatewayBase = "http://127.0.0.1:8080"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $fixture = Join-Path $PSScriptRoot "semester-showcase.sql"
+$consistencyFixture = Join-Path $PSScriptRoot "showcase-consistency.sql"
 $mysqlContainer = "venueflow-base-mysql-1"
 $redisContainer = "venueflow-base-redis-1"
 $demoUsername = "campus.user"
@@ -15,6 +16,9 @@ $demoPassword = "Campus-User-2026!"
 
 if (-not (Test-Path -LiteralPath $fixture)) {
     throw "Semester showcase fixture is missing: $fixture"
+}
+if (-not (Test-Path -LiteralPath $consistencyFixture)) {
+    throw "Showcase consistency fixture is missing: $consistencyFixture"
 }
 if (-not (docker ps --format "{{.Names}}" | Where-Object { $_ -eq $mysqlContainer })) {
     throw "Local MySQL container is not running: $mysqlContainer"
@@ -33,9 +37,25 @@ try {
 }
 
 docker cp $fixture "${mysqlContainer}:/tmp/venueflow-semester-showcase.sql" | Out-Null
+docker cp $consistencyFixture "${mysqlContainer}:/tmp/venueflow-showcase-consistency.sql" | Out-Null
 docker exec $mysqlContainer sh -c `
     'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" --default-character-set=utf8mb4 < /tmp/venueflow-semester-showcase.sql'
 if ($LASTEXITCODE -ne 0) { throw "Semester showcase SQL failed" }
+
+$consistencyOutput = @(
+    docker exec $mysqlContainer sh -c `
+        'mysql -N -uroot -p"$MYSQL_ROOT_PASSWORD" --default-character-set=utf8mb4 < /tmp/venueflow-showcase-consistency.sql'
+)
+if ($LASTEXITCODE -ne 0) { throw "Showcase consistency checks could not run" }
+$consistencyValues = @(
+    $consistencyOutput |
+        ForEach-Object { "$_".Trim() } |
+        Where-Object { $_ -match '^\d+$' } |
+        ForEach-Object { [int]$_ }
+)
+if ($consistencyValues.Count -ne 3 -or ($consistencyValues | Where-Object { $_ -ne 0 })) {
+    throw "Showcase consistency checks failed: $($consistencyValues -join ',')"
+}
 
 if (docker ps --format "{{.Names}}" | Where-Object { $_ -eq $redisContainer }) {
     docker exec $redisContainer sh -c 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli FLUSHDB >/dev/null'
@@ -49,4 +69,5 @@ try {
 }
 
 Write-Host "Synthetic semester showcase data is ready."
+Write-Host "Cross-service showcase consistency checks passed."
 Write-Host "Applicant: $demoUsername / $demoPassword (local demo only)"

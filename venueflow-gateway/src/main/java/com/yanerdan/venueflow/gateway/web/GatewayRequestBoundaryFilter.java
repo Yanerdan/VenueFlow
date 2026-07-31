@@ -6,6 +6,7 @@ import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.Ordered;
+import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -31,6 +32,14 @@ public class GatewayRequestBoundaryFilter implements GlobalFilter, Ordered {
     if (exchange.getRequest().getHeaders().getContentLength() <= maxRequestBytes) {
       return chain.filter(exchange);
     }
+    return exchange
+        .getRequest()
+        .getBody()
+        .doOnNext(DataBufferUtils::release)
+        .then(Mono.defer(() -> writePayloadTooLarge(exchange)));
+  }
+
+  private static Mono<Void> writePayloadTooLarge(ServerWebExchange exchange) {
     byte[] body =
         ("{\"code\":\"GATEWAY_PAYLOAD_TOO_LARGE\",\"message\":\"Request body is too large\","
                 + "\"details\":[],\"traceId\":\""

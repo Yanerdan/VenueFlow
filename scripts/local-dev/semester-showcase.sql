@@ -4,6 +4,99 @@ USE venueflow_resource;
 START TRANSACTION;
 
 -- This fixture is synthetic. Reserved identifiers make it safe to reseed without touching user data.
+DROP TEMPORARY TABLE IF EXISTS vf_cleanup_external_users;
+CREATE TEMPORARY TABLE vf_cleanup_external_users AS
+SELECT user_id AS external_user_id
+FROM venueflow_auth.auth_credentials
+WHERE username LIKE 'acceptance\_%'
+   OR username LIKE 'browser\_%'
+   OR username REGEXP '^user_[0-9]+$'
+   OR username = 'venue_user01';
+
+DROP TEMPORARY TABLE IF EXISTS vf_cleanup_profiles;
+CREATE TEMPORARY TABLE vf_cleanup_profiles AS
+SELECT profile.id, profile.external_user_id
+FROM venueflow_user.user_profile profile
+JOIN vf_cleanup_external_users cleanup
+  ON cleanup.external_user_id = profile.external_user_id;
+
+DROP TEMPORARY TABLE IF EXISTS vf_cleanup_bookings;
+CREATE TEMPORARY TABLE vf_cleanup_bookings AS
+SELECT booking.id, booking.booking_no, booking.slot_id,
+       booking.allocation_operation_id, booking.release_operation_id
+FROM venueflow_booking.booking_reservation booking
+JOIN vf_cleanup_profiles profile ON profile.id = booking.user_id;
+
+DROP TEMPORARY TABLE IF EXISTS vf_cleanup_intents;
+CREATE TEMPORARY TABLE vf_cleanup_intents AS
+SELECT intent.id
+FROM venueflow_booking.booking_reconciliation_intent intent
+JOIN vf_cleanup_bookings booking ON booking.id = intent.booking_id;
+
+DELETE action
+FROM venueflow_booking.repair_action action
+JOIN vf_cleanup_intents intent ON intent.id = action.intent_id;
+DELETE issue
+FROM venueflow_booking.reconciliation_issue issue
+JOIN vf_cleanup_intents intent ON intent.id = issue.intent_id;
+DELETE intent
+FROM venueflow_booking.booking_reconciliation_intent intent
+JOIN vf_cleanup_intents cleanup ON cleanup.id = intent.id;
+DELETE stage
+FROM venueflow_booking.booking_approval_stage_snapshot stage
+JOIN vf_cleanup_bookings booking ON booking.id = stage.booking_id;
+DELETE action
+FROM venueflow_booking.booking_approval_action action
+JOIN vf_cleanup_bookings booking ON booking.id = action.booking_id;
+DELETE log
+FROM venueflow_booking.booking_status_log log
+JOIN vf_cleanup_bookings booking ON booking.id = log.booking_id;
+DELETE idempotency
+FROM venueflow_booking.booking_idempotency idempotency
+JOIN vf_cleanup_profiles profile ON profile.id = idempotency.user_id;
+DELETE event
+FROM venueflow_booking.booking_outbox_event event
+JOIN vf_cleanup_bookings booking ON booking.booking_no = event.aggregate_id;
+DELETE notification
+FROM venueflow_notification.notification_record notification
+JOIN vf_cleanup_bookings booking ON booking.booking_no = notification.booking_no;
+DELETE allocation
+FROM venueflow_resource.resource_slot_allocation allocation
+JOIN vf_cleanup_bookings booking
+  ON allocation.operation_id IN (booking.allocation_operation_id, booking.release_operation_id);
+DELETE booking
+FROM venueflow_booking.booking_reservation booking
+JOIN vf_cleanup_bookings cleanup ON cleanup.id = booking.id;
+UPDATE venueflow_resource.resource_slot slot
+JOIN (SELECT DISTINCT slot_id FROM vf_cleanup_bookings) cleanup ON cleanup.slot_id = slot.id
+LEFT JOIN (
+  SELECT slot_id, SUM(quantity) AS occupied
+  FROM venueflow_booking.booking_reservation
+  WHERE status IN ('PENDING_CONFIRMATION', 'CONFIRMED')
+  GROUP BY slot_id
+) active_booking ON active_booking.slot_id = slot.id
+SET slot.allocated_quantity = COALESCE(active_booking.occupied, 0),
+    slot.updated_at = UTC_TIMESTAMP(6);
+DELETE membership
+FROM venueflow_user.directory_membership membership
+JOIN vf_cleanup_external_users cleanup
+  ON cleanup.external_user_id = membership.external_user_id;
+DELETE profile
+FROM venueflow_user.user_profile profile
+JOIN vf_cleanup_profiles cleanup ON cleanup.id = profile.id;
+DELETE completion
+FROM venueflow_auth.auth_login_completions completion
+JOIN vf_cleanup_external_users cleanup ON cleanup.external_user_id = completion.user_id;
+DELETE identity
+FROM venueflow_auth.auth_external_identities identity
+JOIN vf_cleanup_external_users cleanup ON cleanup.external_user_id = identity.user_id;
+DELETE token
+FROM venueflow_auth.auth_refresh_tokens token
+JOIN vf_cleanup_external_users cleanup ON cleanup.external_user_id = token.user_id;
+DELETE credential
+FROM venueflow_auth.auth_credentials credential
+JOIN vf_cleanup_external_users cleanup ON cleanup.external_user_id = credential.user_id;
+
 INSERT INTO venueflow_user.user_profile
   (external_user_id, display_name, campus_id, identity_type, department, phone, email,
    account_status, booking_eligibility, version, created_at, updated_at)
@@ -274,19 +367,44 @@ ON DUPLICATE KEY UPDATE
   status = VALUES(status), allocated_quantity = VALUES(allocated_quantity), updated_at = VALUES(updated_at);
 
 -- Recreate only the reserved semester history.
+DROP TEMPORARY TABLE IF EXISTS vf_showcase_bookings;
+CREATE TEMPORARY TABLE vf_showcase_bookings AS
+SELECT id, booking_no, request_id
+FROM venueflow_booking.booking_reservation
+WHERE booking_no LIKE 'VF-SHOW-%';
+
+DROP TEMPORARY TABLE IF EXISTS vf_showcase_intents;
+CREATE TEMPORARY TABLE vf_showcase_intents AS
+SELECT intent.id
+FROM venueflow_booking.booking_reconciliation_intent intent
+WHERE intent.request_id LIKE '10000000-0000-4000-8000-%';
+
+DELETE action
+FROM venueflow_booking.repair_action action
+JOIN vf_showcase_intents intent ON intent.id = action.intent_id;
+DELETE issue
+FROM venueflow_booking.reconciliation_issue issue
+JOIN vf_showcase_intents intent ON intent.id = issue.intent_id;
+DELETE intent
+FROM venueflow_booking.booking_reconciliation_intent intent
+JOIN vf_showcase_intents cleanup ON cleanup.id = intent.id;
+DELETE event
+FROM venueflow_booking.booking_outbox_event event
+JOIN vf_showcase_bookings booking ON booking.booking_no = event.aggregate_id;
+DELETE FROM venueflow_booking.booking_outbox_event
+WHERE aggregate_id LIKE 'VF-SHOW-%';
 DELETE snapshot
 FROM venueflow_booking.booking_approval_stage_snapshot snapshot
-JOIN venueflow_booking.booking_reservation booking ON booking.id = snapshot.booking_id
-WHERE booking.booking_no LIKE 'VF-SHOW-%';
-DELETE FROM venueflow_booking.booking_approval_action
-WHERE booking_id IN (
-  SELECT id FROM venueflow_booking.booking_reservation WHERE booking_no LIKE 'VF-SHOW-%'
-);
-DELETE FROM venueflow_booking.booking_status_log
-WHERE booking_id IN (
-  SELECT id FROM venueflow_booking.booking_reservation WHERE booking_no LIKE 'VF-SHOW-%'
-);
-DELETE FROM venueflow_booking.booking_reservation WHERE booking_no LIKE 'VF-SHOW-%';
+JOIN vf_showcase_bookings booking ON booking.id = snapshot.booking_id;
+DELETE action
+FROM venueflow_booking.booking_approval_action action
+JOIN vf_showcase_bookings booking ON booking.id = action.booking_id;
+DELETE log
+FROM venueflow_booking.booking_status_log log
+JOIN vf_showcase_bookings booking ON booking.id = log.booking_id;
+DELETE booking
+FROM venueflow_booking.booking_reservation booking
+JOIN vf_showcase_bookings cleanup ON cleanup.id = booking.id;
 DELETE FROM venueflow_notification.notification_record WHERE booking_no LIKE 'VF-SHOW-%';
 
 INSERT INTO venueflow_booking.booking_reservation
@@ -376,6 +494,29 @@ SET booking.user_id = demo_profile.id,
     booking.contact_name = demo_profile.display_name,
     booking.contact_phone = demo_profile.phone
 WHERE booking.booking_no LIKE 'VF-SHOW-%';
+
+UPDATE venueflow_resource.resource_slot slot
+JOIN venueflow_booking.booking_reservation booking ON booking.slot_id = slot.id
+SET slot.status = CASE
+      WHEN booking.status IN ('PENDING_CONFIRMATION', 'CONFIRMED') THEN 'OPEN'
+      ELSE 'CLOSED'
+    END,
+    slot.allocated_quantity = CASE
+      WHEN booking.status IN ('PENDING_CONFIRMATION', 'CONFIRMED') THEN booking.quantity
+      ELSE 0
+    END,
+    slot.updated_at = UTC_TIMESTAMP(6)
+WHERE booking.booking_no LIKE 'VF-SHOW-%';
+
+INSERT INTO venueflow_resource.resource_slot_allocation
+  (slot_id, operation_id, operation_type, quantity, request_fingerprint,
+   occupied_quantity_after, created_at, updated_at)
+SELECT booking.slot_id, booking.allocation_operation_id, 'ALLOCATE', booking.quantity,
+       SHA2(CONCAT(booking.slot_id, '|ALLOCATE|', booking.quantity), 256),
+       booking.quantity, booking.created_at, booking.created_at
+FROM venueflow_booking.booking_reservation booking
+WHERE booking.booking_no LIKE 'VF-SHOW-%'
+  AND booking.status IN ('PENDING_CONFIRMATION', 'CONFIRMED');
 
 INSERT INTO venueflow_booking.booking_approval_action
   (booking_id, approval_step, actor_external_user_id, actor_role, decision, review_note, created_at)

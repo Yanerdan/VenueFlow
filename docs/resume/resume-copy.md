@@ -11,7 +11,7 @@
 - 围绕身份、人员、资源、预约、通知和搜索等业务边界设计 Gateway + 6 个领域服务，实现资源发布、时段管理、预约申请、1–5 级审批、签到核销和运营报表的完整业务闭环。
 - 针对重复提交、并发占用和跨服务调用失败，设计幂等请求、容量台账、超时释放和对账补偿机制；使用事务 Outbox、RabbitMQ 与消费去重可靠驱动通知和搜索投影，避免核心预约事务依赖下游实时可用。
 - 实现 OIDC Authorization Code + PKCE、本地 Access/Refresh Token 轮换、组织架构全量/增量同步及角色和组织范围授权；在申请创建时固化审批链快照，确保后续配置变更不影响历史流程的审计语义。
-- 使用 Flyway 管理 28 个数据库迁移，以 Docker Compose 和脚本完成环境启停、合成数据播种及全链路冒烟验收；仓库维护 39 份可追踪规格，当前本地报告覆盖 277 项 Java 测试和 19 项前端测试。
+- 使用 Flyway 管理 28 个数据库迁移，以 Docker Compose 和脚本完成环境启停、合成数据播种及全链路冒烟验收；仓库维护 39 份可追踪规格，当前本地报告覆盖 278 项 Java 测试和 19 项前端测试。
 
 ## 后端岗位精简版
 
@@ -37,7 +37,7 @@
 - Designed and implemented a Java 21 / Spring Boot system consisting of an API Gateway and six domain services for resource scheduling, booking, one-to-five-stage approval, notification, check-in, and operational reporting.
 - Protected booking capacity against retries and partial failures with idempotent commands, a capacity ledger, timeout release, and reconciliation; propagated notifications and search projections through transactional Outbox, RabbitMQ, and idempotent consumers.
 - Implemented OIDC Authorization Code with PKCE, rotating access/refresh sessions, full and incremental organization synchronization, and role/organization-scoped authorization; snapshotted approval chains to preserve historical audit semantics.
-- Built a repeatable local delivery workflow with Flyway, Docker Compose, synthetic data seeding, and end-to-end smoke tests; the repository currently contains 39 traceable specifications, 28 migrations, 277 Java tests, and 19 frontend tests.
+- Built a repeatable local delivery workflow with Flyway, Docker Compose, synthetic data seeding, and end-to-end smoke tests; the repository currently contains 39 traceable specifications, 28 migrations, 278 Java tests, and 19 frontend tests.
 
 ## 使用原则
 
